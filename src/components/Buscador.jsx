@@ -4,45 +4,46 @@
 // ══════════════════════════════════════════════════════════════
 import React, { useState } from "react";
 import { B, AG, scoreLead } from "../data/constants.js";
-
+ 
 export default function Buscador({ leads }) {
   const [resultados,    setResultados]    = useState({});
   const [buscando,      setBuscando]      = useState({});
   const [expandido,     setExpandido]     = useState(null);
   const [buscandoTodos, setBuscandoTodos] = useState(false);
-
+ 
   const activos = leads
     .filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido" && l.presup && l.zona)
     .sort((a, b) => a.dias - b.dias);
-
+ 
   const calientes = activos.filter(l => l.dias < 3);
   const tibios    = activos.filter(l => l.dias >= 3 && l.dias <= 7);
   const resto     = activos.filter(l => l.dias > 7).slice(0, 8);
-
+ 
   async function buscarParaLead(lead) {
     if (buscando[lead.id]) return;
     setBuscando(p => ({ ...p, [lead.id]: true }));
     setExpandido(lead.id);
-
-    const prompt = `Buscá propiedades en venta en Mar del Plata, Argentina que coincidan con este comprador:
-
+ 
+    const prompt = `Sos el asistente de Alba Inversiones Inmobiliarias en Mar del Plata, Argentina.
+ 
+Analizá este comprador y dime:
+1. Qué tipo de propiedad exacta debería buscarle (características específicas)
+2. Qué zonas alternativas a ${lead.zona} podrían interesarle
+3. Qué argumentos usar para mantenerlo caliente
+4. Un mensaje de WhatsApp listo para enviarle hoy
+5. Qué buscar en ZonaProp: URL de búsqueda sugerida en zonaprop.com.ar
+ 
+PERFIL DEL COMPRADOR:
 - Nombre: ${lead.nombre}
 - Tipo buscado: ${lead.tipo || "cualquiera"}
 - Zona preferida: ${lead.zona}
-- Presupuesto máximo: USD ${lead.presup?.toLocaleString()}
+- Presupuesto: USD ${lead.presup?.toLocaleString()}
 - Operación: ${lead.op}
-${lead.nota ? `- Contexto: ${lead.nota.slice(0, 120)}` : ""}
-
-Buscá en ZonaProp, Argenprop y Mercado Libre Inmuebles.
-Para cada propiedad encontrada indicá:
-1. Descripción breve
-2. Precio en USD
-3. Dirección o zona
-4. Por qué matchea con este comprador
-5. Link directo si existe
-
-Presentá máximo 5 propiedades ordenadas de mejor a peor match. Marcá con ⭐ si algo es especialmente bueno.`;
-
+- Días sin contacto: ${lead.dias}
+${lead.nota ? `- Contexto: ${lead.nota.slice(0, 150)}` : ""}
+ 
+Respondé en español rioplatense, directo y práctico.`;
+ 
     try {
       const resp = await fetch("/.netlify/functions/claude", {
         method: "POST",
@@ -50,7 +51,6 @@ Presentá máximo 5 propiedades ordenadas de mejor a peor match. Marcá con ⭐ 
         body: JSON.stringify({
           model: "claude-opus-4-6",
           max_tokens: 1500,
-          tools: [{ type: "web_search_20250305", name: "web_search" }],
           messages: [{ role: "user", content: prompt }],
         }),
       });
@@ -65,7 +65,7 @@ Presentá máximo 5 propiedades ordenadas de mejor a peor match. Marcá con ⭐ 
     }
     setBuscando(p => ({ ...p, [lead.id]: false }));
   }
-
+ 
   async function buscarTodosAhora() {
     setBuscandoTodos(true);
     const cola = [...calientes, ...tibios];
@@ -75,18 +75,18 @@ Presentá máximo 5 propiedades ordenadas de mejor a peor match. Marcá con ⭐ 
     }
     setBuscandoTodos(false);
   }
-
+ 
   function LeadCard({ lead }) {
     const s    = scoreLead(lead);
     const ag   = AG[lead.ag];
     const res  = resultados[lead.id];
     const busy = buscando[lead.id];
     const open = expandido === lead.id;
-
+ 
     return (
       <div style={{ background:B.card, border:`1px solid ${open ? B.accentL : B.border}`,
         borderRadius:12, overflow:"hidden", marginBottom:10, transition:"border-color .15s" }}>
-
+ 
         {/* Header del lead */}
         <div style={{ padding:"13px 16px", display:"flex", alignItems:"center", gap:10, flexWrap:"wrap",
           cursor:"pointer", borderLeft:`3px solid ${s.c}` }}
@@ -122,7 +122,7 @@ Presentá máximo 5 propiedades ordenadas de mejor a peor match. Marcá con ⭐ 
             ) : res ? "↻ Actualizar" : "🔍 Buscar"}
           </button>
         </div>
-
+ 
         {/* Resultados */}
         {open && (
           <div style={{ borderTop:`1px solid ${B.border}`, padding:"14px 16px",
@@ -158,7 +158,7 @@ Presentá máximo 5 propiedades ordenadas de mejor a peor match. Marcá con ⭐ 
       </div>
     );
   }
-
+ 
   return (
     <div>
       {/* Header */}
@@ -180,7 +180,7 @@ Presentá máximo 5 propiedades ordenadas de mejor a peor match. Marcá con ⭐ 
           ) : `🔍 Buscar para calientes + tibios (${calientes.length + tibios.length})`}
         </button>
       </div>
-
+ 
       {/* Stats */}
       <div style={{ display:"flex", gap:10, marginBottom:22, flexWrap:"wrap" }}>
         {[
@@ -195,7 +195,7 @@ Presentá máximo 5 propiedades ordenadas de mejor a peor match. Marcá con ⭐ 
           </div>
         ))}
       </div>
-
+ 
       {/* Calientes */}
       {calientes.length > 0 && (
         <div style={{ marginBottom:24 }}>
@@ -206,7 +206,7 @@ Presentá máximo 5 propiedades ordenadas de mejor a peor match. Marcá con ⭐ 
           {calientes.map(l => <LeadCard key={l.id} lead={l} />)}
         </div>
       )}
-
+ 
       {/* Tibios */}
       {tibios.length > 0 && (
         <div style={{ marginBottom:24 }}>
@@ -217,7 +217,7 @@ Presentá máximo 5 propiedades ordenadas de mejor a peor match. Marcá con ⭐ 
           {tibios.map(l => <LeadCard key={l.id} lead={l} />)}
         </div>
       )}
-
+ 
       {/* Resto */}
       {resto.length > 0 && (
         <div>
@@ -228,13 +228,13 @@ Presentá máximo 5 propiedades ordenadas de mejor a peor match. Marcá con ⭐ 
           {resto.map(l => <LeadCard key={l.id} lead={l} />)}
         </div>
       )}
-
+ 
       {activos.length === 0 && (
         <div style={{ textAlign:"center", padding:"60px", color:B.dim }}>
           No hay leads activos con zona y presupuesto definidos.
         </div>
       )}
-
+ 
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   );
