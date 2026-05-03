@@ -10,6 +10,7 @@ const SUPABASE_URL = "https://brhhwcrsoqtptbrnnzlu.supabase.co";
 const SUPABASE_KEY = "sb_publishable_zqtYWADTxXseE7k7M722kA_6p7LEZbs";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+export { supabase };
 
 // ── Auth ─────────────────────────────────────────────────────
 export async function signIn(email, password) {
