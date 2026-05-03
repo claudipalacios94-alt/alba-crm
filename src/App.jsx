@@ -6,7 +6,7 @@ import React, { useState, useEffect } from "react";
 import { B, AG } from "./data/constants.js";
 import { useSupabase, signIn, signOut, onAuthChange, supabase } from "./hooks/useSupabase.js";
 import Login from "./components/Login.jsx";
-
+ 
 // Componentes
 import SupabaseStatus  from "./components/SupabaseStatus.jsx";
 import Briefing        from "./components/Briefing.jsx";
@@ -20,12 +20,12 @@ import Buscador        from "./components/Buscador.jsx";
 import Mapa            from "./components/Mapa.jsx";
 import Flyer           from "./components/Flyer.jsx";
 import Captaciones     from "./components/Captaciones.jsx";
-
+ 
 // Modales
 import Modal           from "./modals/Modal.jsx";
 import QuickAddLead    from "./modals/QuickAddLead.jsx";
 import QuickAddProp    from "./modals/QuickAddProp.jsx";
-
+ 
 // ── Navegación ────────────────────────────────────────────────
 const NAV = [
   { id:"briefing",    label:"Briefing del día",  badge:"HOY" },
@@ -40,20 +40,20 @@ const NAV = [
   { id:"flyer",       label:"Generador Flyer" },
   { id:"captaciones",  label:"Captación rápida", badge:"NEW" },
 ];
-
+ 
 const FULL_HEIGHT = ["kanban", "asistente", "mapa", "flyer", "captaciones"];
-
+ 
 export default function App() {
   const [view,  setView]  = useState("briefing");
   const [modal, setModal] = useState(null);
   const [user,  setUser]  = useState(undefined); // undefined=cargando, null=no auth, obj=autenticado
-
+ 
   // ── Auth state ────────────────────────────────────────────
   useEffect(() => {
     const { data: { subscription } } = onAuthChange(setUser);
     return () => subscription.unsubscribe();
   }, []);
-
+ 
   const {
     leads, properties, rentals,
     loading, error, lastSync,
@@ -61,22 +61,22 @@ export default function App() {
     addProperty, addInteraction, getInteractions,
     saveSearchResult, getSearchResult,
   } = useSupabase();
-
+ 
   const sinAsignar = leads.filter(l => !l.ag && l.etapa !== "Cerrado" && l.etapa !== "Perdido").length;
   const isFullH    = FULL_HEIGHT.includes(view);
-
+ 
   async function handleAddLead(lead) {
     await addLead(lead);
     setModal(null);
     setView("crm");
   }
-
+ 
   async function handleAddProp(prop) {
     await addProperty(prop);
     setModal(null);
     setView("propiedades");
   }
-
+ 
   // ── Pantalla de carga ─────────────────────────────────────
   if (user === undefined) {
     return (
@@ -89,22 +89,22 @@ export default function App() {
       </div>
     );
   }
-
+ 
   // ── Login ─────────────────────────────────────────────────
   if (!user) {
     return <Login onLogin={signIn} />;
   }
-
+ 
   // ── App principal ─────────────────────────────────────────
   return (
     <div style={{ display:"flex", height:"100vh", background:B.bg,
       fontFamily:"'Trebuchet MS',sans-serif", color:B.text,
       overflow:"hidden", position:"relative" }}>
-
+ 
       {/* ── SIDEBAR ─────────────────────────────────────────── */}
       <div style={{ width:204, background:B.sidebar, borderRight:`1px solid ${B.border}`,
         display:"flex", flexDirection:"column", flexShrink:0 }}>
-
+ 
         {/* Logo */}
         <div style={{ display:"flex", alignItems:"center", gap:9, padding:"16px 14px 12px" }}>
           <div style={{ width:33, height:33, borderRadius:"50%",
@@ -116,12 +116,12 @@ export default function App() {
             <div style={{ fontSize:8, color:B.muted, letterSpacing:"1.2px" }}>INVERSIONES · REG 3832</div>
           </div>
         </div>
-
+ 
         {/* Estado Supabase */}
         <div style={{ padding:"0 10px 10px" }}>
           <SupabaseStatus loading={loading} error={error} lastSync={lastSync} onReload={reload} />
         </div>
-
+ 
         {/* Botones carga rápida */}
         <div style={{ padding:"0 10px 10px", display:"flex", gap:6 }}>
           <button onClick={() => setModal("lead")}
@@ -137,9 +137,9 @@ export default function App() {
             + Prop
           </button>
         </div>
-
+ 
         <div style={{ height:1, background:B.border, margin:"0 13px 11px" }} />
-
+ 
         {/* Nav items */}
         <nav style={{ flex:1, padding:"0 8px", overflowY:"auto", scrollbarWidth:"none" }}>
           {NAV.map(n => (
@@ -170,7 +170,7 @@ export default function App() {
             </button>
           ))}
         </nav>
-
+ 
         {/* Footer con stats + logout */}
         <div style={{ padding:"10px 13px 12px", borderTop:`1px solid ${B.border}` }}>
           <div style={{ fontSize:9, color:B.dim, marginBottom:5 }}>
@@ -189,7 +189,7 @@ export default function App() {
           </button>
         </div>
       </div>
-
+ 
       {/* ── MAIN ────────────────────────────────────────────── */}
       <div style={{
         flex:1, minWidth:0,
@@ -204,13 +204,13 @@ export default function App() {
         {view === "cuaderno"    && <Cuaderno    leads={leads} addInteraction={addInteraction} getInteractions={getInteractions} />}
         {view === "kanban"      && <Kanban      leads={leads} updateLead={updateLead} />}
         {view === "crm"         && <CRMLeads    leads={leads} updateLead={updateLead} deleteLead={deleteLead} />}
-        {view === "propiedades" && <Propiedades properties={properties} />}
+        {view === "propiedades" && <Propiedades properties={properties} updateProperty={updateProperty} />}
         {view === "alquileres"  && <Alquileres  rentals={rentals} />}
         {view === "mapa"        && <Mapa        properties={properties} />}
         {view === "flyer"       && <Flyer       properties={properties} />}
         {view === "captaciones" && <Captaciones  supabase={supabase} />}
       </div>
-
+ 
       {/* ── MODALES ─────────────────────────────────────────── */}
       {modal === "lead" && (
         <Modal title="+ Nuevo lead" onClose={() => setModal(null)}>
