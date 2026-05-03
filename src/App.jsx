@@ -4,7 +4,7 @@
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useEffect } from "react";
 import { B, AG } from "./data/constants.js";
-import { useSupabase, signIn, signOut, onAuthChange } from "./hooks/useSupabase.js";
+import { useSupabase, signIn, signOut, onAuthChange, supabase } from "./hooks/useSupabase.js";
 import Login from "./components/Login.jsx";
 
 // Componentes
@@ -19,6 +19,7 @@ import Cuaderno        from "./components/Cuaderno.jsx";
 import Buscador        from "./components/Buscador.jsx";
 import Mapa            from "./components/Mapa.jsx";
 import Flyer           from "./components/Flyer.jsx";
+import Captaciones     from "./components/Captaciones.jsx";
 
 // Modales
 import Modal           from "./modals/Modal.jsx";
@@ -37,9 +38,10 @@ const NAV = [
   { id:"alquileres",  label:"Alquileres" },
   { id:"mapa",        label:"Mapa" },
   { id:"flyer",       label:"Generador Flyer" },
+  { id:"captaciones",  label:"Captación rápida", badge:"NEW" },
 ];
 
-const FULL_HEIGHT = ["kanban", "asistente", "mapa", "flyer"];
+const FULL_HEIGHT = ["kanban", "asistente", "mapa", "flyer", "captaciones"];
 
 export default function App() {
   const [view,  setView]  = useState("briefing");
@@ -206,6 +208,7 @@ export default function App() {
         {view === "alquileres"  && <Alquileres  rentals={rentals} />}
         {view === "mapa"        && <Mapa        properties={properties} />}
         {view === "flyer"       && <Flyer       properties={properties} />}
+        {view === "captaciones" && <Captaciones  supabase={supabase} />}
       </div>
 
       {/* ── MODALES ─────────────────────────────────────────── */}
