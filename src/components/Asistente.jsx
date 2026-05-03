@@ -4,7 +4,7 @@
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useRef, useEffect } from "react";
 import { B, AG, PROPS_DEMO } from "../data/constants.js";
-
+ 
 const SUGERENCIAS = [
   { t:"Susana — prioridad HOY",       p:"Dame un plan de acción para Susana (ID 55) que quiere ver la propiedad de La Perla. Va a piñón fijo." },
   { t:"Agustina Rutia — CALIENTE",    p:"Agustina Rutia busca casa 3 amb con cochera en Chauvin hasta USD 135k. ¿Qué propiedades le muestro?" },
@@ -15,55 +15,58 @@ const SUGERENCIAS = [
   { t:"Leads en Chauvin",             p:"Tengo varios leads buscando en Chauvin. ¿Qué propiedades tengo disponibles y cómo las priorizo?" },
   { t:"Reactivar leads fríos",        p:"¿Cómo reactivaría a los leads que llevan más de 20 días sin responder? Dame una estrategia concreta." },
 ];
-
+ 
 export default function Asistente({ leads, properties }) {
   const [msgs,    setMsgs]    = useState([]);
   const [input,   setInput]   = useState("");
   const [loading, setLoading] = useState(false);
   const chatRef = useRef(null);
-
+ 
   const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
   const allProps = properties?.length ? properties : PROPS_DEMO;
-
-  // Contexto para la IA
-  const ctxLeads = activos.slice(0, 25).map(l =>
-    `- ${l.nombre}|Ag:${l.ag||"Sin asignar"}|Etapa:${l.etapa}|Presup:USD${l.presup||"?"}|Zona:${l.zona||"?"}|Días:${l.dias}|Tel:${l.tel||"-"}${l.notaImp ? "|⚠️:"+l.notaImp : ""}|Nota:${(l.nota||"").slice(0,60)}`
+ 
+  // ── OPTIMIZACIÓN TOKENS ───────────────────────────────────
+  // Solo los 12 leads más urgentes (calientes y tibios primero)
+  const leadsCtx = [...activos]
+    .sort((a, b) => a.dias - b.dias)
+    .slice(0, 12);
+ 
+  // Props: solo datos esenciales, sin caracts largas
+  const ctxLeads = leadsCtx.map(l =>
+    `${l.nombre}|${l.ag||"-"}|${l.etapa}|USD${l.presup||"?"}|${l.zona||"?"}|${l.dias}d${l.notaImp ? "|⚠️"+l.notaImp : ""}`
   ).join("\n");
-
-  const ctxProps = allProps.map(p =>
-    `- ${p.tipo} ${p.zona} ${p.dir} USD${p.precio?.toLocaleString()||"?"} ${p.m2tot||"?"}m² (${p.dias}d) ${p.caracts}`
+ 
+  const ctxProps = allProps.slice(0, 10).map(p =>
+    `${p.tipo} ${p.zona} USD${p.precio?.toLocaleString()||"?"}`
   ).join("\n");
-
-  const SYSTEM = `Sos el asistente de IA de Alba Inversiones Inmobiliarias, inmobiliaria en Mar del Plata, Argentina. REG 3832.
-Equipo: Claudi (C), Alejandra (A), Flor (F), Lucas (L).
-Respondés en español rioplatense, directo y práctico. Máximo 3-4 párrafos salvo que pidan algo largo.
-Cuando redactás WhatsApp: mensajes concretos, cortos, cordiales-profesionales.
-Cuando analizás leads: priorizá por probabilidad de cierre y días sin contacto.
-Cuando matcheás propiedades: zona + presupuesto + tipo + características.
-
-LEADS ACTIVOS (${activos.length} de ${leads.length} totales):
+ 
+  const SYSTEM = `Asistente de Alba Inversiones, Mar del Plata. Equipo: Claudi(C) Alejandra(A) Flor(F) Lucas(L). Español rioplatense, directo, máx 3 párrafos.
+ 
+LEADS URGENTES (${leadsCtx.length} de ${activos.length} activos):
 ${ctxLeads}
-
-PROPIEDADES EN VENTA (${allProps.length}):
+ 
+PROPIEDADES (${allProps.length} total):
 ${ctxProps}`;
-
+ 
   useEffect(() => {
     chatRef.current?.scrollTo({ top: 9999, behavior: "smooth" });
   }, [msgs, loading]);
-
+ 
   async function send(texto) {
     if (!texto.trim() || loading) return;
-    const history = [...msgs, { role:"user", content:texto }];
-    setMsgs(history);
+    const fullHistory = [...msgs, { role:"user", content:texto }];
+    setMsgs(fullHistory);
     setInput("");
     setLoading(true);
+    // Solo los últimos 6 mensajes para ahorrar tokens
+    const history = fullHistory.slice(-6);
     try {
-      const r = await fetch("/.netlify/functions/claude", {
+      const r = await fetch("/api/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-opus-4-6",
-          max_tokens: 1200,
+          max_tokens: 800,
           system: SYSTEM,
           messages: history.map(m => ({ role: m.role, content: m.content })),
         }),
@@ -76,14 +79,14 @@ ${ctxProps}`;
     }
     setLoading(false);
   }
-
+ 
   return (
     <div style={{ display:"flex", height:"100%", gap:12, overflow:"hidden" }}>
-
+ 
       {/* Chat */}
       <div style={{ flex:1, display:"flex", flexDirection:"column", background:B.card,
         border:`1px solid ${B.border}`, borderRadius:12, overflow:"hidden", minWidth:0 }}>
-
+ 
         {/* Header */}
         <div style={{ padding:"12px 14px", borderBottom:`1px solid ${B.border}`,
           display:"flex", alignItems:"center", gap:9, flexShrink:0 }}>
@@ -99,7 +102,7 @@ ${ctxProps}`;
             </div>
           </div>
         </div>
-
+ 
         {/* Mensajes */}
         <div ref={chatRef} style={{ flex:1, overflowY:"auto", padding:"12px",
           scrollbarWidth:"thin", scrollbarColor:`${B.border} transparent`,
@@ -146,7 +149,7 @@ ${ctxProps}`;
             </div>
           )}
         </div>
-
+ 
         {/* Input */}
         <div style={{ padding:"10px", borderTop:`1px solid ${B.border}`, flexShrink:0, display:"flex", gap:8, alignItems:"flex-end" }}>
           <textarea value={input} onChange={e => setInput(e.target.value)}
@@ -165,7 +168,7 @@ ${ctxProps}`;
               color: input.trim() && !loading ? B.accentL : B.dim, fontSize:15 }}>↑</button>
         </div>
       </div>
-
+ 
       {/* Panel sugerencias */}
       <div style={{ width:210, flexShrink:0, display:"flex", flexDirection:"column", gap:10,
         overflowY:"auto", scrollbarWidth:"thin", scrollbarColor:`${B.border} transparent` }}>
@@ -187,7 +190,7 @@ ${ctxProps}`;
           </div>
         </div>
       </div>
-
+ 
       <style>{`
         @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }
         textarea::-webkit-scrollbar { display:none }
