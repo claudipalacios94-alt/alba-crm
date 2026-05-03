@@ -55,11 +55,20 @@ export default function Mapa({ properties }) {
     lista.forEach(prop => {
       if (!prop.lat || !prop.lng) return;
       const c = prop.sc?.includes("Urgente") ? B.hot : prop.sc?.includes("Atención") ? B.warm : B.ok;
+      const tipoIcono = {
+        "Departamento": "🏢",
+        "Casa":         "🏠",
+        "PH":           "🏡",
+        "Dúplex":       "🏘",
+        "Local":        "🏪",
+        "Terreno":      "📐",
+      }[prop.tipo] || "📍";
+
       const icon = L.divIcon({
         className: "",
-        html: `<div style="background:${B.card};border:2.5px solid ${c};border-radius:10px 10px 10px 2px;padding:5px 9px;font-family:'Trebuchet MS',sans-serif;font-size:11px;font-weight:700;color:${c};white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.55);cursor:pointer;transform:translateY(-100%)">
-          ${prop.tipo === "Departamento" ? "Dto" : prop.tipo}
-          <span style="color:${B.accentL};margin-left:4px">USD ${prop.precio ? (prop.precio/1000).toFixed(0)+"k" : "?"}</span>
+        html: `<div style="background:${B.card};border:2.5px solid ${c};border-radius:10px 10px 10px 2px;padding:5px 9px;font-family:'Trebuchet MS',sans-serif;font-size:11px;font-weight:700;color:${c};white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.55);cursor:pointer;transform:translateY(-100%);display:flex;align-items:center;gap:4px">
+          <span style="font-size:14px">${tipoIcono}</span>
+          <span style="color:${B.accentL}">USD ${prop.precio ? (prop.precio/1000).toFixed(0)+"k" : "?"}</span>
         </div>`,
         iconAnchor: [0, 0],
       });
