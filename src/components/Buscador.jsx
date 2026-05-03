@@ -45,12 +45,12 @@ ${lead.nota ? `- Contexto: ${lead.nota.slice(0, 150)}` : ""}
 Respondé en español rioplatense, directo y práctico.`;
  
     try {
-      const resp = await fetch("/.netlify/functions/claude", {
+      const resp = await fetch("/api/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-opus-4-6",
-          max_tokens: 1500,
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 600,
           messages: [{ role: "user", content: prompt }],
         }),
       });
