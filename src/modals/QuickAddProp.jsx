@@ -1,8 +1,8 @@
 // ══════════════════════════════════════════════════════════════
 // ALBA CRM — MODAL CARGA RÁPIDA DE PROPIEDAD
-// Con Google Places PlaceAutocompleteElement (API nueva 2025)
+// Geocodificación manual con verificación antes de guardar
 // ══════════════════════════════════════════════════════════════
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { B, AG, TIPOS_PROP_VENTA, ESTADOS_PROP } from "../data/constants.js";
  
 const GOOGLE_KEY = "AIzaSyD2ZKp0GLdu7rUTD2DWrOrpCy8LHeulGZM";
@@ -36,85 +36,25 @@ function Section({ n, title }) {
   );
 }
  
-function DireccionAutocomplete({ value, onChange, onSelect, error }) {
-  const containerRef = useRef(null);
-  const elementRef   = useRef(null);
-  const [ready, setReady] = useState(false);
- 
-  useEffect(() => {
-    // Cargar Maps con loading=async (requerido para API nueva)
-    if (window.google?.maps?.importLibrary) { setReady(true); return; }
-    const existing = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
-    if (existing) { existing.onload = () => setReady(true); return; }
-    // Usar bootstrap loader para soportar importLibrary
-    const script = document.createElement("script");
-    script.src = "https://maps.googleapis.com/maps/api/js?key=" + GOOGLE_KEY + "&v=weekly&loading=async&libraries=places,marker";
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      // Esperar a que google.maps.importLibrary esté disponible
-      const wait = setInterval(() => {
-        if (window.google?.maps?.importLibrary) {
-          clearInterval(wait);
-          setReady(true);
-        }
-      }, 100);
-    };
-    document.head.appendChild(script);
-  }, []);
- 
-  useEffect(() => {
-    if (!ready || !containerRef.current || elementRef.current) return;
- 
-    async function init() {
-      try {
-        const { PlaceAutocompleteElement } = await window.google.maps.importLibrary("places");
-        const el = new PlaceAutocompleteElement({
-          componentRestrictions: { country: "ar" },
-          locationBias: {
-            center: { lat: -38.002, lng: -57.555 },
-            radius: 20000,
-          },
-        });
- 
-        // Estilo del elemento
-        el.style.width = "100%";
-        el.style.fontFamily = "'Trebuchet MS',sans-serif";
- 
-        el.addEventListener("gmp-placeselect", async (event) => {
-          const place = event.place;
-          await place.fetchFields({ fields: ["displayName", "location", "formattedAddress"] });
-          const lat = place.location.lat();
-          const lng = place.location.lng();
-          const dir = place.displayName || place.formattedAddress;
-          onSelect({ dir, lat, lng });
-          onChange(dir);
-        });
- 
-        containerRef.current.appendChild(el);
-        elementRef.current = el;
-      } catch(e) {
-        console.error("PlaceAutocomplete error:", e);
+async function geocodificar(dir) {
+  if (!dir) return null;
+  const inMDP = (lat, lng) => lat > -38.15 && lat < -37.85 && lng > -57.75 && lng < -57.40;
+  try {
+    const r = await fetch(
+      "https://maps.googleapis.com/maps/api/geocode/json?address=" +
+      encodeURIComponent(dir + ", Mar del Plata, Buenos Aires, Argentina") +
+      "&key=" + GOOGLE_KEY
+    );
+    const d = await r.json();
+    if (d.status === "OK" && d.results.length > 0) {
+      const loc = d.results[0].geometry.location;
+      if (inMDP(loc.lat, loc.lng)) {
+        return { lat: loc.lat, lng: loc.lng, formatted: d.results[0].formatted_address };
       }
+      return { lat: loc.lat, lng: loc.lng, formatted: d.results[0].formatted_address, warning: true };
     }
- 
-    init();
-  }, [ready]);
- 
-  return (
-    <div>
-      <div ref={containerRef} style={{ width:"100%" }} />
-      {!ready && (
-        <input
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder="Cargando autocomplete..."
-          style={{ ...inp, ...(error ? { borderColor: B.hot } : {}) }}
-        />
-      )}
-      {error && <div style={{ fontSize:10, color:B.hot, marginTop:3 }}>{error}</div>}
-    </div>
-  );
+  } catch(e) {}
+  return null;
 }
  
 export default function QuickAddProp({ onClose, onAdd }) {
@@ -125,14 +65,19 @@ export default function QuickAddProp({ onClose, onAdd }) {
     caracts:"", info:"", ag:"",
     urgencia:"🟡 Media", negociable:"", permuta:"No", condicion:"",
   });
-  const [coords, setCoords] = useState({ lat: null, lng: null });
-  const [err, setErr] = useState({});
+  const [coords,    setCoords]    = useState(null);
+  const [geocoding, setGeocoding] = useState(false);
+  const [err,       setErr]       = useState({});
  
   const set = k => e => setF(p => ({ ...p, [k]: e.target.value }));
  
-  function handleDirSelect({ dir, lat, lng }) {
-    setF(p => ({ ...p, dir }));
-    setCoords({ lat, lng });
+  async function verificarDireccion() {
+    if (!f.dir.trim()) return;
+    setGeocoding(true);
+    setCoords(null);
+    const result = await geocodificar(f.dir.trim());
+    setCoords(result);
+    setGeocoding(false);
   }
  
   function submit() {
@@ -155,11 +100,10 @@ export default function QuickAddProp({ onClose, onAdd }) {
       precio: Number(f.precio),
       m2tot: f.m2tot ? Number(f.m2tot) : null,
       m2cub: f.m2cub ? Number(f.m2cub) : null,
-      estado: f.estado, caracts: carac,
-      dias: 0, sc: "🟢 OK",
+      estado: f.estado, caracts: carac, dias: 0, sc: "🟢 OK",
       info: [f.info, f.condicion, f.negociable && "Negociable: "+f.negociable, f.permuta !== "No" && "Permuta: "+f.permuta].filter(Boolean).join(" · "),
-      lat:  coords.lat,
-      lng:  coords.lng,
+      lat: coords?.lat || null,
+      lng: coords?.lng || null,
       ag: f.ag || "",
     });
   }
@@ -184,15 +128,36 @@ export default function QuickAddProp({ onClose, onAdd }) {
           {err.zona && <div style={{ fontSize:10, color:B.hot, marginTop:3 }}>{err.zona}</div>}
         </Field>
         <Field label="Dirección" required>
-          <DireccionAutocomplete
-            value={f.dir}
-            onChange={dir => setF(p => ({ ...p, dir }))}
-            onSelect={handleDirSelect}
-            error={err.dir}
-          />
-          {coords.lat && (
+          <div style={{ display:"flex", gap:6 }}>
+            <input
+              style={{ ...inp, ...(err.dir ? { borderColor: B.hot } : {}), flex:1 }}
+              value={f.dir}
+              onChange={e => { set("dir")(e); setCoords(null); }}
+              placeholder="ej: Bolivar 2379"
+              onBlur={verificarDireccion}
+            />
+            <button onClick={verificarDireccion} disabled={geocoding || !f.dir.trim()}
+              style={{ padding:"9px 12px", borderRadius:8, cursor:"pointer",
+                background: B.accentL + "18", border:"1px solid " + B.accentL + "50",
+                color:B.accentL, fontSize:11, fontWeight:700, whiteSpace:"nowrap",
+                opacity: (!f.dir.trim() || geocoding) ? 0.5 : 1 }}>
+              {geocoding ? "..." : "📍 Verificar"}
+            </button>
+          </div>
+          {err.dir && <div style={{ fontSize:10, color:B.hot, marginTop:3 }}>{err.dir}</div>}
+          {coords && !coords.warning && (
             <div style={{ fontSize:9, color:B.ok, marginTop:4 }}>
-              📍 Ubicación confirmada · {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+              ✅ Ubicada: {coords.formatted}
+            </div>
+          )}
+          {coords && coords.warning && (
+            <div style={{ fontSize:9, color:B.warm, marginTop:4 }}>
+              ⚠️ Encontrada fuera de MDP: {coords.formatted} — verificá la dirección
+            </div>
+          )}
+          {coords === null && !geocoding && f.dir && (
+            <div style={{ fontSize:9, color:B.dim, marginTop:4 }}>
+              Apretá "Verificar" para confirmar la ubicación en el mapa
             </div>
           )}
         </Field>
@@ -252,9 +217,7 @@ export default function QuickAddProp({ onClose, onAdd }) {
         </Field>
         <Field label="Urgencia propietario" half>
           <select style={inp} value={f.urgencia} onChange={set("urgencia")}>
-            <option>🔥 Alta</option>
-            <option>🟡 Media</option>
-            <option>⚪ Baja</option>
+            <option>🔥 Alta</option><option>🟡 Media</option><option>⚪ Baja</option>
           </select>
         </Field>
         <Field label="Precio negociable" half>
