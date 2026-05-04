@@ -142,7 +142,42 @@ export function useSupabase() {
 
   // ── Operaciones PROPIEDADES ─────────────────────────────────
 
+  async function geocodeAddress(direccion) {
+    if (!direccion) return { lat: null, lng: null };
+    const KEY = "AIzaSyD2ZKp0GLdu7rUTD2DWrOrpCy8LHeulGZM";
+    const inMDP = (lat, lng) => lat > -38.15 && lat < -37.85 && lng > -57.75 && lng < -57.40;
+    try {
+      // Intento 1: componentes estructurados
+      const r1 = await fetch("https://maps.googleapis.com/maps/api/geocode/json?address=" +
+        encodeURIComponent(direccion) +
+        "&components=locality:Mar+del+Plata|administrative_area:Buenos+Aires|country:AR&key=" + KEY);
+      const d1 = await r1.json();
+      if (d1.status === "OK" && d1.results.length > 0) {
+        const loc = d1.results[0].geometry.location;
+        if (inMDP(loc.lat, loc.lng)) return { lat: loc.lat, lng: loc.lng };
+      }
+      // Intento 2: dirección completa
+      const r2 = await fetch("https://maps.googleapis.com/maps/api/geocode/json?address=" +
+        encodeURIComponent(direccion + ", Mar del Plata, Buenos Aires, Argentina") + "&key=" + KEY);
+      const d2 = await r2.json();
+      if (d2.status === "OK" && d2.results.length > 0) {
+        const loc = d2.results[0].geometry.location;
+        if (inMDP(loc.lat, loc.lng)) return { lat: loc.lat, lng: loc.lng };
+      }
+    } catch (e) { console.error("Geocoding error:", e); }
+    return { lat: null, lng: null };
+  }
+
   async function addProperty(prop) {
+    // Geocodificar dirección automáticamente
+    let lat = prop.lat || null;
+    let lng = prop.lng || null;
+    if (!lat && prop.dir) {
+      const coords = await geocodeAddress(prop.dir);
+      lat = coords.lat;
+      lng = coords.lng;
+    }
+
     const { data, error } = await supabase.from("properties").insert([{
       tipo: prop.tipo || "", zona: prop.zona || "", dir: prop.dir || "",
       precio: prop.precio ? Number(prop.precio) : null,
@@ -150,7 +185,7 @@ export function useSupabase() {
       m2cub: prop.m2cub ? Number(prop.m2cub) : null,
       estado: prop.estado || "Buen Estado", caracts: prop.caracts || "",
       dias: 0, sc: "🟢 OK", info: prop.info || "",
-      lat: prop.lat || null, lng: prop.lng || null, ag: prop.ag || "",
+      lat: lat, lng: lng, ag: prop.ag || "",
     }]).select().single();
 
     if (error) { console.error("addProperty error:", error); throw error; }
