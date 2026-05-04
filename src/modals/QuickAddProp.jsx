@@ -134,7 +134,7 @@ export default function QuickAddProp({ onClose, onAdd }) {
               value={f.dir}
               onChange={e => { set("dir")(e); setCoords(null); }}
               placeholder="ej: Bolivar 2379"
-              onBlur={verificarDireccion}
+ 
             />
             <button onClick={verificarDireccion} disabled={geocoding || !f.dir.trim()}
               style={{ padding:"9px 12px", borderRadius:8, cursor:"pointer",
