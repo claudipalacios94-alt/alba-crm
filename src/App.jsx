@@ -58,7 +58,7 @@ export default function App() {
     leads, properties, rentals,
     loading, error, lastSync,
     reload, addLead, updateLead, deleteLead,
-    addProperty, addInteraction, getInteractions,
+addProperty, updateProperty, addInteraction, getInteractions,
     saveSearchResult, getSearchResult,
   } = useSupabase();
  
