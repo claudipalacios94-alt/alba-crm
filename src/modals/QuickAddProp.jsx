@@ -1,11 +1,15 @@
+Quickaddprop · JSX
+Copy
+
 // ══════════════════════════════════════════════════════════════
 // ALBA CRM — MODAL CARGA RÁPIDA DE PROPIEDAD
-// Geocodificación manual con verificación antes de guardar
+// Places Autocomplete via REST API (sin SDK, sin conflicto Leaflet)
 // ══════════════════════════════════════════════════════════════
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { B, AG, TIPOS_PROP_VENTA, ESTADOS_PROP } from "../data/constants.js";
  
 const GOOGLE_KEY = "AIzaSyD2ZKp0GLdu7rUTD2DWrOrpCy8LHeulGZM";
+const MDP_CENTER = "point:-38.002,-57.555";
  
 const inp = {
   width:"100%", background:"#0F1E35", border:"1px solid #1A2F50",
@@ -36,25 +40,107 @@ function Section({ n, title }) {
   );
 }
  
-async function geocodificar(dir) {
-  if (!dir) return null;
-  const inMDP = (lat, lng) => lat > -38.15 && lat < -37.85 && lng > -57.75 && lng < -57.40;
-  try {
-    const r = await fetch(
-      "https://maps.googleapis.com/maps/api/geocode/json?address=" +
-      encodeURIComponent(dir + ", Mar del Plata, Buenos Aires, Argentina") +
-      "&key=" + GOOGLE_KEY
-    );
-    const d = await r.json();
-    if (d.status === "OK" && d.results.length > 0) {
-      const loc = d.results[0].geometry.location;
-      if (inMDP(loc.lat, loc.lng)) {
-        return { lat: loc.lat, lng: loc.lng, formatted: d.results[0].formatted_address };
+// ── Autocomplete via Places API REST ─────────────────────────
+function DireccionField({ value, onChange, onSelect, error }) {
+  const [suggestions, setSuggestions] = useState([]);
+  const [open,        setOpen]        = useState(false);
+  const [loading,     setLoading]     = useState(false);
+  const timerRef = useRef(null);
+ 
+  async function buscar(texto) {
+    if (!texto || texto.length < 3) { setSuggestions([]); setOpen(false); return; }
+    setLoading(true);
+    try {
+      const resp = await fetch(
+        "https://maps.googleapis.com/maps/api/place/autocomplete/json?" +
+        "input=" + encodeURIComponent(texto) +
+        "&components=country:ar" +
+        "&location=-38.002,-57.555&radius=20000" +
+        "&language=es" +
+        "&key=" + GOOGLE_KEY,
+        { mode: "cors" }
+      );
+      const data = await resp.json();
+      if (data.predictions?.length) {
+        setSuggestions(data.predictions.slice(0, 5));
+        setOpen(true);
+      } else {
+        setSuggestions([]);
+        setOpen(false);
       }
-      return { lat: loc.lat, lng: loc.lng, formatted: d.results[0].formatted_address, warning: true };
+    } catch(e) {
+      // CORS bloqueado — usar geocoding directo
+      setSuggestions([]);
+      setOpen(false);
     }
-  } catch(e) {}
-  return null;
+    setLoading(false);
+  }
+ 
+  async function seleccionar(prediction) {
+    setOpen(false);
+    const desc = prediction.structured_formatting?.main_text || prediction.description;
+    onChange(desc);
+    // Geocodificar el place_id
+    try {
+      const resp = await fetch(
+        "https://maps.googleapis.com/maps/api/place/details/json?" +
+        "place_id=" + prediction.place_id +
+        "&fields=geometry,name,formatted_address" +
+        "&key=" + GOOGLE_KEY
+      );
+      const data = await resp.json();
+      if (data.result?.geometry?.location) {
+        const { lat, lng } = data.result.geometry.location;
+        onSelect({ dir: desc, lat, lng });
+      }
+    } catch(e) {}
+  }
+ 
+  function handleChange(e) {
+    const val = e.target.value;
+    onChange(val);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => buscar(val), 350);
+  }
+ 
+  return (
+    <div style={{ position:"relative" }}>
+      <input
+        value={value}
+        onChange={handleChange}
+        onBlur={() => setTimeout(() => setOpen(false), 200)}
+        placeholder="ej: Bolivar 2379"
+        style={{ ...inp, ...(error ? { borderColor: B.hot } : {}) }}
+        autoComplete="off"
+      />
+      {loading && (
+        <div style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)",
+          width:12, height:12, border:"2px solid " + B.border,
+          borderTop:"2px solid " + B.accentL, borderRadius:"50%",
+          animation:"spin .7s linear infinite" }} />
+      )}
+      {open && suggestions.length > 0 && (
+        <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, right:0, zIndex:9999,
+          background:"#0F1E35", border:"1px solid #1A2F50", borderRadius:8,
+          boxShadow:"0 8px 32px rgba(0,0,0,0.6)", overflow:"hidden" }}>
+          {suggestions.map(s => (
+            <div key={s.place_id}
+              onMouseDown={() => seleccionar(s)}
+              style={{ padding:"9px 12px", cursor:"pointer", fontSize:12, color:"#E8EEF8",
+                borderBottom:"1px solid #1A2F50",
+                transition:"background .1s" }}
+              onMouseEnter={e => e.target.style.background = "#1A2F50"}
+              onMouseLeave={e => e.target.style.background = "transparent"}>
+              <div style={{ fontWeight:600 }}>{s.structured_formatting?.main_text || s.description}</div>
+              <div style={{ fontSize:10, color:"#7A96B8", marginTop:2 }}>{s.structured_formatting?.secondary_text || ""}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {error && <div style={{ fontSize:10, color:B.hot, marginTop:3 }}>{error}</div>}
+      <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
+    </div>
+  );
 }
  
 export default function QuickAddProp({ onClose, onAdd }) {
@@ -65,20 +151,10 @@ export default function QuickAddProp({ onClose, onAdd }) {
     caracts:"", info:"", ag:"",
     urgencia:"🟡 Media", negociable:"", permuta:"No", condicion:"",
   });
-  const [coords,    setCoords]    = useState(null);
-  const [geocoding, setGeocoding] = useState(false);
-  const [err,       setErr]       = useState({});
+  const [coords, setCoords] = useState(null);
+  const [err,    setErr]    = useState({});
  
   const set = k => e => setF(p => ({ ...p, [k]: e.target.value }));
- 
-  async function verificarDireccion() {
-    if (!f.dir.trim()) return;
-    setGeocoding(true);
-    setCoords(null);
-    const result = await geocodificar(f.dir.trim());
-    setCoords(result);
-    setGeocoding(false);
-  }
  
   function submit() {
     const e = {};
@@ -128,36 +204,15 @@ export default function QuickAddProp({ onClose, onAdd }) {
           {err.zona && <div style={{ fontSize:10, color:B.hot, marginTop:3 }}>{err.zona}</div>}
         </Field>
         <Field label="Dirección" required>
-          <div style={{ display:"flex", gap:6 }}>
-            <input
-              style={{ ...inp, ...(err.dir ? { borderColor: B.hot } : {}), flex:1 }}
-              value={f.dir}
-              onChange={e => { set("dir")(e); setCoords(null); }}
-              placeholder="ej: Bolivar 2379"
- 
-            />
-            <button onClick={verificarDireccion} disabled={geocoding || !f.dir.trim()}
-              style={{ padding:"9px 12px", borderRadius:8, cursor:"pointer",
-                background: B.accentL + "18", border:"1px solid " + B.accentL + "50",
-                color:B.accentL, fontSize:11, fontWeight:700, whiteSpace:"nowrap",
-                opacity: (!f.dir.trim() || geocoding) ? 0.5 : 1 }}>
-              {geocoding ? "..." : "📍 Verificar"}
-            </button>
-          </div>
-          {err.dir && <div style={{ fontSize:10, color:B.hot, marginTop:3 }}>{err.dir}</div>}
-          {coords && !coords.warning && (
+          <DireccionField
+            value={f.dir}
+            onChange={dir => { setF(p => ({...p, dir})); setCoords(null); }}
+            onSelect={({ dir, lat, lng }) => { setF(p => ({...p, dir})); setCoords({ lat, lng }); }}
+            error={err.dir}
+          />
+          {coords && (
             <div style={{ fontSize:9, color:B.ok, marginTop:4 }}>
-              ✅ Ubicada: {coords.formatted}
-            </div>
-          )}
-          {coords && coords.warning && (
-            <div style={{ fontSize:9, color:B.warm, marginTop:4 }}>
-              ⚠️ Encontrada fuera de MDP: {coords.formatted} — verificá la dirección
-            </div>
-          )}
-          {coords === null && !geocoding && f.dir && (
-            <div style={{ fontSize:9, color:B.dim, marginTop:4 }}>
-              Apretá "Verificar" para confirmar la ubicación en el mapa
+              📍 Ubicación confirmada · {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
             </div>
           )}
         </Field>
