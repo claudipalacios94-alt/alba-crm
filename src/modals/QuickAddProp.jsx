@@ -46,10 +46,20 @@ function DireccionAutocomplete({ value, onChange, onSelect, error }) {
     if (window.google?.maps?.importLibrary) { setReady(true); return; }
     const existing = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
     if (existing) { existing.onload = () => setReady(true); return; }
+    // Usar bootstrap loader para soportar importLibrary
     const script = document.createElement("script");
-    script.src = "https://maps.googleapis.com/maps/api/js?key=" + GOOGLE_KEY + "&loading=async&libraries=places";
+    script.src = "https://maps.googleapis.com/maps/api/js?key=" + GOOGLE_KEY + "&v=weekly&loading=async&libraries=places,marker";
     script.async = true;
-    script.onload = () => setReady(true);
+    script.defer = true;
+    script.onload = () => {
+      // Esperar a que google.maps.importLibrary esté disponible
+      const wait = setInterval(() => {
+        if (window.google?.maps?.importLibrary) {
+          clearInterval(wait);
+          setReady(true);
+        }
+      }, 100);
+    };
     document.head.appendChild(script);
   }, []);
  
