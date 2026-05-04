@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════
 // ALBA CRM — MODAL CARGA RÁPIDA DE PROPIEDAD
-// Con Google Places Autocomplete para dirección precisa
+// Con Google Places PlaceAutocompleteElement (API nueva 2025)
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useEffect, useRef } from "react";
 import { B, AG, TIPOS_PROP_VENTA, ESTADOS_PROP } from "../data/constants.js";
@@ -36,61 +36,73 @@ function Section({ n, title }) {
   );
 }
  
-// ── Componente de dirección con autocomplete ──────────────────
 function DireccionAutocomplete({ value, onChange, onSelect, error }) {
-  const inputRef = useRef(null);
-  const autocompleteRef = useRef(null);
-  const [loaded, setLoaded] = useState(false);
+  const containerRef = useRef(null);
+  const elementRef   = useRef(null);
+  const [ready, setReady] = useState(false);
  
   useEffect(() => {
-    // Cargar Google Maps script si no está
-    if (window.google?.maps?.places) { setLoaded(true); return; }
-    const existing = document.querySelector('script[src*="maps.googleapis.com"]');
-    if (existing) { existing.onload = () => setLoaded(true); return; }
+    // Cargar Maps con loading=async (requerido para API nueva)
+    if (window.google?.maps?.importLibrary) { setReady(true); return; }
+    const existing = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
+    if (existing) { existing.onload = () => setReady(true); return; }
     const script = document.createElement("script");
-    script.src = "https://maps.googleapis.com/maps/api/js?key=" + GOOGLE_KEY + "&libraries=places";
+    script.src = "https://maps.googleapis.com/maps/api/js?key=" + GOOGLE_KEY + "&loading=async&libraries=places";
     script.async = true;
-    script.onload = () => setLoaded(true);
+    script.onload = () => setReady(true);
     document.head.appendChild(script);
   }, []);
  
   useEffect(() => {
-    if (!loaded || !inputRef.current || autocompleteRef.current) return;
-    const ac = new window.google.maps.places.Autocomplete(inputRef.current, {
-      componentRestrictions: { country: "ar" },
-      bounds: new window.google.maps.LatLngBounds(
-        new window.google.maps.LatLng(-38.15, -57.75), // SW Mar del Plata
-        new window.google.maps.LatLng(-37.85, -57.40)  // NE Mar del Plata
-      ),
-      strictBounds: false,
-      fields: ["formatted_address", "geometry", "name"],
-    });
-    ac.addListener("place_changed", () => {
-      const place = ac.getPlace();
-      if (place.geometry?.location) {
-        const lat = place.geometry.location.lat();
-        const lng = place.geometry.location.lng();
-        const dir = place.name || place.formatted_address;
-        onSelect({ dir, lat, lng });
+    if (!ready || !containerRef.current || elementRef.current) return;
+ 
+    async function init() {
+      try {
+        const { PlaceAutocompleteElement } = await window.google.maps.importLibrary("places");
+        const el = new PlaceAutocompleteElement({
+          componentRestrictions: { country: "ar" },
+          locationBias: {
+            center: { lat: -38.002, lng: -57.555 },
+            radius: 20000,
+          },
+        });
+ 
+        // Estilo del elemento
+        el.style.width = "100%";
+        el.style.fontFamily = "'Trebuchet MS',sans-serif";
+ 
+        el.addEventListener("gmp-placeselect", async (event) => {
+          const place = event.place;
+          await place.fetchFields({ fields: ["displayName", "location", "formattedAddress"] });
+          const lat = place.location.lat();
+          const lng = place.location.lng();
+          const dir = place.displayName || place.formattedAddress;
+          onSelect({ dir, lat, lng });
+          onChange(dir);
+        });
+ 
+        containerRef.current.appendChild(el);
+        elementRef.current = el;
+      } catch(e) {
+        console.error("PlaceAutocomplete error:", e);
       }
-    });
-    autocompleteRef.current = ac;
-  }, [loaded]);
+    }
+ 
+    init();
+  }, [ready]);
  
   return (
-    <div style={{ position:"relative" }}>
-      <input
-        ref={inputRef}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder="Ej: Bolivar 2379"
-        style={{ ...inp, ...(error ? { borderColor: B.hot } : {}) }}
-        autoComplete="off"
-      />
-      {error && <div style={{ fontSize:10, color:B.hot, marginTop:3 }}>{error}</div>}
-      {value && !loaded && (
-        <div style={{ fontSize:9, color:B.muted, marginTop:3 }}>Cargando sugerencias...</div>
+    <div>
+      <div ref={containerRef} style={{ width:"100%" }} />
+      {!ready && (
+        <input
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder="Cargando autocomplete..."
+          style={{ ...inp, ...(error ? { borderColor: B.hot } : {}) }}
+        />
       )}
+      {error && <div style={{ fontSize:10, color:B.hot, marginTop:3 }}>{error}</div>}
     </div>
   );
 }
@@ -169,8 +181,8 @@ export default function QuickAddProp({ onClose, onAdd }) {
             error={err.dir}
           />
           {coords.lat && (
-            <div style={{ fontSize:9, color:B.ok, marginTop:3 }}>
-              📍 Ubicación confirmada: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+            <div style={{ fontSize:9, color:B.ok, marginTop:4 }}>
+              📍 Ubicación confirmada · {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
             </div>
           )}
         </Field>
