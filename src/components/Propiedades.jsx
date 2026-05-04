@@ -4,31 +4,41 @@
 // ══════════════════════════════════════════════════════════════
 import React, { useState } from "react";
 import { B, AG } from "../data/constants.js";
- 
+
 const GOOGLE_KEY = "AIzaSyD2ZKp0GLdu7rUTD2DWrOrpCy8LHeulGZM";
- 
+
 async function geocodeAddress(dir) {
+  if (!dir) return null;
+  const inMDP = (lat, lng) => lat > -38.15 && lat < -37.85 && lng > -57.75 && lng < -57.40;
   try {
-    const r = await fetch(
-      "https://maps.googleapis.com/maps/api/geocode/json?address=" +
-      encodeURIComponent(dir + ", Mar del Plata, Buenos Aires, Argentina") +
-      "&key=" + GOOGLE_KEY
-    );
-    const d = await r.json();
-    if (d.status === "OK" && d.results.length > 0) {
-      return { lat: d.results[0].geometry.location.lat, lng: d.results[0].geometry.location.lng };
+    // Intento 1: componentes estructurados
+    const r1 = await fetch("https://maps.googleapis.com/maps/api/geocode/json?address=" +
+      encodeURIComponent(dir) +
+      "&components=locality:Mar+del+Plata|administrative_area:Buenos+Aires|country:AR&key=" + GOOGLE_KEY);
+    const d1 = await r1.json();
+    if (d1.status === "OK" && d1.results.length > 0) {
+      const loc = d1.results[0].geometry.location;
+      if (inMDP(loc.lat, loc.lng)) return { lat: loc.lat, lng: loc.lng };
+    }
+    // Intento 2: dirección completa
+    const r2 = await fetch("https://maps.googleapis.com/maps/api/geocode/json?address=" +
+      encodeURIComponent(dir + ", Mar del Plata, Buenos Aires, Argentina") + "&key=" + GOOGLE_KEY);
+    const d2 = await r2.json();
+    if (d2.status === "OK" && d2.results.length > 0) {
+      const loc = d2.results[0].geometry.location;
+      if (inMDP(loc.lat, loc.lng)) return { lat: loc.lat, lng: loc.lng };
     }
   } catch(e) {}
   return null;
 }
- 
+
 export default function Propiedades({ properties, updateProperty }) {
   const [ft,       setFt]       = useState("Todos");
   const [fs,       setFs]       = useState("Todos");
   const [editing,  setEditing]  = useState(null);
   const [editData, setEditData] = useState({});
   const [saving,   setSaving]   = useState(false);
- 
+
   const tipos = ["Todos", ...new Set(properties.map(p => p.tipo).filter(Boolean))];
   const list  = properties.filter(p =>
     (ft === "Todos" || p.tipo === ft) &&
@@ -37,18 +47,18 @@ export default function Propiedades({ properties, updateProperty }) {
       || (fs === "Atención" && p.sc?.includes("Atención"))
       || (fs === "OK"       && p.sc?.includes("OK")))
   );
- 
+
   const ch = act => ({
     padding: "4px 10px", borderRadius: 20, fontSize: 11, cursor: "pointer",
     border: "1px solid " + (act ? B.accentL : B.border),
     background: act ? B.accentL + "18" : "transparent",
     color: act ? B.accentL : B.muted,
   });
- 
+
   const scColor = p =>
     p.sc?.includes("Urgente")  ? B.hot  :
     p.sc?.includes("Atención") ? B.warm : B.ok;
- 
+
   function startEdit(p) {
     setEditing(p.id);
     setEditData({
@@ -58,7 +68,7 @@ export default function Propiedades({ properties, updateProperty }) {
       lat: p.lat || "", lng: p.lng || "",
     });
   }
- 
+
   async function saveEdit(id) {
     setSaving(true);
     try {
@@ -81,20 +91,20 @@ export default function Propiedades({ properties, updateProperty }) {
     } catch(e) { console.error(e); }
     setSaving(false);
   }
- 
+
   const inp = {
     width: "100%", background: B.bg, border: "1px solid " + B.border,
     borderRadius: 6, padding: "6px 9px", color: B.text, fontSize: 11,
     outline: "none", boxSizing: "border-box", fontFamily: "'Trebuchet MS',sans-serif",
   };
- 
+
   return (
     <div>
       <div style={{ marginBottom:16 }}>
         <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Propiedades en venta</h1>
         <p style={{ fontSize:11, color:B.muted, margin:"3px 0 0" }}>{list.length} de {properties.length} propiedades</p>
       </div>
- 
+
       <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:8 }}>
         {tipos.map(t => <button key={t} onClick={() => setFt(t)} style={ch(ft === t)}>{t}</button>)}
       </div>
@@ -108,7 +118,7 @@ export default function Propiedades({ properties, updateProperty }) {
           </button>
         ))}
       </div>
- 
+
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:12 }}>
         {list.map(p => {
           const c    = scColor(p);
@@ -116,11 +126,11 @@ export default function Propiedades({ properties, updateProperty }) {
           return (
             <div key={p.id} style={{ background:B.card, border:"1px solid " + (isEd ? B.accentL : B.border),
               borderRadius:12, padding:"14px", borderLeft:"3px solid " + c }}>
- 
+
               {isEd ? (
                 <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                   <div style={{ fontSize:11, fontWeight:700, color:B.accentL }}>✏️ Editando</div>
- 
+
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
                     <div>
                       <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>TIPO</label>
@@ -136,17 +146,17 @@ export default function Propiedades({ properties, updateProperty }) {
                       </select>
                     </div>
                   </div>
- 
+
                   <div>
                     <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>ZONA</label>
                     <input value={editData.zona} onChange={e => setEditData(d => ({...d, zona:e.target.value}))} style={inp} />
                   </div>
- 
+
                   <div>
                     <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>DIRECCIÓN (se geocodifica sola)</label>
                     <input value={editData.dir} onChange={e => setEditData(d => ({...d, dir:e.target.value}))} style={inp} placeholder="Ej: Bolivar 2379" />
                   </div>
- 
+
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
                     <div>
                       <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>PRECIO USD</label>
@@ -161,17 +171,17 @@ export default function Propiedades({ properties, updateProperty }) {
                       <input type="number" value={editData.m2cub} onChange={e => setEditData(d => ({...d, m2cub:e.target.value}))} style={inp} />
                     </div>
                   </div>
- 
+
                   <div>
                     <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>CARACTERÍSTICAS</label>
                     <input value={editData.caracts} onChange={e => setEditData(d => ({...d, caracts:e.target.value}))} style={inp} />
                   </div>
- 
+
                   <div>
                     <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>INFO INTERNA</label>
                     <input value={editData.info} onChange={e => setEditData(d => ({...d, info:e.target.value}))} style={inp} />
                   </div>
- 
+
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
                     <div>
                       <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>LAT (manual)</label>
@@ -182,7 +192,7 @@ export default function Propiedades({ properties, updateProperty }) {
                       <input value={editData.lng} onChange={e => setEditData(d => ({...d, lng:e.target.value}))} style={inp} placeholder="-57.555" />
                     </div>
                   </div>
- 
+
                   <div style={{ display:"flex", gap:8, marginTop:4 }}>
                     <button onClick={() => saveEdit(p.id)} disabled={saving}
                       style={{ flex:1, padding:"8px", borderRadius:7, cursor:"pointer",
@@ -222,19 +232,19 @@ export default function Propiedades({ properties, updateProperty }) {
                       </button>
                     </div>
                   </div>
- 
+
                   <div style={{ fontSize:11, color:B.muted, marginBottom:7 }}>
                     {p.dir} {p.lat ? "📍" : ""}
                   </div>
                   <div style={{ fontSize:11, color:B.dim, marginBottom:9 }}>{p.caracts}</div>
- 
+
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                     <div style={{ fontSize:15, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif" }}>
                       {p.precio ? "USD " + p.precio.toLocaleString() : "A consultar"}
                     </div>
                     <div style={{ fontSize:10, color:B.dim }}>{p.dias}d en cartera</div>
                   </div>
- 
+
                   {p.m2tot && (
                     <div style={{ fontSize:10, color:B.muted, marginTop:4 }}>
                       {p.m2tot}m² tot
@@ -242,7 +252,7 @@ export default function Propiedades({ properties, updateProperty }) {
                       {p.precio && p.m2tot ? " · USD " + Math.round(p.precio / p.m2tot).toLocaleString() + "/m²" : ""}
                     </div>
                   )}
- 
+
                   {p.info && (
                     <div style={{ fontSize:10, color:B.dim, marginTop:5, fontStyle:"italic" }}>{p.info}</div>
                   )}
