@@ -54,9 +54,8 @@ export default function CRMLeads({ leads, updateLead, deleteLead }) {
   }
  
   async function contacteHoy(lead) {
-    const hoy = new Date().toISOString();
-    await updateLead(lead.id, { updated_at: hoy });
-    // Forzar recarga visual — dias se recalcula en el servidor
+    // Resetear dias a 0 — marca como contactado hoy
+    await updateLead(lead.id, { dias: 0 });
   }
  
   async function guardarNota(lead) {
