@@ -358,7 +358,6 @@ export default function CRMLeads({ leads, updateLead, deleteLead }) {
             </div>
           );
         })}
-            })}
           </div>
         </div>
       ))}
