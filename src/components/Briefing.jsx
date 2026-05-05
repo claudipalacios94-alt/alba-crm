@@ -3,7 +3,7 @@
 // Gauges animados + leads urgentes + pipeline por etapa
 // ══════════════════════════════════════════════════════════════
 import React, { useMemo, useEffect, useRef, useState } from "react";
-import { B, AG } from "../data/constants.js";
+import { B, AG, matchLeadProps, genMsgWhatsApp } from "../data/constants.js";
  
 // ── Gauge animado ─────────────────────────────────────────────
 function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" }) {
@@ -79,6 +79,70 @@ function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" })
       </div>
       <div style={{ fontSize:11, color:B.text, fontWeight:600, marginTop:2 }}>{label}</div>
       {sublabel && <div style={{ fontSize:9, color:B.dim, marginTop:1 }}>{sublabel}</div>}
+ 
+      {/* Matches del día */}
+      {(() => {
+        const props = properties || [];
+        const matchesHoy = activos
+          .filter(l => filtroAg === "Todos" || l.ag === filtroAg)
+          .map(l => ({ lead: l, matches: matchLeadProps(l, props) }))
+          .filter(m => m.matches.length > 0)
+          .slice(0, 6);
+ 
+        if (!matchesHoy.length) return null;
+ 
+        return (
+          <div style={{ marginTop:14, background:B.sidebar, border:`1px solid ${B.border}`,
+            borderRadius:14, padding:16 }}>
+            <div style={{ fontSize:11, color:B.muted, fontWeight:600, letterSpacing:"1px", marginBottom:12 }}>
+              📌 MATCHES DEL DÍA — propiedades en cartera que encajan con tus leads
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {matchesHoy.map(({ lead, matches }) => (
+                <div key={lead.id} style={{ background:B.card, border:`1px solid ${B.border}`,
+                  borderRadius:10, padding:"12px 14px" }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:8 }}>
+                    {lead.nombre}
+                    <span style={{ fontSize:10, color:B.muted, fontWeight:400, marginLeft:8 }}>
+                      busca {lead.tipo} en {lead.zona} · USD {(lead.presup||0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                    {matches.slice(0, 2).map(prop => {
+                      const msg = genMsgWhatsApp(lead, prop);
+                      const wa = lead.tel
+                        ? `https://wa.me/${lead.tel.replace(/\D/g,"")}?text=${encodeURIComponent(msg)}`
+                        : null;
+                      return (
+                        <div key={prop.id} style={{ display:"flex", alignItems:"center", gap:10,
+                          background:B.bg, borderRadius:7, padding:"8px 10px" }}>
+                          <div style={{ flex:1, fontSize:11, color:B.muted }}>
+                            <span style={{ color:B.text, fontWeight:600 }}>{prop.tipo}</span>
+                            {" · "}{prop.zona}
+                            {" · "}<span style={{ color:B.accentL, fontFamily:"Georgia,serif" }}>
+                              USD {(prop.precio||0).toLocaleString()}
+                            </span>
+                            {prop.dir && <span style={{ color:B.dim }}> · {prop.dir}</span>}
+                          </div>
+                          {wa && (
+                            <a href={wa} target="_blank" rel="noreferrer"
+                              style={{ padding:"4px 10px", borderRadius:6, whiteSpace:"nowrap",
+                                background:"rgba(37,211,102,0.1)", border:"1px solid rgba(37,211,102,0.25)",
+                                color:"#25D366", fontSize:10, textDecoration:"none", fontWeight:600 }}>
+                              💬 WA listo
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+ 
     </div>
   );
 }
@@ -113,6 +177,70 @@ function PipelineBar({ leads }) {
           );
         })}
       </div>
+ 
+      {/* Matches del día */}
+      {(() => {
+        const props = properties || [];
+        const matchesHoy = activos
+          .filter(l => filtroAg === "Todos" || l.ag === filtroAg)
+          .map(l => ({ lead: l, matches: matchLeadProps(l, props) }))
+          .filter(m => m.matches.length > 0)
+          .slice(0, 6);
+ 
+        if (!matchesHoy.length) return null;
+ 
+        return (
+          <div style={{ marginTop:14, background:B.sidebar, border:`1px solid ${B.border}`,
+            borderRadius:14, padding:16 }}>
+            <div style={{ fontSize:11, color:B.muted, fontWeight:600, letterSpacing:"1px", marginBottom:12 }}>
+              📌 MATCHES DEL DÍA — propiedades en cartera que encajan con tus leads
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {matchesHoy.map(({ lead, matches }) => (
+                <div key={lead.id} style={{ background:B.card, border:`1px solid ${B.border}`,
+                  borderRadius:10, padding:"12px 14px" }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:8 }}>
+                    {lead.nombre}
+                    <span style={{ fontSize:10, color:B.muted, fontWeight:400, marginLeft:8 }}>
+                      busca {lead.tipo} en {lead.zona} · USD {(lead.presup||0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                    {matches.slice(0, 2).map(prop => {
+                      const msg = genMsgWhatsApp(lead, prop);
+                      const wa = lead.tel
+                        ? `https://wa.me/${lead.tel.replace(/\D/g,"")}?text=${encodeURIComponent(msg)}`
+                        : null;
+                      return (
+                        <div key={prop.id} style={{ display:"flex", alignItems:"center", gap:10,
+                          background:B.bg, borderRadius:7, padding:"8px 10px" }}>
+                          <div style={{ flex:1, fontSize:11, color:B.muted }}>
+                            <span style={{ color:B.text, fontWeight:600 }}>{prop.tipo}</span>
+                            {" · "}{prop.zona}
+                            {" · "}<span style={{ color:B.accentL, fontFamily:"Georgia,serif" }}>
+                              USD {(prop.precio||0).toLocaleString()}
+                            </span>
+                            {prop.dir && <span style={{ color:B.dim }}> · {prop.dir}</span>}
+                          </div>
+                          {wa && (
+                            <a href={wa} target="_blank" rel="noreferrer"
+                              style={{ padding:"4px 10px", borderRadius:6, whiteSpace:"nowrap",
+                                background:"rgba(37,211,102,0.1)", border:"1px solid rgba(37,211,102,0.25)",
+                                color:"#25D366", fontSize:10, textDecoration:"none", fontWeight:600 }}>
+                              💬 WA listo
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+ 
     </div>
   );
 }
@@ -171,6 +299,70 @@ function LeadCard({ lead }) {
           </a>
         )}
       </div>
+ 
+      {/* Matches del día */}
+      {(() => {
+        const props = properties || [];
+        const matchesHoy = activos
+          .filter(l => filtroAg === "Todos" || l.ag === filtroAg)
+          .map(l => ({ lead: l, matches: matchLeadProps(l, props) }))
+          .filter(m => m.matches.length > 0)
+          .slice(0, 6);
+ 
+        if (!matchesHoy.length) return null;
+ 
+        return (
+          <div style={{ marginTop:14, background:B.sidebar, border:`1px solid ${B.border}`,
+            borderRadius:14, padding:16 }}>
+            <div style={{ fontSize:11, color:B.muted, fontWeight:600, letterSpacing:"1px", marginBottom:12 }}>
+              📌 MATCHES DEL DÍA — propiedades en cartera que encajan con tus leads
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {matchesHoy.map(({ lead, matches }) => (
+                <div key={lead.id} style={{ background:B.card, border:`1px solid ${B.border}`,
+                  borderRadius:10, padding:"12px 14px" }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:8 }}>
+                    {lead.nombre}
+                    <span style={{ fontSize:10, color:B.muted, fontWeight:400, marginLeft:8 }}>
+                      busca {lead.tipo} en {lead.zona} · USD {(lead.presup||0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                    {matches.slice(0, 2).map(prop => {
+                      const msg = genMsgWhatsApp(lead, prop);
+                      const wa = lead.tel
+                        ? `https://wa.me/${lead.tel.replace(/\D/g,"")}?text=${encodeURIComponent(msg)}`
+                        : null;
+                      return (
+                        <div key={prop.id} style={{ display:"flex", alignItems:"center", gap:10,
+                          background:B.bg, borderRadius:7, padding:"8px 10px" }}>
+                          <div style={{ flex:1, fontSize:11, color:B.muted }}>
+                            <span style={{ color:B.text, fontWeight:600 }}>{prop.tipo}</span>
+                            {" · "}{prop.zona}
+                            {" · "}<span style={{ color:B.accentL, fontFamily:"Georgia,serif" }}>
+                              USD {(prop.precio||0).toLocaleString()}
+                            </span>
+                            {prop.dir && <span style={{ color:B.dim }}> · {prop.dir}</span>}
+                          </div>
+                          {wa && (
+                            <a href={wa} target="_blank" rel="noreferrer"
+                              style={{ padding:"4px 10px", borderRadius:6, whiteSpace:"nowrap",
+                                background:"rgba(37,211,102,0.1)", border:"1px solid rgba(37,211,102,0.25)",
+                                color:"#25D366", fontSize:10, textDecoration:"none", fontWeight:600 }}>
+                              💬 WA listo
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+ 
     </div>
   );
 }
@@ -326,6 +518,70 @@ export default function Briefing({ leads, properties }) {
           </div>
         </div>
       </div>
+ 
+ 
+      {/* Matches del día */}
+      {(() => {
+        const props = properties || [];
+        const matchesHoy = activos
+          .filter(l => filtroAg === "Todos" || l.ag === filtroAg)
+          .map(l => ({ lead: l, matches: matchLeadProps(l, props) }))
+          .filter(m => m.matches.length > 0)
+          .slice(0, 6);
+ 
+        if (!matchesHoy.length) return null;
+ 
+        return (
+          <div style={{ marginTop:14, background:B.sidebar, border:`1px solid ${B.border}`,
+            borderRadius:14, padding:16 }}>
+            <div style={{ fontSize:11, color:B.muted, fontWeight:600, letterSpacing:"1px", marginBottom:12 }}>
+              📌 MATCHES DEL DÍA — propiedades en cartera que encajan con tus leads
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {matchesHoy.map(({ lead, matches }) => (
+                <div key={lead.id} style={{ background:B.card, border:`1px solid ${B.border}`,
+                  borderRadius:10, padding:"12px 14px" }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:8 }}>
+                    {lead.nombre}
+                    <span style={{ fontSize:10, color:B.muted, fontWeight:400, marginLeft:8 }}>
+                      busca {lead.tipo} en {lead.zona} · USD {(lead.presup||0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                    {matches.slice(0, 2).map(prop => {
+                      const msg = genMsgWhatsApp(lead, prop);
+                      const wa = lead.tel
+                        ? `https://wa.me/${lead.tel.replace(/\D/g,"")}?text=${encodeURIComponent(msg)}`
+                        : null;
+                      return (
+                        <div key={prop.id} style={{ display:"flex", alignItems:"center", gap:10,
+                          background:B.bg, borderRadius:7, padding:"8px 10px" }}>
+                          <div style={{ flex:1, fontSize:11, color:B.muted }}>
+                            <span style={{ color:B.text, fontWeight:600 }}>{prop.tipo}</span>
+                            {" · "}{prop.zona}
+                            {" · "}<span style={{ color:B.accentL, fontFamily:"Georgia,serif" }}>
+                              USD {(prop.precio||0).toLocaleString()}
+                            </span>
+                            {prop.dir && <span style={{ color:B.dim }}> · {prop.dir}</span>}
+                          </div>
+                          {wa && (
+                            <a href={wa} target="_blank" rel="noreferrer"
+                              style={{ padding:"4px 10px", borderRadius:6, whiteSpace:"nowrap",
+                                background:"rgba(37,211,102,0.1)", border:"1px solid rgba(37,211,102,0.25)",
+                                color:"#25D366", fontSize:10, textDecoration:"none", fontWeight:600 }}>
+                              💬 WA listo
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
  
     </div>
   );
