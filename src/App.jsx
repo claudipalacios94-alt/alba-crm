@@ -198,7 +198,7 @@ export default function App() {
         display:"flex", flexDirection:"column",
         scrollbarWidth:"thin", scrollbarColor:`${B.border} transparent`,
       }}>
-        {view === "briefing"    && <Briefing    leads={leads} />}
+        {view === "briefing"    && <Briefing    leads={leads} properties={properties} />}
         {view === "asistente"   && <Asistente   leads={leads} properties={properties} />}
         {view === "buscador"    && <Buscador    leads={leads} saveSearchResult={saveSearchResult} getSearchResult={getSearchResult} />}
         {view === "cuaderno"    && <Cuaderno    leads={leads} addInteraction={addInteraction} getInteractions={getInteractions} />}
