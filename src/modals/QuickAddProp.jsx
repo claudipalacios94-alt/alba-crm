@@ -1,6 +1,3 @@
-Quickaddprop · JSX
-Copy
-
 // ══════════════════════════════════════════════════════════════
 // ALBA CRM — MODAL CARGA RÁPIDA DE PROPIEDAD
 // Places Autocomplete via REST API (sin SDK, sin conflicto Leaflet)
