@@ -2,7 +2,7 @@
 // ALBA CRM — CONSTANTES Y DATOS
 // Editá acá: paleta, agentes, etapas y datos de demo
 // ══════════════════════════════════════════════════════════════
-
+ 
 // ── Paleta de colores ─────────────────────────────────────────
 export const B = {
   bg:       "#070E1C",
@@ -23,7 +23,7 @@ export const B = {
   aiMsg:    "#0D1E38",
   userMsg:  "#112244",
 };
-
+ 
 // ── Agentes ───────────────────────────────────────────────────
 export const AG = {
   C: { n: "Claudi",    c: "#3A8BC4", bg: "rgba(58,139,196,0.15)"  },
@@ -31,13 +31,13 @@ export const AG = {
   F: { n: "Flor",      c: "#3EAA72", bg: "rgba(62,170,114,0.15)"  },
   L: { n: "Lucas",     c: "#E4923A", bg: "rgba(228,146,58,0.15)"  },
 };
-
+ 
 // ── Etapas del pipeline ───────────────────────────────────────
 export const ETAPAS = [
   "Nuevo Contacto", "Contacto", "Calificado",
   "Visita", "Negociación", "Cerrado", "Perdido",
 ];
-
+ 
 export const ECOL = {
   "Nuevo Contacto": "#5A7AB8",
   "Contacto":       "#3A8BC4",
@@ -47,7 +47,7 @@ export const ECOL = {
   "Cerrado":        "#2E9E6A",
   "Perdido":        "#8A6A6A",
 };
-
+ 
 // ── Scoring de lead ───────────────────────────────────────────
 export function scoreLead(lead) {
   if (lead.etapa === "Cerrado" || lead.etapa === "Perdido")
@@ -58,7 +58,7 @@ export function scoreLead(lead) {
     return { label: "🟡 Tibio",    c: B.warm, bg: "rgba(232,168,48,0.13)" };
   return   { label: "🔴 Frío",     c: B.muted,bg: "rgba(122,150,184,0.11)" };
 }
-
+ 
 // ── Leads demo ────────────────────────────────────────────────
 export const LEADS_DEMO = [
   { id:55, nombre:"Susana",          ag:"C", etapa:"Calificado",     op:"Compra",        presup:85000,  tipo:"Depto",   zona:"La Perla",            dias:0,  prob:null, tel:"54 9 2234 22-8040", origen:"ZonaProp", nota:"Contacta por ZonaProp, quiere ver la de La Perla. Mujer insistente.",    proxAccion:"Coordinar visita La Perla",   notaImp:"Va a piñón fijo — prioridad" },
@@ -78,7 +78,7 @@ export const LEADS_DEMO = [
   { id:27, nombre:"Nadia",           ag:"",  etapa:"Nuevo Contacto", op:"Compra",        presup:150000, tipo:"Casa",    zona:"Chauvin",             dias:21, prob:15,   tel:"2235331453",        origen:"ZonaProp", nota:"Preguntó por casa de Chauvin marina.",                                   proxAccion:"Contactar y calificar" },
   { id:29, nombre:"Angela (Chauvin)",ag:"",  etapa:"Nuevo Contacto", op:"Compra",        presup:210000, tipo:"Casa",    zona:"Chauvin, Pringles",   dias:17, prob:15,   tel:"2234 24-6323",      origen:"Facebook", nota:"Preguntó por Chauvin y luego por la de Pringles.",                      proxAccion:"Mostrar opciones Chauvin" },
 ];
-
+ 
 // ── Propiedades demo ──────────────────────────────────────────
 export const PROPS_DEMO = [
   { id:22, tipo:"Departamento", zona:"Aldrey",     dir:"Lamadrid y Felucho",             precio:55000,  m2tot:28,  m2cub:28,  estado:"Buen Estado",  caracts:"Monoambiente, balcón",              dias:4,  sc:"🟢 OK",      info:"No publicitar. Solo para nuestros clientes.", lat:-38.0083, lng:-57.5423, ag:"F" },
@@ -92,7 +92,7 @@ export const PROPS_DEMO = [
   { id:6,  tipo:"Casa",         zona:"Zona Sur",   dir:"Ruagh 942",                      precio:59000,  m2tot:433, m2cub:178, estado:"Buen Estado",  caracts:"3 amb, 2 dorm, cochera, Quincho",   dias:73, sc:"🟡 Atención",info:"Casa de Walter",                              lat:-38.0591, lng:-57.5554, ag:""  },
   { id:10, tipo:"Departamento", zona:"Centro",     dir:"Av. Colón 1700",                 precio:95000,  m2tot:43,  m2cub:null,estado:"Excelente",    caracts:"2 amb, amueblado, vista al mar",    dias:73, sc:"🟡 Atención",info:"Nuevo a estrenar.",                           lat:-38.0018, lng:-57.5435, ag:""  },
 ];
-
+ 
 // ── Alquileres demo ───────────────────────────────────────────
 export const ALQUILERES_DEMO = [
   { id:2, nombre:"Natalia Tortolisi", tipo:"PH",    zona:"Villa Primera", precioARS:1100, estado:"Disponible", tipoAlq:"Anual",    info:"" },
@@ -101,7 +101,7 @@ export const ALQUILERES_DEMO = [
   { id:5, nombre:"Papa Gisell",       tipo:"Local", zona:"A confirmar",   precioARS:250,  estado:"Disponible", tipoAlq:"Anual",    info:"" },
   { id:6, nombre:"Ana",               tipo:"Depto", zona:"Playa Grande",  precioARS:null, estado:"Disponible", tipoAlq:"Temporal", info:"Propietaria de 7° Aristobulo" },
 ];
-
+ 
 // ── Selects para formularios ──────────────────────────────────
 export const ORIGENES = ["Instagram","Facebook","WhatsApp","ZonaProp","Referido","Cartel","Llamada","Portal Web","Otro"];
 export const TIPOS_OP = ["Compra","Alquiler","Alquiler / Compra","Inversión"];
@@ -114,3 +114,66 @@ export const TIPO_COLOR = {
   Llamada:"#3A8BC4", WhatsApp:"#3EAA72", Visita:"#E8A830",
   Email:"#9B6DC8", "Sin respuesta":"#E85D30", Otro:"#7A96B8",
 };
+ 
+// ── Matching engine ───────────────────────────────────────────
+export function matchLeadProps(lead, properties) {
+  if (!lead || !properties?.length) return [];
+  const zona  = (lead.zona  || "").toLowerCase();
+  const tipo  = (lead.tipo  || "").toLowerCase();
+  const presup = Number(lead.presup) || 0;
+  const op     = (lead.op   || "").toLowerCase();
+ 
+  // No matchear alquileres con propiedades en venta
+  if (op === "alquiler") return [];
+ 
+  const zonas = zona.split(/[,\/]|(?:\s+y\s+)/).map(z => z.trim()).filter(Boolean);
+ 
+  return properties
+    .filter(p => p.activa !== false)
+    .map(p => {
+      let score = 0;
+      const pZona    = (p.zona    || "").toLowerCase();
+      const pTipo    = (p.tipo    || "").toLowerCase();
+      const pPrecio  = Number(p.precio) || 0;
+      const pCaracts = (p.caracts || "").toLowerCase();
+ 
+      // Zona (peso 40)
+      const zonaMatch = zonas.some(z => pZona.includes(z) || z.includes(pZona));
+      if (zonaMatch) score += 40;
+      else return null; // zona obligatoria
+ 
+      // Presupuesto (peso 30)
+      if (presup > 0 && pPrecio > 0) {
+        if (pPrecio <= presup)        score += 30;
+        else if (pPrecio <= presup * 1.10) score += 18;
+        else if (pPrecio <= presup * 1.20) score += 8;
+        else return null; // muy caro
+      }
+ 
+      // Tipo (peso 20)
+      if (tipo && pTipo) {
+        const tipoNorm = tipo.includes("depto") || tipo.includes("departamento") ? "depto" : tipo;
+        if (pTipo.includes(tipoNorm) || tipoNorm.includes(pTipo)) score += 20;
+      }
+ 
+      // Características extra (peso 10)
+      if ((lead.zona || "").toLowerCase().includes("cochera") && pCaracts.includes("cochera")) score += 5;
+      if ((lead.zona || "").toLowerCase().includes("balcon")  && pCaracts.includes("balc"))    score += 5;
+ 
+      return { ...p, _score: score, _zonaMatch: zonaMatch };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 5);
+}
+ 
+export function genMsgWhatsApp(lead, prop) {
+  const precio = prop.precio ? `USD ${Number(prop.precio).toLocaleString()}` : "a consultar";
+  const m2 = prop.m2tot ? ` · ${prop.m2tot}m²` : "";
+  return `Hola ${lead.nombre}! Tenemos una opción que creo que te puede interesar:\n\n` +
+    `🏠 ${prop.tipo} en ${prop.zona}\n` +
+    `📍 ${prop.dir || prop.zona}\n` +
+    `💰 ${precio}${m2}\n` +
+    (prop.caracts ? `✅ ${prop.caracts}\n` : "") +
+    `\n¿Te parece si coordinamos para verla? 🙂`;
+}
