@@ -1,3 +1,6 @@
+App · JSX
+Copy
+
 // ══════════════════════════════════════════════════════════════
 // ALBA CRM — APP SHELL PRINCIPAL
 // Navegación, modales, layout global
@@ -58,7 +61,7 @@ export default function App() {
     leads, properties, rentals,
     loading, error, lastSync,
     reload, addLead, updateLead, deleteLead,
-    addProperty, addInteraction, getInteractions,
+    addProperty, updateProperty, deleteProperty, addInteraction, getInteractions,
     saveSearchResult, getSearchResult,
   } = useSupabase();
  
