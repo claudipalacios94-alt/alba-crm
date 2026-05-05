@@ -133,11 +133,11 @@ export function useSupabase() {
     setLastSync(new Date());
   }
 
-  async function deleteLead(id) {
-    setLeads(prev => prev.filter(l => l.id !== id));
-    const { error } = await supabase.from("leads").delete().eq("id", id);
-    if (error) { await loadAll(); throw error; }
-    setLastSync(new Date());
+  async function deleteProperty(id) {
+  const { error } = await supabase.from("properties").delete().eq("id", id);
+  if (error) throw error;
+  setProperties(p => p.filter(x => x.id !== id));
+}
   }
 
   // ── Operaciones PROPIEDADES ─────────────────────────────────
