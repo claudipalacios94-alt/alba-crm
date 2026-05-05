@@ -58,7 +58,7 @@ export default function App() {
     leads, properties, rentals,
     loading, error, lastSync,
     reload, addLead, updateLead, deleteLead,
-addProperty, updateProperty, addInteraction, getInteractions,
+    addProperty, addInteraction, getInteractions,
     saveSearchResult, getSearchResult,
   } = useSupabase();
  
@@ -204,7 +204,7 @@ addProperty, updateProperty, addInteraction, getInteractions,
         {view === "cuaderno"    && <Cuaderno    leads={leads} addInteraction={addInteraction} getInteractions={getInteractions} />}
         {view === "kanban"      && <Kanban      leads={leads} updateLead={updateLead} />}
         {view === "crm"         && <CRMLeads    leads={leads} updateLead={updateLead} deleteLead={deleteLead} />}
-        {view === "propiedades" && <Propiedades properties={properties} updateProperty={updateProperty} />}
+        {view === "propiedades" && <Propiedades properties={properties} updateProperty={updateProperty} deleteProperty={deleteProperty} />}
         {view === "alquileres"  && <Alquileres  rentals={rentals} />}
         {view === "mapa"        && <Mapa        properties={properties} />}
         {view === "flyer"       && <Flyer       properties={properties} />}
