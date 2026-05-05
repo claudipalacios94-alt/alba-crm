@@ -2,12 +2,12 @@
 // ALBA CRM — CRM LEADS (diseño card, filtros scoring/agente/perfil)
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useMemo } from "react";
-import { B, AG, ETAPAS, ECOL, scoreLead } from "../data/constants.js";
+import { B, AG, ETAPAS, ECOL, scoreLead, matchLeadProps, genMsgWhatsApp } from "../data/constants.js";
  
 const TIPOS_OP   = ["Compra","Alquiler","Inversión","Alquiler / Compra"];
 const TIPOS_PROP = ["Depto","Casa","PH","Casa / PH","Dúplex","Local","Terreno","Otro"];
  
-export default function CRMLeads({ leads, updateLead, deleteLead }) {
+export default function CRMLeads({ leads, updateLead, deleteLead, properties }) {
   const [fs,  setFs]  = useState("Todos");
   const [fa,  setFa]  = useState("Todos");
   const [fop, setFop] = useState("Todos");
@@ -317,6 +317,44 @@ export default function CRMLeads({ leads, updateLead, deleteLead }) {
                           + Nota
                         </button>
                       </div>
+ 
+                      {/* Propiedades compatibles */}
+                      {(() => {
+                        const matches = matchLeadProps(lead, properties || []);
+                        if (!matches.length) return null;
+                        return (
+                          <div style={{ marginBottom:10 }}>
+                            <div style={{ fontSize:9, color:B.muted, letterSpacing:"1px", fontWeight:600, marginBottom:6 }}>
+                              🏠 PROPIEDADES COMPATIBLES ({matches.length})
+                            </div>
+                            {matches.slice(0,3).map(prop => {
+                              const msg = genMsgWhatsApp(lead, prop);
+                              const wa = lead.tel
+                                ? `https://wa.me/${lead.tel.replace(/\D/g,"")}?text=${encodeURIComponent(msg)}`
+                                : null;
+                              return (
+                                <div key={prop.id} style={{ display:"flex", alignItems:"center", gap:8,
+                                  background:B.bg, borderRadius:7, padding:"7px 10px", marginBottom:5 }}>
+                                  <div style={{ flex:1, fontSize:11, color:B.muted }}>
+                                    <span style={{ color:B.text, fontWeight:600 }}>{prop.tipo}</span>
+                                    {" · "}{prop.zona}
+                                    {" · "}<span style={{ color:B.accentL }}>USD {(prop.precio||0).toLocaleString()}</span>
+                                    {prop.dir && <span style={{ color:B.dim }}> · {prop.dir}</span>}
+                                  </div>
+                                  {wa && (
+                                    <a href={wa} target="_blank" rel="noreferrer"
+                                      style={{ padding:"3px 9px", borderRadius:6, whiteSpace:"nowrap",
+                                        background:"rgba(37,211,102,0.1)", border:"1px solid rgba(37,211,102,0.25)",
+                                        color:"#25D366", fontSize:10, textDecoration:"none", fontWeight:600 }}>
+                                      💬 WA
+                                    </a>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
  
                       {/* Acciones */}
                       <div style={{ display:"flex", gap:7, flexWrap:"wrap" }}>
