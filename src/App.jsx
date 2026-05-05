@@ -1,6 +1,3 @@
-App · JSX
-Copy
-
 // ══════════════════════════════════════════════════════════════
 // ALBA CRM — APP SHELL PRINCIPAL
 // Navegación, modales, layout global
