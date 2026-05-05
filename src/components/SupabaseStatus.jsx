@@ -1,316 +1,296 @@
 // ══════════════════════════════════════════════════════════════
-// ALBA CRM — MÓDULO PROPIEDADES
-// Grid filtrable con edición inline
+// ALBA CRM — HOOK SUPABASE REAL
+// Toda la lógica de base de datos en un solo lugar
 // ══════════════════════════════════════════════════════════════
-import React, { useState } from "react";
-import { B, AG } from "../data/constants.js";
+import { useState, useEffect, useCallback } from "react";
+import { createClient } from "@supabase/supabase-js";
+import { LEADS_DEMO, PROPS_DEMO, ALQUILERES_DEMO } from "../data/constants.js";
  
-const GOOGLE_KEY = "AIzaSyD2ZKp0GLdu7rUTD2DWrOrpCy8LHeulGZM";
+const SUPABASE_URL = "https://brhhwcrsoqtptbrnnzlu.supabase.co";
+const SUPABASE_KEY = "sb_publishable_zqtYWADTxXseE7k7M722kA_6p7LEZbs";
  
-async function geocodeAddress(dir) {
-  if (!dir) return null;
-  const inMDP = (lat, lng) => lat > -38.15 && lat < -37.85 && lng > -57.75 && lng < -57.40;
-  try {
-    // Intento 1: componentes estructurados
-    const r1 = await fetch("https://maps.googleapis.com/maps/api/geocode/json?address=" +
-      encodeURIComponent(dir) +
-      "&components=locality:Mar+del+Plata|administrative_area:Buenos+Aires|country:AR&key=" + GOOGLE_KEY);
-    const d1 = await r1.json();
-    if (d1.status === "OK" && d1.results.length > 0) {
-      const loc = d1.results[0].geometry.location;
-      if (inMDP(loc.lat, loc.lng)) return { lat: loc.lat, lng: loc.lng };
-    }
-    // Intento 2: dirección completa
-    const r2 = await fetch("https://maps.googleapis.com/maps/api/geocode/json?address=" +
-      encodeURIComponent(dir + ", Mar del Plata, Buenos Aires, Argentina") + "&key=" + GOOGLE_KEY);
-    const d2 = await r2.json();
-    if (d2.status === "OK" && d2.results.length > 0) {
-      const loc = d2.results[0].geometry.location;
-      if (inMDP(loc.lat, loc.lng)) return { lat: loc.lat, lng: loc.lng };
-    }
-  } catch(e) {}
-  return null;
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+export { supabase };
+ 
+// ── Auth ─────────────────────────────────────────────────────
+export async function signIn(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data;
 }
  
-export default function Propiedades({ properties, updateProperty, deleteProperty }) {
-  const [ft,       setFt]       = useState("Todos");
-  const [fs,       setFs]       = useState("Todos");
-  const [editing,  setEditing]  = useState(null);
-  const [editData, setEditData] = useState({});
-  const [saving,   setSaving]   = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(null);
+export async function signOut() {
+  await supabase.auth.signOut();
+}
  
-  const tipos = ["Todos", ...new Set(properties.map(p => p.tipo).filter(Boolean))];
-  const list  = properties.filter(p =>
-    (ft === "Todos" || p.tipo === ft) &&
-    (fs === "Todos"
-      || (fs === "Urgente"  && p.sc?.includes("Urgente"))
-      || (fs === "Atención" && p.sc?.includes("Atención"))
-      || (fs === "OK"       && p.sc?.includes("OK")))
-  );
- 
-  const ch = act => ({
-    padding: "4px 10px", borderRadius: 20, fontSize: 11, cursor: "pointer",
-    border: "1px solid " + (act ? B.accentL : B.border),
-    background: act ? B.accentL + "18" : "transparent",
-    color: act ? B.accentL : B.muted,
+export function onAuthChange(callback) {
+  return supabase.auth.onAuthStateChange((_event, session) => {
+    callback(session?.user || null);
   });
+}
  
-  const scColor = p =>
-    p.sc?.includes("Urgente")  ? B.hot  :
-    p.sc?.includes("Atención") ? B.warm : B.ok;
+export function useSupabase() {
+  const [leads,      setLeads]      = useState([]);
+  const [properties, setProperties] = useState([]);
+  const [rentals,    setRentals]    = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(null);
+  const [lastSync,   setLastSync]   = useState(null);
  
-  function startEdit(p) {
-    setEditing(p.id);
-    setEditData({
-      tipo: p.tipo || "", zona: p.zona || "", dir: p.dir || "",
-      precio: p.precio || "", m2tot: p.m2tot || "", m2cub: p.m2cub || "",
-      caracts: p.caracts || "", info: p.info || "", ag: p.ag || "",
-      lat: p.lat || "", lng: p.lng || "",
-    });
-  }
- 
-  async function saveEdit(id) {
-    setSaving(true);
+  // ── Cargar todos los datos ──────────────────────────────────
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      let lat = editData.lat ? Number(editData.lat) : null;
-      let lng = editData.lng ? Number(editData.lng) : null;
-      const original = properties.find(p => p.id === id);
-      if (editData.dir !== original?.dir && editData.dir) {
-        const coords = await geocodeAddress(editData.dir);
-        if (coords) { lat = coords.lat; lng = coords.lng; }
-      }
-      await updateProperty(id, {
-        tipo: editData.tipo, zona: editData.zona, dir: editData.dir,
-        precio: editData.precio ? Number(editData.precio) : null,
-        m2tot:  editData.m2tot  ? Number(editData.m2tot)  : null,
-        m2cub:  editData.m2cub  ? Number(editData.m2cub)  : null,
-        caracts: editData.caracts, info: editData.info, ag: editData.ag,
-        lat, lng,
+      const [leadsRes, propsRes, rentalsRes] = await Promise.all([
+        supabase.from("leads").select("*").order("created_at", { ascending: false }),
+        supabase.from("properties").select("*").order("created_at", { ascending: false }),
+        supabase.from("rentals").select("*").order("created_at", { ascending: false }),
+      ]);
+ 
+      if (leadsRes.error)   throw leadsRes.error;
+      if (propsRes.error)   throw propsRes.error;
+      if (rentalsRes.error) throw rentalsRes.error;
+ 
+      // Normalizar campos de Supabase al formato que usa la app
+      const normalizeLead = (l) => ({
+        ...l,
+        proxAccion: l.proxaccion || l.proxAccion || "",
+        notaImp:    l.nota_imp   || l.notaImp    || "",
+        agCapto:    l.ag_capto   || l.agCapto    || "",
       });
-      setEditing(null);
-    } catch(e) { console.error(e); }
-    setSaving(false);
+ 
+      setLeads(leadsRes.data?.length   ? leadsRes.data.map(normalizeLead)   : LEADS_DEMO);
+      setProperties(propsRes.data?.length  ? propsRes.data  : PROPS_DEMO);
+      setRentals(rentalsRes.data?.length ? rentalsRes.data : ALQUILERES_DEMO);
+      setLastSync(new Date());
+    } catch (err) {
+      console.error("Supabase error:", err);
+      setError(err.message);
+      // Fallback a datos de demo si falla la conexión
+      setLeads(LEADS_DEMO);
+      setProperties(PROPS_DEMO);
+      setRentals(ALQUILERES_DEMO);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+ 
+  useEffect(() => { loadAll(); }, [loadAll]);
+ 
+  // ── Real-time subscriptions ─────────────────────────────────
+  useEffect(() => {
+    const leadsChannel = supabase
+      .channel("leads-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" },
+        () => loadAll()
+      )
+      .subscribe();
+ 
+    const propsChannel = supabase
+      .channel("props-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "properties" },
+        () => loadAll()
+      )
+      .subscribe();
+ 
+    return () => {
+      supabase.removeChannel(leadsChannel);
+      supabase.removeChannel(propsChannel);
+    };
+  }, [loadAll]);
+ 
+  // ── Operaciones LEADS ───────────────────────────────────────
+ 
+  async function addLead(lead) {
+    const { nombre, ag, etapa, op, presup, tipo, zona, tel, origen, nota, proxAccion, prob, notaImp } = lead;
+    const { data, error } = await supabase.from("leads").insert([{
+      nombre, ag: ag || "", etapa: etapa || "Nuevo Contacto",
+      op: op || "", presup: presup ? Number(presup) : null,
+      tipo: tipo || "", zona: zona || "", tel: tel || "",
+      origen: origen || "", nota: nota || "",
+      proxaccion: proxAccion || "", prob: prob ? Number(prob) : null,
+      nota_imp: notaImp || "", dias: 0,
+    }]).select().single();
+ 
+    if (error) { console.error("addLead error:", error); throw error; }
+    setLeads(prev => [data, ...prev]);
+    setLastSync(new Date());
+    return data;
   }
  
-  async function ejecutarEliminar() {
-    if (!confirmDelete) return;
+  async function updateLead(id, updates) {
+    // Optimistic update
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
+ 
+    const { error } = await supabase.from("leads").update(updates).eq("id", id);
+    if (error) {
+      console.error("updateLead error:", error);
+      // Revertir si falla
+      await loadAll();
+      throw error;
+    }
+    setLastSync(new Date());
+  }
+ 
+  async function deleteLead(id) {
+    setLeads(prev => prev.filter(l => l.id !== id));
+    const { error } = await supabase.from("leads").delete().eq("id", id);
+    if (error) { await loadAll(); throw error; }
+    setLastSync(new Date());
+  }
+ 
+  // ── Operaciones PROPIEDADES ─────────────────────────────────
+ 
+  async function geocodeAddress(direccion) {
+    if (!direccion) return { lat: null, lng: null };
+    const KEY = "AIzaSyD2ZKp0GLdu7rUTD2DWrOrpCy8LHeulGZM";
+    const inMDP = (lat, lng) => lat > -38.15 && lat < -37.85 && lng > -57.75 && lng < -57.40;
     try {
-      await deleteProperty(confirmDelete.id);
-      setConfirmDelete(null);
-      if (editing === confirmDelete.id) setEditing(null);
-    } catch(e) { console.error(e); }
+      // Intento 1: componentes estructurados
+      const r1 = await fetch("https://maps.googleapis.com/maps/api/geocode/json?address=" +
+        encodeURIComponent(direccion) +
+        "&components=locality:Mar+del+Plata|administrative_area:Buenos+Aires|country:AR&key=" + KEY);
+      const d1 = await r1.json();
+      if (d1.status === "OK" && d1.results.length > 0) {
+        const loc = d1.results[0].geometry.location;
+        if (inMDP(loc.lat, loc.lng)) return { lat: loc.lat, lng: loc.lng };
+      }
+      // Intento 2: dirección completa
+      const r2 = await fetch("https://maps.googleapis.com/maps/api/geocode/json?address=" +
+        encodeURIComponent(direccion + ", Mar del Plata, Buenos Aires, Argentina") + "&key=" + KEY);
+      const d2 = await r2.json();
+      if (d2.status === "OK" && d2.results.length > 0) {
+        const loc = d2.results[0].geometry.location;
+        if (inMDP(loc.lat, loc.lng)) return { lat: loc.lat, lng: loc.lng };
+      }
+    } catch (e) { console.error("Geocoding error:", e); }
+    return { lat: null, lng: null };
   }
  
-  const inp = {
-    width: "100%", background: B.bg, border: "1px solid " + B.border,
-    borderRadius: 6, padding: "6px 9px", color: B.text, fontSize: 11,
-    outline: "none", boxSizing: "border-box", fontFamily: "'Trebuchet MS',sans-serif",
+  async function deleteProperty(id) {
+    const { error } = await supabase.from("properties").delete().eq("id", id);
+    if (error) throw error;
+    setProperties(p => p.filter(x => x.id !== id));
+  }
+ 
+  async function addProperty(prop) {
+    // Geocodificar dirección automáticamente
+    let lat = prop.lat || null;
+    let lng = prop.lng || null;
+    if (!lat && prop.dir) {
+      const coords = await geocodeAddress(prop.dir);
+      lat = coords.lat;
+      lng = coords.lng;
+    }
+ 
+    const { data, error } = await supabase.from("properties").insert([{
+      tipo: prop.tipo || "", zona: prop.zona || "", dir: prop.dir || "",
+      precio: prop.precio ? Number(prop.precio) : null,
+      m2tot: prop.m2tot ? Number(prop.m2tot) : null,
+      m2cub: prop.m2cub ? Number(prop.m2cub) : null,
+      estado: prop.estado || "Buen Estado", caracts: prop.caracts || "",
+      dias: 0, sc: "🟢 OK", info: prop.info || "",
+      lat: lat, lng: lng, ag: prop.ag || "",
+    }]).select().single();
+ 
+    if (error) { console.error("addProperty error:", error); throw error; }
+    setProperties(prev => [data, ...prev]);
+    setLastSync(new Date());
+    return data;
+  }
+ 
+  async function updateProperty(id, updates) {
+    setProperties(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    const { error } = await supabase.from("properties").update(updates).eq("id", id);
+    if (error) { await loadAll(); throw error; }
+    setLastSync(new Date());
+  }
+ 
+  // ── Operaciones ALQUILERES ──────────────────────────────────
+ 
+  async function addRental(rental) {
+    const { data, error } = await supabase.from("rentals").insert([{
+      nombre: rental.nombre || "", tipo: rental.tipo || "",
+      zona: rental.zona || "", precio_mes: rental.precioARS || null,
+      estado: rental.estado || "Disponible", tipoAlq: rental.tipoAlq || "Anual",
+      info: rental.info || "",
+    }]).select().single();
+ 
+    if (error) { console.error("addRental error:", error); throw error; }
+    setRentals(prev => [data, ...prev]);
+    setLastSync(new Date());
+    return data;
+  }
+ 
+  // ── Operaciones INTERACTIONS (Cuaderno) ─────────────────────
+ 
+  async function addInteraction(interaction) {
+    const { data, error } = await supabase.from("interactions").insert([{
+      lead_id:    interaction.leadId,
+      lead_nom:   interaction.leadNom,
+      tipo:       interaction.tipo,
+      nota:       interaction.nota,
+      prox_accion:interaction.proxAccion || "",
+      ag:         interaction.ag || "",
+    }]).select().single();
+ 
+    if (error) { console.error("addInteraction error:", error); throw error; }
+    setLastSync(new Date());
+    return data;
+  }
+ 
+  async function getInteractions(leadId) {
+    const query = supabase.from("interactions").select("*").order("created_at", { ascending: false });
+    if (leadId) query.eq("lead_id", leadId);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+ 
+  // ── Operaciones SEARCH RESULTS (Buscador) ───────────────────
+ 
+  async function saveSearchResult(leadId, resultado) {
+    const { data, error } = await supabase.from("search_results").insert([{
+      lead_id:  leadId,
+      resultado,
+      portales: ["ZonaProp", "Argenprop", "MercadoLibre"],
+    }]).select().single();
+ 
+    if (error) { console.error("saveSearchResult error:", error); throw error; }
+    return data;
+  }
+ 
+  async function getSearchResult(leadId) {
+    const { data } = await supabase
+      .from("search_results")
+      .select("*")
+      .eq("lead_id", leadId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    return data || null;
+  }
+ 
+  return {
+    // Estado
+    leads, properties, rentals,
+    loading, error, lastSync,
+ 
+    // Leads
+    reload: loadAll,
+    addLead, updateLead, deleteLead,
+ 
+    // Propiedades
+    addProperty, updateProperty, deleteProperty,
+ 
+    // Alquileres
+    addRental,
+ 
+    // Cuaderno (interactions)
+    addInteraction, getInteractions,
+ 
+    // Buscador (search results)
+    saveSearchResult, getSearchResult,
   };
- 
-  return (
-    <div>
-      <div style={{ marginBottom:16 }}>
-        <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Propiedades en venta</h1>
-        <p style={{ fontSize:11, color:B.muted, margin:"3px 0 0" }}>{list.length} de {properties.length} propiedades</p>
-      </div>
- 
-      <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:8 }}>
-        {tipos.map(t => <button key={t} onClick={() => setFt(t)} style={ch(ft === t)}>{t}</button>)}
-      </div>
-      <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:18 }}>
-        {["Todos","OK","Atención","Urgente"].map(s => (
-          <button key={s} onClick={() => setFs(s)}
-            style={{ ...ch(fs === s),
-              borderColor: fs === s ? (s === "Urgente" ? B.hot : s === "Atención" ? B.warm : B.accentL) : B.border,
-              color: fs === s ? (s === "Urgente" ? B.hot : s === "Atención" ? B.warm : B.accentL) : B.muted }}>
-            {s}
-          </button>
-        ))}
-      </div>
- 
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:12 }}>
-        {list.map(p => {
-          const c    = scColor(p);
-          const isEd = editing === p.id;
-          return (
-            <div key={p.id} style={{ background:B.card, border:"1px solid " + (isEd ? B.accentL : B.border),
-              borderRadius:12, padding:"14px", borderLeft:"3px solid " + c }}>
- 
-              {isEd ? (
-                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:B.accentL }}>✏️ Editando</div>
- 
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-                    <div>
-                      <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>TIPO</label>
-                      <select value={editData.tipo} onChange={e => setEditData(d => ({...d, tipo:e.target.value}))} style={inp}>
-                        {["Departamento","Casa","PH","Dúplex","Local","Terreno","Otro"].map(t => <option key={t}>{t}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>AGENTE</label>
-                      <select value={editData.ag} onChange={e => setEditData(d => ({...d, ag:e.target.value}))} style={inp}>
-                        <option value="">Sin asignar</option>
-                        {Object.entries(AG).map(([k,v]) => <option key={k} value={k}>{v.n}</option>)}
-                      </select>
-                    </div>
-                  </div>
- 
-                  <div>
-                    <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>ZONA</label>
-                    <input value={editData.zona} onChange={e => setEditData(d => ({...d, zona:e.target.value}))} style={inp} />
-                  </div>
- 
-                  <div>
-                    <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>DIRECCIÓN (se geocodifica sola)</label>
-                    <input value={editData.dir} onChange={e => setEditData(d => ({...d, dir:e.target.value}))} style={inp} placeholder="Ej: Bolivar 2379" />
-                  </div>
- 
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
-                    <div>
-                      <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>PRECIO USD</label>
-                      <input type="number" value={editData.precio} onChange={e => setEditData(d => ({...d, precio:e.target.value}))} style={inp} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>M² TOT</label>
-                      <input type="number" value={editData.m2tot} onChange={e => setEditData(d => ({...d, m2tot:e.target.value}))} style={inp} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>M² CUB</label>
-                      <input type="number" value={editData.m2cub} onChange={e => setEditData(d => ({...d, m2cub:e.target.value}))} style={inp} />
-                    </div>
-                  </div>
- 
-                  <div>
-                    <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>CARACTERÍSTICAS</label>
-                    <input value={editData.caracts} onChange={e => setEditData(d => ({...d, caracts:e.target.value}))} style={inp} />
-                  </div>
- 
-                  <div>
-                    <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>INFO INTERNA</label>
-                    <input value={editData.info} onChange={e => setEditData(d => ({...d, info:e.target.value}))} style={inp} />
-                  </div>
- 
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-                    <div>
-                      <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>LAT (manual)</label>
-                      <input value={editData.lat} onChange={e => setEditData(d => ({...d, lat:e.target.value}))} style={inp} placeholder="-38.002" />
-                    </div>
-                    <div>
-                      <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>LNG (manual)</label>
-                      <input value={editData.lng} onChange={e => setEditData(d => ({...d, lng:e.target.value}))} style={inp} placeholder="-57.555" />
-                    </div>
-                  </div>
- 
-                  <div style={{ display:"flex", gap:8, marginTop:4 }}>
-                    <button onClick={() => saveEdit(p.id)} disabled={saving}
-                      style={{ flex:1, padding:"8px", borderRadius:7, cursor:"pointer",
-                        background: saving ? B.border : B.accent,
-                        border:"1px solid " + (saving ? B.border : B.accentL),
-                        color: saving ? B.muted : "#fff", fontSize:12, fontWeight:700 }}>
-                      {saving ? "Guardando..." : "✓ Guardar"}
-                    </button>
-                    <button onClick={() => setEditing(null)}
-                      style={{ padding:"8px 14px", borderRadius:7, cursor:"pointer",
-                        background:"transparent", border:"1px solid " + B.border,
-                        color:B.muted, fontSize:12 }}>
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:7 }}>
-                    <div>
-                      <div style={{ fontSize:12, fontWeight:600, color:B.text }}>{p.tipo}</div>
-                      <div style={{ fontSize:10, color:B.muted, marginTop:1 }}>{p.zona}</div>
-                    </div>
-                    <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:3 }}>
-                      <div style={{ fontSize:9, padding:"2px 7px", borderRadius:4, background:c+"18", color:c }}>{p.sc}</div>
-                      {p.ag && AG[p.ag] && (
-                        <div style={{ fontSize:9, padding:"1px 5px", borderRadius:3,
-                          background:AG[p.ag].bg, color:AG[p.ag].c, fontWeight:700 }}>
-                          {AG[p.ag].n}
-                        </div>
-                      )}
-                      <button onClick={() => startEdit(p)}
-                        style={{ background:"transparent", border:"1px solid " + B.border,
-                          borderRadius:5, padding:"2px 8px", cursor:"pointer",
-                          color:B.muted, fontSize:10 }}>
-                        ✏️ Editar
-                      </button>
-                      <button onClick={() => setConfirmDelete(p)}
-                        style={{ background:"transparent", border:"1px solid " + B.hot + "40",
-                          borderRadius:5, padding:"2px 8px", cursor:"pointer",
-                          color:B.hot, fontSize:10 }}>
-                        🗑
-                      </button>
-                    </div>
-                  </div>
- 
-                  <div style={{ fontSize:11, color:B.muted, marginBottom:7 }}>
-                    {p.dir} {p.lat ? "📍" : ""}
-                  </div>
-                  <div style={{ fontSize:11, color:B.dim, marginBottom:9 }}>{p.caracts}</div>
- 
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                    <div style={{ fontSize:15, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif" }}>
-                      {p.precio ? "USD " + p.precio.toLocaleString() : "A consultar"}
-                    </div>
-                    <div style={{ fontSize:10, color:B.dim }}>{p.dias}d en cartera</div>
-                  </div>
- 
-                  {p.m2tot && (
-                    <div style={{ fontSize:10, color:B.muted, marginTop:4 }}>
-                      {p.m2tot}m² tot
-                      {p.m2cub ? " · " + p.m2cub + "m² cub" : ""}
-                      {p.precio && p.m2tot ? " · USD " + Math.round(p.precio / p.m2tot).toLocaleString() + "/m²" : ""}
-                    </div>
-                  )}
- 
-                  {p.info && (
-                    <div style={{ fontSize:10, color:B.dim, marginTop:5, fontStyle:"italic" }}>{p.info}</div>
-                  )}
-                </>
-              )}
-            </div>
-          );
-        })}
-        {list.length === 0 && (
-          <div style={{ gridColumn:"1/-1", textAlign:"center", padding:"40px", color:B.muted }}>Sin propiedades</div>
-        )}
-      </div>
- 
-      {confirmDelete && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)",
-          display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999 }}
-          onClick={() => setConfirmDelete(null)}>
-          <div style={{ background:B.sidebar, border:"1px solid " + B.hot + "50", borderRadius:14,
-            padding:"28px 32px", maxWidth:380, width:"90%", boxShadow:"0 24px 80px rgba(0,0,0,0.8)" }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize:22, marginBottom:12, textAlign:"center" }}>🗑</div>
-            <div style={{ fontSize:15, fontWeight:700, color:B.text, fontFamily:"Georgia,serif",
-              marginBottom:8, textAlign:"center" }}>¿Eliminar propiedad?</div>
-            <div style={{ fontSize:12, color:B.muted, textAlign:"center", marginBottom:24, lineHeight:1.6 }}>
-              <strong style={{ color:B.text }}>{confirmDelete.tipo} — {confirmDelete.dir}</strong><br/>
-              Esta acción no se puede deshacer.
-            </div>
-            <div style={{ display:"flex", gap:10 }}>
-              <button onClick={() => setConfirmDelete(null)}
-                style={{ flex:1, padding:"11px", borderRadius:9, cursor:"pointer",
-                  background:"transparent", border:"1px solid " + B.border, color:B.muted, fontSize:13 }}>
-                Cancelar
-              </button>
-              <button onClick={ejecutarEliminar}
-                style={{ flex:1, padding:"11px", borderRadius:9, cursor:"pointer",
-                  background:B.hot, border:"1px solid " + B.hot, color:"#fff", fontSize:13, fontWeight:700 }}>
-                Sí, eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
