@@ -5,29 +5,29 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { LEADS_DEMO, PROPS_DEMO, ALQUILERES_DEMO } from "../data/constants.js";
- 
+
 const SUPABASE_URL = "https://brhhwcrsoqtptbrnnzlu.supabase.co";
 const SUPABASE_KEY = "sb_publishable_zqtYWADTxXseE7k7M722kA_6p7LEZbs";
- 
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 export { supabase };
- 
+
 export async function signIn(email, password) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
   return data;
 }
- 
+
 export async function signOut() {
   await supabase.auth.signOut();
 }
- 
+
 export function onAuthChange(callback) {
   return supabase.auth.onAuthStateChange((_event, session) => {
     callback(session?.user || null);
   });
 }
- 
+
 export function useSupabase() {
   const [leads,      setLeads]      = useState([]);
   const [properties, setProperties] = useState([]);
@@ -35,7 +35,7 @@ export function useSupabase() {
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState(null);
   const [lastSync,   setLastSync]   = useState(null);
- 
+
   const loadAll = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -48,14 +48,14 @@ export function useSupabase() {
       if (leadsRes.error)   throw leadsRes.error;
       if (propsRes.error)   throw propsRes.error;
       if (rentalsRes.error) throw rentalsRes.error;
- 
+
       const normalizeLead = (l) => ({
         ...l,
         proxAccion: l.proxaccion || l.proxAccion || "",
         notaImp:    l.nota_imp   || l.notaImp    || "",
         agCapto:    l.ag_capto   || l.agCapto    || "",
       });
- 
+
       setLeads(leadsRes.data?.length   ? leadsRes.data.map(normalizeLead) : LEADS_DEMO);
       setProperties(propsRes.data?.length  ? propsRes.data  : PROPS_DEMO);
       setRentals(rentalsRes.data?.length ? rentalsRes.data : ALQUILERES_DEMO);
@@ -70,9 +70,9 @@ export function useSupabase() {
       setLoading(false);
     }
   }, []);
- 
+
   useEffect(() => { loadAll(); }, [loadAll]);
- 
+
   useEffect(() => {
     const leadsChannel = supabase.channel("leads-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => loadAll())
@@ -85,9 +85,9 @@ export function useSupabase() {
       supabase.removeChannel(propsChannel);
     };
   }, [loadAll]);
- 
+
   // ── LEADS ───────────────────────────────────────────────────
- 
+
   async function addLead(lead) {
     const { nombre, ag, etapa, op, presup, tipo, zona, tel, origen, nota, proxAccion, prob, notaImp } = lead;
     const { data, error } = await supabase.from("leads").insert([{
@@ -103,22 +103,22 @@ export function useSupabase() {
     setLastSync(new Date());
     return data;
   }
- 
+
   async function updateLead(id, updates) {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
     const { error } = await supabase.from("leads").update(updates).eq("id", id);
     if (error) { await loadAll(); throw error; }
     setLastSync(new Date());
   }
- 
+
   async function deleteLead(id) {
     const { error } = await supabase.from("leads").delete().eq("id", id);
     if (error) throw error;
     setLeads(p => p.filter(x => x.id !== id));
   }
- 
+
   // ── PROPIEDADES ─────────────────────────────────────────────
- 
+
   async function geocodeAddress(direccion) {
     if (!direccion) return { lat: null, lng: null };
     const KEY = "AIzaSyD2ZKp0GLdu7rUTD2DWrOrpCy8LHeulGZM";
@@ -142,7 +142,7 @@ export function useSupabase() {
     } catch (e) { console.error("Geocoding error:", e); }
     return { lat: null, lng: null };
   }
- 
+
   async function addProperty(prop) {
     let lat = prop.lat || null;
     let lng = prop.lng || null;
@@ -165,22 +165,22 @@ export function useSupabase() {
     setLastSync(new Date());
     return data;
   }
- 
+
   async function updateProperty(id, updates) {
     setProperties(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
     const { error } = await supabase.from("properties").update(updates).eq("id", id);
     if (error) { await loadAll(); throw error; }
     setLastSync(new Date());
   }
- 
+
   async function deleteProperty(id) {
     const { error } = await supabase.from("properties").delete().eq("id", id);
     if (error) throw error;
     setProperties(p => p.filter(x => x.id !== id));
   }
- 
+
   // ── ALQUILERES ──────────────────────────────────────────────
- 
+
   async function addRental(rental) {
     const { data, error } = await supabase.from("rentals").insert([{
       nombre: rental.nombre || "", tipo: rental.tipo || "",
@@ -193,9 +193,9 @@ export function useSupabase() {
     setLastSync(new Date());
     return data;
   }
- 
+
   // ── INTERACTIONS ────────────────────────────────────────────
- 
+
   async function addInteraction(interaction) {
     const { data, error } = await supabase.from("interactions").insert([{
       lead_id:     interaction.leadId,
@@ -209,7 +209,7 @@ export function useSupabase() {
     setLastSync(new Date());
     return data;
   }
- 
+
   async function getInteractions(leadId) {
     const query = supabase.from("interactions").select("*").order("created_at", { ascending: false });
     if (leadId) query.eq("lead_id", leadId);
@@ -217,9 +217,9 @@ export function useSupabase() {
     if (error) throw error;
     return data || [];
   }
- 
+
   // ── SEARCH RESULTS ──────────────────────────────────────────
- 
+
   async function saveSearchResult(leadId, resultado) {
     const { data, error } = await supabase.from("search_results").insert([{
       lead_id:  leadId,
@@ -229,7 +229,7 @@ export function useSupabase() {
     if (error) { console.error("saveSearchResult error:", error); throw error; }
     return data;
   }
- 
+
   async function getSearchResult(leadId) {
     const { data } = await supabase
       .from("search_results").select("*")
@@ -238,7 +238,7 @@ export function useSupabase() {
       .limit(1).single();
     return data || null;
   }
- 
+
   return {
     leads, properties, rentals,
     loading, error, lastSync,
