@@ -147,9 +147,19 @@ export default function CRMLeads({ leads, updateLead, deleteLead }) {
         </div>
       </div>
  
-      {/* Cards */}
-      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-        {filt.map(lead => {
+      {/* Cards agrupadas por temperatura */}
+      {[
+        { titulo:"🔴 CALIENTES", color:B.hot,  leads: filt.filter(l => { const s = scoreLead(l).label; return s.includes("Caliente") || l.etapa === "Negociación"; }) },
+        { titulo:"🟡 TIBIOS",    color:B.warm, leads: filt.filter(l => { const s = scoreLead(l).label; return s.includes("Tibio") && l.etapa !== "Negociación"; }) },
+        { titulo:"⚪ FRÍOS",     color:B.dim,  leads: filt.filter(l => { const s = scoreLead(l).label; return s.includes("Frío"); }) },
+      ].filter(g => g.leads.length > 0).map(grupo => (
+        <div key={grupo.titulo} style={{ marginBottom:16 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:grupo.color, letterSpacing:"1.5px",
+            marginBottom:8, paddingLeft:4 }}>
+            {grupo.titulo} <span style={{ fontWeight:400, color:B.dim }}>({grupo.leads.length})</span>
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {grupo.leads.map(lead => {
           const s    = scoreLead(lead);
           const ag   = AG[lead.ag];
           const ec   = ECOL[lead.etapa] || B.dim;
@@ -348,10 +358,13 @@ export default function CRMLeads({ leads, updateLead, deleteLead }) {
             </div>
           );
         })}
-        {filt.length === 0 && (
-          <div style={{ textAlign:"center", padding:"40px", color:B.muted, fontSize:13 }}>Sin resultados</div>
-        )}
-      </div>
+            })}
+          </div>
+        </div>
+      ))}
+      {filt.length === 0 && (
+        <div style={{ textAlign:"center", padding:"40px", color:B.muted, fontSize:13 }}>Sin resultados</div>
+      )}
  
       {/* Modal eliminar */}
       {confirmDelete && (
