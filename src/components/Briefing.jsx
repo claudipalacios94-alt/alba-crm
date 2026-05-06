@@ -1,6 +1,3 @@
-Briefing · JSX
-Copy
-
 import React, { useMemo, useEffect, useRef, useState } from "react";
 import { B, AG, matchLeadProps, genMsgWhatsApp } from "../data/constants.js";
  
