@@ -55,12 +55,12 @@ function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" })
   };
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flex:1, minWidth:120 }}>
-      <canvas ref={canvasRef} width={140} height={95} style={{ width:120, height:82 }} />
-      <div style={{ fontSize:22, fontWeight:600, color, fontFamily:"'Cormorant Garamond',Georgia,serif",
-        marginTop:-10, letterSpacing:"0.5px", lineHeight:1 }}>{fmt(value)}</div>
-      <div style={{ fontSize:11, color:"#8AAECC", fontWeight:500, marginTop:4, textAlign:"center" }}>{label}</div>
-      {sublabel && <div style={{ fontSize:9, color:"#2A4060", marginTop:1 }}>{sublabel}</div>}
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flex:1, minWidth:0 }}>
+      <canvas ref={canvasRef} width={120} height={80} style={{ width:100, height:68 }} />
+      <div style={{ fontSize:18, fontWeight:600, color, fontFamily:"'Cormorant Garamond',Georgia,serif",
+        marginTop:-8, letterSpacing:"0.5px", lineHeight:1 }}>{fmt(value)}</div>
+      <div style={{ fontSize:11, color:"#A8C8E8", fontWeight:500, marginTop:4, textAlign:"center", lineHeight:1.3 }}>{label}</div>
+      {sublabel && <div style={{ fontSize:10, color:"#4A6A9A", marginTop:2 }}>{sublabel}</div>}
     </div>
   );
 }
@@ -72,7 +72,7 @@ function PipelineBar({ leads }) {
   const total   = activos.length || 1;
   return (
     <div>
-      <div style={{ fontSize:10, color:"#2A4060", fontWeight:600, letterSpacing:"1px", marginBottom:10, textTransform:"uppercase" }}>EMBUDO COMERCIAL</div>
+      <div style={{ fontSize:11, color:"#5A7A9A", fontWeight:600, letterSpacing:"1px", marginBottom:10, textTransform:"uppercase" }}>EMBUDO COMERCIAL</div>
       <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
         {etapas.map((e, i) => {
           const n = activos.filter(l => l.etapa === e).length;
@@ -103,15 +103,15 @@ function LeadCard({ lead }) {
     <div style={{ background:B.card, border:"1px solid " + urgColor + "40", borderLeft:"3px solid " + urgColor, borderRadius:10, padding:"12px 14px", display:"flex", alignItems:"center", gap:12 }}>
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
-          <span style={{ fontSize:14, fontWeight:700, color:"#C8D8EE" }}>{lead.nombre}</span>
-          {ag && <span style={{ fontSize:9, padding:"2px 6px", borderRadius:4, background:ag.bg||"rgba(42,91,173,0.25)", color:ag.c, fontWeight:700, border:"1px solid "+ag.c+"40" }}>{ag.n}</span>}
+          <span style={{ fontSize:14, fontWeight:700, color:"#E8F0FA" }}>{lead.nombre}</span>
+          {ag && <span style={{ fontSize:10, padding:"2px 7px", borderRadius:4, background:ag.bg||"rgba(42,91,173,0.25)", color:ag.c, fontWeight:700, border:"1px solid "+ag.c+"40" }}>{ag.n}</span>}
         </div>
-        <div style={{ fontSize:10, color:B.muted }}>{lead.zona} · {lead.tipo} · {lead.presup ? "USD " + lead.presup.toLocaleString() : "—"}</div>
-        {lead.nota && <div style={{ fontSize:10, color:"#5A7A9A", marginTop:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"100%", fontStyle:"italic" }}>{lead.nota}</div>}
+        <div style={{ fontSize:11, color:"#7A9ABE" }}>{lead.zona} · {lead.tipo} · {lead.presup ? "USD " + lead.presup.toLocaleString() : "—"}</div>
+        {lead.nota && <div style={{ fontSize:11, color:"#6A8AAE", marginTop:3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"100%", fontStyle:"italic" }}>{lead.nota}</div>}
       </div>
       <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0 }}>
-        <div style={{ fontSize:10, color:urgColor, fontWeight:700 }}>{razon}</div>
-        {lead.etapa && <div style={{ fontSize:9, padding:"2px 8px", borderRadius:10, background:urgColor+"22", color:urgColor, fontWeight:600, border:"1px solid "+urgColor+"40" }}>{lead.etapa}</div>}
+        <div style={{ fontSize:11, color:urgColor, fontWeight:700 }}>{razon}</div>
+        {lead.etapa && <div style={{ fontSize:10, padding:"2px 8px", borderRadius:10, background:urgColor+"22", color:urgColor, fontWeight:600, border:"1px solid "+urgColor+"40" }}>{lead.etapa}</div>}
         {waLink && <a href={waLink} target="_blank" rel="noreferrer" style={{ padding:"4px 10px", borderRadius:6, background:"rgba(37,211,102,0.12)", border:"1px solid rgba(37,211,102,0.3)", color:"#25D366", fontSize:10, textDecoration:"none", fontWeight:600 }}>💬 WA</a>}
       </div>
     </div>
@@ -164,7 +164,7 @@ export default function Briefing({ leads, properties }) {
   });
  
   return (
-    <div style={{ maxWidth:900 }}>
+    <div style={{ width:"100%", maxWidth:"100%" }}>
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
         <div>
@@ -181,10 +181,10 @@ export default function Briefing({ leads, properties }) {
       </div>
  
       {/* Gauges */}
-      <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:"18px 12px", marginBottom:14, display:"flex", justifyContent:"space-around", gap:8 }}>
-        <Gauge value={pipeline} max={Math.max(pipeline * 2, 1000000)} label="Pipeline activo" sublabel="Visita + Negociación" color={B.accentL} prefix="USD" />
-        <Gauge value={pipelineMes} max={Math.max(pipeline, 100000)} label="Pipeline este mes" sublabel={hoy.toLocaleDateString("es-AR",{month:"long"})} color="#2E9E6A" prefix="USD" />
-        <Gauge value={calientes} max={Math.max(activos.length * 0.4, 10)} label="Leads calientes" color={B.hot} />
+      <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:"16px 8px", marginBottom:14, display:"flex", justifyContent:"space-between", gap:4, overflowX:"auto" }}>
+        <Gauge value={pipeline} max={Math.max(pipeline * 2, 1000000)} label="Pipeline activo" sublabel="Visita + Neg." color={B.accentL} prefix="USD" />
+        <Gauge value={pipelineMes} max={Math.max(pipeline, 100000)} label="Pipeline mes" sublabel={hoy.toLocaleDateString("es-AR",{month:"long"})} color="#2E9E6A" prefix="USD" />
+        <Gauge value={calientes} max={Math.max(activos.length * 0.4, 10)} label="Calientes" color={B.hot} />
         <Gauge value={leadsNuevosMes} max={30} label="Leads nuevos" sublabel="Este mes" color={B.warm} />
         <Gauge value={propsActivas} max={50} label="Propiedades" sublabel="En cartera" color="#9B6DC8" />
       </div>
@@ -193,7 +193,7 @@ export default function Briefing({ leads, properties }) {
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
         {/* Llamar hoy */}
         <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
-          <div style={{ fontSize:10, color:"#2A4060", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>🔥 LLAMAR HOY</div>
+          <div style={{ fontSize:11, color:"#5A7A9A", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>🔥 LLAMAR HOY</div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {urgentes.length === 0 && <div style={{ textAlign:"center", padding:"20px 0", color:B.dim, fontSize:12 }}>Sin leads urgentes</div>}
             {urgentes.map(l => <LeadCard key={l.id} lead={l} />)}
@@ -204,7 +204,7 @@ export default function Briefing({ leads, properties }) {
         <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16, display:"flex", flexDirection:"column", gap:20 }}>
           <PipelineBar leads={filtrados} />
           <div>
-            <div style={{ fontSize:10, color:"#2A4060", fontWeight:600, letterSpacing:"1px", marginBottom:10, textTransform:"uppercase" }}>RESUMEN RÁPIDO</div>
+            <div style={{ fontSize:11, color:"#5A7A9A", fontWeight:600, letterSpacing:"1px", marginBottom:10, textTransform:"uppercase" }}>RESUMEN RÁPIDO</div>
             <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
               {[
                 { label:"Sin asignar",       val: activos.filter(l=>!l.ag).length,          color:B.hot  },
@@ -212,7 +212,7 @@ export default function Briefing({ leads, properties }) {
                 { label:"Prob. alta (≥70%)", val: activos.filter(l=>(l.prob||0)>=70).length, color:B.ok   },
                 { label:"Fríos (+15 días)",  val: activos.filter(l=>l.dias>15).length,        color:B.dim  },
               ].map(r => (
-                <div key={r.label} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:B.muted }}>
+                <div key={r.label} style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:"#7A9ABE" }}>
                   <span>{r.label}</span>
                   <span style={{ fontWeight:700, color:r.color }}>{r.val}</span>
                 </div>
@@ -225,7 +225,7 @@ export default function Briefing({ leads, properties }) {
       {/* Matches del día */}
       {matchesHoy.length > 0 && (
         <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
-          <div style={{ fontSize:10, color:"#2A4060", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>
+          <div style={{ fontSize:11, color:"#5A7A9A", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>
             📌 MATCHES DEL DÍA — propiedades en cartera que encajan con tus leads
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
