@@ -291,13 +291,27 @@ export default function Mapa({ properties, updateProperty }) {
             </div>
             {sel.info && <div style={{ fontSize: 11, color: "#6A8AAE", marginTop: 5, fontStyle: "italic" }}>{sel.info}</div>}
             {/* Botón ARBA */}
-            <a href={ARBA_URL + (sel.lat ? "?lat=" + sel.lat + "&lng=" + sel.lng + "&zoom=18" : "")} target="_blank" rel="noreferrer"
-              style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 8,
-                padding: "5px 12px", borderRadius: 7, fontSize: 11, textDecoration: "none",
-                background: "rgba(42,91,173,0.2)", border: "1px solid rgba(42,91,173,0.4)",
-                color: "#8AAECC", fontWeight: 600 }}>
-              🗺 Ver parcela en ARBA CARTO
-            </a>
+<div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+              <a href={ARBA_URL} target="_blank" rel="noreferrer"
+                style={{ display: "inline-flex", alignItems: "center", gap: 5,
+                  padding: "5px 12px", borderRadius: 7, fontSize: 11, textDecoration: "none",
+                  background: "rgba(42,91,173,0.2)", border: "1px solid rgba(42,91,173,0.4)",
+                  color: "#8AAECC", fontWeight: 600 }}>
+                🗺 Abrir ARBA CARTO
+              </a>
+              {sel.lat && (
+                <button onClick={() => {
+                  navigator.clipboard.writeText(sel.lat + ", " + sel.lng);
+                  alert("Coordenadas copiadas: " + sel.lat + ", " + sel.lng + "\nPegalas en el buscador de ARBA");
+                }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5,
+                    padding: "5px 12px", borderRadius: 7, fontSize: 11, cursor: "pointer",
+                    background: "rgba(46,158,106,0.15)", border: "1px solid rgba(46,158,106,0.4)",
+                    color: "#2E9E6A", fontWeight: 600 }}>
+                  📋 Copiar coords
+                </button>
+              )}
+            </div>
           </div>
           <button onClick={() => setSel(null)}
             style={{ background: "transparent", border: "none", color: "#8AAECC",
