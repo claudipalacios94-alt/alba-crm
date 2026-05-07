@@ -46,12 +46,14 @@ function PropCard({ p, updateProperty, deleteProperty }) {
   const [saving,     setSaving]     = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [savingCat,  setSavingCat]  = useState(false);
+  const [localCat,   setLocalCat]   = useStatelocalCat;
 
   const scColor = p.sc?.includes("Urgente") ? B.hot : p.sc?.includes("tenci") ? B.warm : B.ok;
-  const cat = catInfo(p.categoria || "normal");
+  const cat = catInfolocalCat;
 
   async function changeCategoria(key) {
     setSavingCat(true);
+    setLocalCat(key);
     await updateProperty(p.id, { categoria: key });
     setSavingCat(false);
   }
@@ -147,10 +149,10 @@ function PropCard({ p, updateProperty, deleteProperty }) {
               {CATEGORIAS.map(c => (
                 <button key={c.key} onClick={() => changeCategoria(c.key)} disabled={savingCat}
                   style={{ padding: "5px 12px", borderRadius: 16, fontSize: 11, cursor: "pointer",
-                    background: (p.categoria || "normal") === c.key ? c.color + "25" : "transparent",
-                    border: "1px solid " + ((p.categoria || "normal") === c.key ? c.color : B.border),
-                    color: (p.categoria || "normal") === c.key ? c.color : "#8AAECC",
-                    fontWeight: (p.categoria || "normal") === c.key ? 700 : 400 }}>
+                    background: localCat === c.key ? c.color + "25" : "transparent",
+                    border: "1px solid " + (localCat === c.key ? c.color : B.border),
+                    color: localCat === c.key ? c.color : "#8AAECC",
+                    fontWeight: localCat === c.key ? 700 : 400 }}>
                   {c.label}
                 </button>
               ))}
