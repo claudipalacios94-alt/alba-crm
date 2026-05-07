@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from "react";
 import { B, AG, TIPOS_CONTACTO, TIPO_COLOR } from "../data/constants.js";
 
-export default function Cuaderno({ leads, addInteraction, getInteractions }) {
+export default function Cuaderno({ leads, addInteraction, getInteractions, updateLead }) {
   const [entries,  setEntries]  = useState([]);
   const [form,     setForm]     = useState({ leadId:"", tipo:"WhatsApp", nota:"", proxAccion:"", ag:"" });
   const [adding,   setAdding]   = useState(false);
@@ -49,6 +49,10 @@ export default function Cuaderno({ leads, addInteraction, getInteractions }) {
         proxAccion: form.proxAccion.trim(),
         ag:         form.ag,
       });
+      // Actualizar last_contact_at y proxaccion en el lead
+      const leadUpdates = { last_contact_at: new Date().toISOString() };
+      if (form.proxAccion.trim()) leadUpdates.proxaccion = form.proxAccion.trim();
+      if (updateLead) await updateLead(Number(form.leadId), leadUpdates);
       const newEntry = {
         id:         String(saved.id),
         leadId:     String(saved.lead_id),

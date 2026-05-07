@@ -215,7 +215,7 @@ export default function App() {
         {view === "briefing"    && <Briefing    leads={leads} properties={properties} />}
         {view === "asistente"   && <Asistente   leads={leads} properties={properties} />}
         {view === "buscador"    && <Buscador    leads={leads} saveSearchResult={saveSearchResult} getSearchResult={getSearchResult} />}
-        {view === "cuaderno"    && <Cuaderno    leads={leads} addInteraction={addInteraction} getInteractions={getInteractions} />}
+        {view === "cuaderno"    && <Cuaderno    leads={leads} addInteraction={addInteraction} getInteractions={getInteractions} updateLead={updateLead} />}
         {view === "kanban"      && <Kanban      leads={leads} updateLead={updateLead} />}
         {view === "crm"         && <CRMLeads    leads={leads} updateLead={updateLead} deleteLead={deleteLead} properties={properties} />}
         {view === "propiedades" && <Propiedades properties={properties} updateProperty={updateProperty} deleteProperty={deleteProperty} />}

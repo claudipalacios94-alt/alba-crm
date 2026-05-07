@@ -42,7 +42,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
   async function setEtapa(id, etapa) { await updateLead(id, { etapa }); setEditE(null); }
   async function setAgente(id, ag)   { await updateLead(id, { ag });    setEditE(null); }
  
-  async function contacteHoy(id) { await updateLead(id, { dias: 0 }); }
+  async function contacteHoy(id) { await updateLead(id, { last_contact_at: new Date().toISOString() }); }
  
   async function setScore(id, n) { await updateLead(id, { prob: n * 20 }); }
  

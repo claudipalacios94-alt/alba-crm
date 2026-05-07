@@ -49,8 +49,16 @@ export function useSupabase() {
       if (propsRes.error)   throw propsRes.error;
       if (rentalsRes.error) throw rentalsRes.error;
 
+      const calcDias = (l) => {
+        const ref = l.last_contact_at || l.created_at;
+        if (!ref) return l.dias || 0;
+        const diff = (Date.now() - new Date(ref).getTime()) / (1000 * 60 * 60 * 24);
+        return Math.floor(diff);
+      };
+
       const normalizeLead = (l) => ({
         ...l,
+        dias:       calcDias(l),
         proxAccion: l.proxaccion || l.proxAccion || "",
         notaImp:    l.nota_imp   || l.notaImp    || "",
         agCapto:    l.ag_capto   || l.agCapto    || "",
