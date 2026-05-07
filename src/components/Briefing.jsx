@@ -1,50 +1,8 @@
-import React, { useMemo, useEffect, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { B, AG, matchLeadProps, genMsgWhatsApp } from "../data/constants.js";
  
 function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" }) {
-  const canvasRef = useRef(null);
   const pct = Math.min(value / (max || 1), 1);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const W = canvas.width, H = canvas.height;
-    const cx = W / 2, cy = H * 0.72;
-    const r = W * 0.38;
-    const startAngle = Math.PI * 0.85;
-    const endAngle   = Math.PI * 2.15;
-    const totalArc   = endAngle - startAngle;
-    ctx.clearRect(0, 0, W, H);
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, startAngle, endAngle);
-    ctx.strokeStyle = "#0D1829";
-    ctx.lineWidth = 11;
-    ctx.lineCap = "round";
-    ctx.stroke();
-    if (pct > 0) {
-      const grad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
-      grad.addColorStop(0, color + "88");
-      grad.addColorStop(1, color);
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, startAngle, startAngle + totalArc * pct);
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = 11;
-      ctx.lineCap = "round";
-      ctx.stroke();
-    }
-    const angle = startAngle + totalArc * pct;
-    const nx = cx + (r - 4) * Math.cos(angle);
-    const ny = cy + (r - 4) * Math.sin(angle);
-    ctx.beginPath();
-    ctx.arc(nx, ny, 5, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-    ctx.fillStyle = "#0D1829";
-    ctx.fill();
-  }, [pct, color]);
- 
   const fmt = v => {
     if (prefix === "USD") {
       if (v >= 1000000) return "USD " + (v/1000000).toFixed(1) + "M";
@@ -53,13 +11,21 @@ function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" })
     }
     return prefix + v + suffix;
   };
- 
   return (
-    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flex:1, minWidth:130 }}>
-      <canvas ref={canvasRef} width={160} height={110} style={{ width:130, height:90 }} />
-      <div style={{ fontSize:19, fontWeight:700, color, fontFamily:"Cormorant Garamond,Georgia,serif", marginTop:-6, letterSpacing:"0.5px" }}>{fmt(value)}</div>
-      <div style={{ fontSize:11, color:B.text, fontWeight:600, marginTop:2 }}>{label}</div>
-      {sublabel && <div style={{ fontSize:9, color:B.dim, marginTop:1 }}>{sublabel}</div>}
+    <div style={{ flex:1, minWidth:120, padding:"14px 16px", background:"#0A1525",
+      borderRadius:10, border:"1px solid #1A2F50", display:"flex", flexDirection:"column",
+      gap:6, position:"relative", overflow:"hidden" }}>
+      <div style={{ position:"absolute", top:0, left:0, right:0, height:2,
+        background:color, opacity:0.8 }} />
+      <div style={{ fontSize:11, color:"#3A5A7A", fontWeight:500 }}>
+        {label}{sublabel && <span style={{ color:"#2A3A50", marginLeft:4 }}>· {sublabel}</span>}
+      </div>
+      <div style={{ fontSize:28, fontWeight:700, color, fontFamily:"'Cormorant Garamond',Georgia,serif",
+        lineHeight:1, letterSpacing:"-0.5px" }}>{fmt(value)}</div>
+      <div style={{ height:3, background:"#1A2F50", borderRadius:2 }}>
+        <div style={{ height:"100%", width:(pct*100)+"%", background:color,
+          borderRadius:2, opacity:0.6 }} />
+      </div>
     </div>
   );
 }
@@ -102,15 +68,15 @@ function LeadCard({ lead }) {
     <div style={{ background:B.card, border:"1px solid " + urgColor + "40", borderLeft:"3px solid " + urgColor, borderRadius:10, padding:"12px 14px", display:"flex", alignItems:"center", gap:12 }}>
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
-          <span style={{ fontSize:13, fontWeight:700, color:B.text }}>{lead.nombre}</span>
-          {ag && <span style={{ fontSize:9, padding:"1px 5px", borderRadius:3, background:ag.bg||"#1A2F50", color:ag.c, fontWeight:700 }}>{ag.n}</span>}
+          <span style={{ fontSize:14, fontWeight:700, color:"#C8D8EE" }}>{lead.nombre}</span>
+          {ag && <span style={{ fontSize:9, padding:"2px 6px", borderRadius:4, background:ag.bg||"rgba(42,91,173,0.25)", color:ag.c, fontWeight:700, border:"1px solid "+ag.c+"40" }}>{ag.n}</span>}
         </div>
         <div style={{ fontSize:10, color:B.muted }}>{lead.zona} · {lead.tipo} · {lead.presup ? "USD " + lead.presup.toLocaleString() : "—"}</div>
-        {lead.nota && <div style={{ fontSize:9, color:B.dim, marginTop:3, fontStyle:"italic", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{lead.nota}</div>}
+        {lead.nota && <div style={{ fontSize:10, color:"#4A6A8A", marginTop:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"100%" }}>{lead.nota}</div>}
       </div>
       <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0 }}>
-        <div style={{ fontSize:9, color:urgColor, fontWeight:700 }}>{razon}</div>
-        {lead.etapa && <div style={{ fontSize:9, padding:"2px 7px", borderRadius:12, background:urgColor+"18", color:urgColor }}>{lead.etapa}</div>}
+        <div style={{ fontSize:10, color:urgColor, fontWeight:700 }}>{razon}</div>
+        {lead.etapa && <div style={{ fontSize:9, padding:"2px 8px", borderRadius:10, background:urgColor+"22", color:urgColor, fontWeight:600, border:"1px solid "+urgColor+"40" }}>{lead.etapa}</div>}
         {waLink && <a href={waLink} target="_blank" rel="noreferrer" style={{ padding:"4px 10px", borderRadius:6, background:"rgba(37,211,102,0.12)", border:"1px solid rgba(37,211,102,0.3)", color:"#25D366", fontSize:10, textDecoration:"none", fontWeight:600 }}>💬 WA</a>}
       </div>
     </div>
@@ -180,7 +146,7 @@ export default function Briefing({ leads, properties }) {
       </div>
  
       {/* Gauges */}
-      <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:"20px 16px", marginBottom:16, display:"flex", justifyContent:"space-around", flexWrap:"wrap", gap:16 }}>
+      <div style={{ background:"transparent", border:"none", borderRadius:14, padding:"0", marginBottom:14, display:"flex", gap:10 }}>
         <Gauge value={pipeline} max={Math.max(pipeline * 2, 1000000)} label="Pipeline activo" sublabel="Visita + Negociación" color={B.accentL} prefix="USD" />
         <Gauge value={pipelineMes} max={Math.max(pipeline, 100000)} label="Pipeline este mes" sublabel={hoy.toLocaleDateString("es-AR",{month:"long"})} color="#2E9E6A" prefix="USD" />
         <Gauge value={calientes} max={Math.max(activos.length * 0.4, 10)} label="Leads calientes" color={B.hot} />
