@@ -21,20 +21,27 @@ const TIPO_ICONO = {
 };
 
 async function nominatim(dir) {
-  const query = encodeURIComponent(dir + ", Mar del Plata, Buenos Aires, Argentina");
-  const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=ar`;
-  try {
-    const r = await fetch(url, { headers: { "Accept-Language": "es" } });
-    const d = await r.json();
-    if (d.length > 0) {
-      const lat = parseFloat(d[0].lat);
-      const lng = parseFloat(d[0].lon);
-      // Verificar que esté en MDP
-      if (lat > -38.15 && lat < -37.85 && lng > -57.75 && lng < -57.40) {
-        return { lat, lng };
+  // Limpiar dirección y armar query
+  const dirLimpia = dir.trim().replace(/,.*/, ''); // sacar todo después de coma
+  const queries = [
+    dirLimpia + ', Mar del Plata, Buenos Aires, Argentina',
+    dirLimpia + ', Mar del Plata, Argentina',
+  ];
+  for (const q of queries) {
+    try {
+      const url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=3&countrycodes=ar';
+      const r = await fetch(url, { headers: { 'Accept-Language': 'es', 'User-Agent': 'AlbaCRM/1.0 (inmobiliaria MDP)' } });
+      const d = await r.json();
+      for (const res of d) {
+        const lat = parseFloat(res.lat);
+        const lng = parseFloat(res.lon);
+        if (lat > -38.15 && lat < -37.85 && lng > -57.75 && lng < -57.40) {
+          return { lat, lng, display: res.display_name };
+        }
       }
-    }
-  } catch(e) {}
+    } catch(e) {}
+    await new Promise(r => setTimeout(r, 300));
+  }
   return null;
 }
 
