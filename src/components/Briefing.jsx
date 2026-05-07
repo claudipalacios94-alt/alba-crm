@@ -95,29 +95,41 @@ function PipelineBar({ leads }) {
 }
  
 function LeadCard({ lead }) {
+  const [open, setOpen] = React.useState(false);
   const ag = AG[lead.ag];
-  const waLink = lead.tel ? "https://wa.me/" + lead.tel.replace(/\D/g, "") : null;
-  const urgColor = lead.etapa === "Negociación" ? B.ok : lead.dias <= 2 ? B.hot : lead.dias <= 5 ? B.warm : B.accentL;
-  const razon = lead.etapa === "Negociación" ? "En negociación" : lead.dias === 0 ? "Nuevo hoy" : lead.dias <= 2 ? `${lead.dias}d — Caliente` : lead.dias <= 5 ? `${lead.dias}d — Tibio` : `${lead.dias}d sin contacto`;
+  const waLink = lead.tel ? 'https://wa.me/' + lead.tel.replace(/\D/g, '') : null;
+  const urgColor = lead.etapa === 'Negociación' ? B.ok : lead.dias <= 2 ? B.hot : lead.dias <= 5 ? B.warm : B.accentL;
+  const razon = lead.etapa === 'Negociación' ? 'En negociación' : lead.dias === 0 ? 'Nuevo hoy' : lead.dias <= 2 ? lead.dias+'d — Caliente' : lead.dias <= 5 ? lead.dias+'d — Tibio' : lead.dias+'d sin contacto';
   return (
-    <div style={{ background:B.card, border:"1px solid " + urgColor + "40", borderLeft:"3px solid " + urgColor, borderRadius:10, padding:"12px 14px", display:"flex", alignItems:"center", gap:12 }}>
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
-          <span style={{ fontSize:14, fontWeight:700, color:"#E8F0FA" }}>{lead.nombre}</span>
-          {ag && <span style={{ fontSize:12, padding:"2px 7px", borderRadius:4, background:ag.bg||"rgba(42,91,173,0.25)", color:ag.c, fontWeight:700, border:"1px solid "+ag.c+"40" }}>{ag.n}</span>}
+    <div style={{ background:B.card, border:'1px solid ' + urgColor + '40', borderLeft:'3px solid ' + urgColor, borderRadius:10, overflow:'hidden' }}>
+      <div onClick={() => setOpen(o => !o)} style={{ padding:'12px 14px', cursor:'pointer' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
+          <span style={{ fontSize:14, fontWeight:700, color:'#E8F0FA' }}>{lead.nombre}</span>
+          {ag && <span style={{ fontSize:11, padding:'2px 7px', borderRadius:4, background:ag.bg||'rgba(42,91,173,0.25)', color:ag.c, fontWeight:700, border:'1px solid '+ag.c+'40' }}>{ag.n}</span>}
+          <span style={{ fontSize:11, color:urgColor, fontWeight:700, marginLeft:'auto' }}>{razon} {open ? '▲' : '▼'}</span>
         </div>
-        <div style={{ fontSize:11, color:"#7A9ABE" }}>{lead.zona} · {lead.tipo} · {lead.presup ? "USD " + lead.presup.toLocaleString() : "—"}</div>
-        {lead.nota && <div style={{ fontSize:11, color:"#6A8AAE", marginTop:3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"100%", fontStyle:"italic" }}>{lead.nota}</div>}
+        <div style={{ fontSize:12, color:'#8AAECC' }}>{lead.zona} · {lead.tipo} · {lead.presup ? 'USD ' + lead.presup.toLocaleString() : '—'}</div>
+        {!open && lead.nota && <div style={{ fontSize:12, color:'#6A8AAE', marginTop:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontStyle:'italic' }}>{lead.nota}</div>}
       </div>
-      <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0 }}>
-        <div style={{ fontSize:11, color:urgColor, fontWeight:700 }}>{razon}</div>
-        {lead.etapa && <div style={{ fontSize:12, padding:"2px 8px", borderRadius:10, background:urgColor+"22", color:urgColor, fontWeight:600, border:"1px solid "+urgColor+"40" }}>{lead.etapa}</div>}
-        {waLink && <a href={waLink} target="_blank" rel="noreferrer" style={{ padding:"4px 10px", borderRadius:6, background:"rgba(37,211,102,0.12)", border:"1px solid rgba(37,211,102,0.3)", color:"#25D366", fontSize:12, textDecoration:"none", fontWeight:600 }}>💬 WA</a>}
-      </div>
+      {open && (
+        <div style={{ borderTop:'1px solid ' + urgColor + '30', padding:'12px 14px', background:'rgba(10,21,37,0.5)', display:'flex', flexDirection:'column', gap:10 }}>
+          {lead.nota && <div style={{ fontSize:13, color:'#A8C8E8', lineHeight:1.6, fontStyle:'italic' }}>{lead.nota}</div>}
+          {lead.proxAccion && <div style={{ fontSize:12, color:'#8AAECC' }}><span style={{ color:'#5A8AAE', fontWeight:600, fontSize:11 }}>PROXIMA ACCION: </span>{lead.proxAccion}</div>}
+          {lead.notaImp && <div style={{ fontSize:12, color:B.warm }}><span style={{ fontWeight:600 }}>⚠ </span>{lead.notaImp}</div>}
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+            {lead.etapa && <span style={{ fontSize:11, padding:'3px 10px', borderRadius:10, background:urgColor+'22', color:urgColor, fontWeight:600, border:'1px solid '+urgColor+'40' }}>{lead.etapa}</span>}
+            {lead.op && <span style={{ fontSize:11, color:'#8AAECC' }}>{lead.op}</span>}
+            {lead.origen && <span style={{ fontSize:11, color:'#6A8AAE' }}>via {lead.origen}</span>}
+            {lead.tel && <span style={{ fontSize:11, color:'#8AAECC' }}>Tel: {lead.tel}</span>}
+            {waLink && <a href={waLink} target='_blank' rel='noreferrer' style={{ marginLeft:'auto', padding:'5px 14px', borderRadius:6, background:'rgba(37,211,102,0.12)', border:'1px solid rgba(37,211,102,0.3)', color:'#25D366', fontSize:12, textDecoration:'none', fontWeight:600 }}>WhatsApp</a>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
- 
+
+
 export default function Briefing({ leads, properties }) {
   const [filtroAg, setFiltroAg] = useState("Todos");
   const hoy = new Date();
