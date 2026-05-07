@@ -176,7 +176,7 @@ export default function Briefing({ leads, properties }) {
   });
  
   return (
-    <div style={{ width:"100%", maxWidth:"100%" }}>
+    <div style={{ width:"100%", maxWidth:"100%", minWidth:0, overflowX:"hidden" }}>
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
         <div>
