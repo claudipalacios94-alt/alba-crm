@@ -291,7 +291,7 @@ export default function Mapa({ properties, updateProperty }) {
             </div>
             {sel.info && <div style={{ fontSize: 11, color: "#6A8AAE", marginTop: 5, fontStyle: "italic" }}>{sel.info}</div>}
             {/* Botón ARBA */}
-            <a href={ARBA_URL} target="_blank" rel="noreferrer"
+            <a href={ARBA_URL + (sel.lat ? "?lat=" + sel.lat + "&lng=" + sel.lng + "&zoom=18" : "")} target="_blank" rel="noreferrer"
               style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 8,
                 padding: "5px 12px", borderRadius: 7, fontSize: 11, textDecoration: "none",
                 background: "rgba(42,91,173,0.2)", border: "1px solid rgba(42,91,173,0.4)",
