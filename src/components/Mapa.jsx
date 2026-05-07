@@ -102,7 +102,7 @@ export default function Mapa({ properties }) {
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10, marginBottom:14, flexShrink:0 }}>
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Mapa de propiedades</h1>
-          <p style={{ fontSize:11, color:B.muted, margin:"3px 0 0" }}>{lista.length} propiedades · Mar del Plata</p>
+          <p style={{ fontSize:11, color:"#8AAECC", margin:"3px 0 0" }}>{lista.length} propiedades · Mar del Plata</p>
         </div>
         <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
           {tipos.map(t => <button key={t} onClick={() => { setFiltro(t); setSel(null); }} style={chip(filtro === t)}>{t}</button>)}
@@ -114,7 +114,7 @@ export default function Mapa({ properties }) {
         {[[B.ok, "OK — <60 días"], [B.warm, "Atención — 60-90 días"], [B.hot, "Urgente — >90 días"]].map(([c, l]) => (
           <div key={l} style={{ display:"flex", alignItems:"center", gap:5 }}>
             <div style={{ width:8, height:8, borderRadius:"50%", background:c }} />
-            <span style={{ fontSize:10, color:B.muted }}>{l}</span>
+            <span style={{ fontSize:12, color:B.muted }}>{l}</span>
           </div>
         ))}
       </div>
@@ -151,17 +151,17 @@ export default function Mapa({ properties }) {
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
                   <div>
                     <div style={{ fontSize:12, fontWeight:600, color:B.text }}>{p.tipo}</div>
-                    <div style={{ fontSize:10, color:B.muted, marginTop:1 }}>{p.zona}</div>
+                    <div style={{ fontSize:12, color:"#8AAECC", marginTop:1 }}>{p.zona}</div>
                   </div>
-                  <div style={{ fontSize:9, padding:"2px 6px", borderRadius:4, background:`${c}18`, color:c, alignSelf:"flex-start" }}>{p.dias}d</div>
+                  <div style={{ fontSize:11, padding:"2px 6px", borderRadius:4, background:`${c}18`, color:c, alignSelf:"flex-start" }}>{p.dias}d</div>
                 </div>
-                <div style={{ fontSize:11, color:B.muted, marginBottom:7, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.dir}</div>
+                <div style={{ fontSize:11, color:"#8AAECC", marginBottom:7, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.dir}</div>
                 <div style={{ fontSize:14, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif" }}>
                   {p.precio ? `USD ${p.precio.toLocaleString()}` : "A consultar"}
                 </div>
-                {p.m2tot && <div style={{ fontSize:10, color:B.dim, marginTop:3 }}>{p.m2tot}m²{p.precio ? ` · USD ${Math.round(p.precio / p.m2tot).toLocaleString()}/m²` : ""}</div>}
+                {p.m2tot && <div style={{ fontSize:12, color:B.dim, marginTop:3 }}>{p.m2tot}m²{p.precio ? ` · USD ${Math.round(p.precio / p.m2tot).toLocaleString()}/m²` : ""}</div>}
                 {p.ag && AG[p.ag] && (
-                  <div style={{ fontSize:9, padding:"1px 5px", borderRadius:3, background:AG[p.ag].bg, color:AG[p.ag].c, fontWeight:700, display:"inline-block", marginTop:4 }}>{AG[p.ag].n}</div>
+                  <div style={{ fontSize:11, padding:"1px 5px", borderRadius:3, background:AG[p.ag].bg, color:AG[p.ag].c, fontWeight:700, display:"inline-block", marginTop:4 }}>{AG[p.ag].n}</div>
                 )}
               </div>
             );
@@ -182,12 +182,12 @@ export default function Mapa({ properties }) {
               <span style={{ fontSize:14, fontWeight:700, color:B.text }}>{sel.tipo}</span>
               <span style={{ fontSize:11, color:B.muted }}>{sel.zona}</span>
             </div>
-            <div style={{ fontSize:12, color:B.muted, marginBottom:5 }}>{sel.dir}</div>
+            <div style={{ fontSize:12, color:"#8AAECC", marginBottom:5 }}>{sel.dir}</div>
             <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
               <span style={{ fontSize:16, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif" }}>
                 {sel.precio ? `USD ${sel.precio.toLocaleString()}` : "A consultar"}
               </span>
-              {sel.m2tot && <span style={{ fontSize:11, color:B.dim }}>· {sel.m2tot}m²</span>}
+              {sel.m2tot && <span style={{ fontSize:11, color:B.muted }}>· {sel.m2tot}m²</span>}
               <span style={{ fontSize:11, color:scColor(sel) }}>{sel.dias} días en cartera</span>
             </div>
             {sel.info && <div style={{ fontSize:11, color:B.dim, marginTop:5, fontStyle:"italic" }}>{sel.info}</div>}

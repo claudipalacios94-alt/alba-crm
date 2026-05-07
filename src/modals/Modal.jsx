@@ -27,7 +27,7 @@ export default function Modal({ title, onClose, children, maxWidth = 660 }) {
           <div style={{ fontSize:15, fontWeight:700, color:B.text, fontFamily:"Georgia,serif" }}>{title}</div>
           <button onClick={onClose}
             style={{ background:"transparent", border:`1px solid ${B.border}`, borderRadius:8,
-              width:30, height:30, cursor:"pointer", color:B.muted, fontSize:18, lineHeight:1,
+              width:30, height:30, cursor:"pointer", color:"#8AAECC", fontSize:18, lineHeight:1,
               display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
         </div>
 

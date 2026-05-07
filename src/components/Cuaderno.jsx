@@ -100,7 +100,7 @@ export default function Cuaderno({ leads, addInteraction, getInteractions, updat
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:14, marginBottom:22 }}>
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Cuaderno de campo</h1>
-          <p style={{ fontSize:11, color:B.muted, margin:"4px 0 0" }}>
+          <p style={{ fontSize:11, color:"#8AAECC", margin:"4px 0 0" }}>
             {entries.length} interacciones registradas · guardado localmente
           </p>
         </div>
@@ -118,14 +118,14 @@ export default function Cuaderno({ leads, addInteraction, getInteractions, updat
         <div style={{ background:B.card, border:`1px solid ${B.accentL}40`, borderRadius:13, padding:"18px 20px", marginBottom:20 }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
             <div>
-              <label style={{ fontSize:9, color:B.muted, letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:5 }}>Lead *</label>
+              <label style={{ fontSize:11, color:"#8AAECC", letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:5 }}>Lead *</label>
               <select value={form.leadId} onChange={e => setForm(p => ({ ...p, leadId:e.target.value }))} style={inpS}>
                 <option value="">Seleccioná un lead</option>
                 {activos.map(l => <option key={l.id} value={String(l.id)}>{l.nombre}{l.zona ? " · " + l.zona : ""}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize:9, color:B.muted, letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:5 }}>Tipo de contacto</label>
+              <label style={{ fontSize:11, color:"#8AAECC", letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:5 }}>Tipo de contacto</label>
               <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo:e.target.value }))} style={inpS}>
                 {TIPOS_CONTACTO.map(t => <option key={t}>{t}</option>)}
               </select>
@@ -133,7 +133,7 @@ export default function Cuaderno({ leads, addInteraction, getInteractions, updat
           </div>
 
           <div style={{ marginBottom:12 }}>
-            <label style={{ fontSize:9, color:B.muted, letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:5 }}>¿Qué pasó? *</label>
+            <label style={{ fontSize:11, color:"#8AAECC", letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:5 }}>¿Qué pasó? *</label>
             <textarea value={form.nota} onChange={e => setForm(p => ({ ...p, nota:e.target.value }))}
               placeholder="Llamé, no atendió... / Le mandé las fotos, le gustó mucho... / Vino a ver la casa, está pensando..."
               rows={3} style={{ ...inpS, resize:"none", lineHeight:1.6 }} />
@@ -141,12 +141,12 @@ export default function Cuaderno({ leads, addInteraction, getInteractions, updat
 
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
             <div>
-              <label style={{ fontSize:9, color:B.muted, letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:5 }}>Próxima acción</label>
+              <label style={{ fontSize:11, color:"#8AAECC", letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:5 }}>Próxima acción</label>
               <input value={form.proxAccion} onChange={e => setForm(p => ({ ...p, proxAccion:e.target.value }))}
                 style={inpS} placeholder="ej: Llamar el jueves, enviar opciones..." />
             </div>
             <div>
-              <label style={{ fontSize:9, color:B.muted, letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:5 }}>Agente</label>
+              <label style={{ fontSize:11, color:"#8AAECC", letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:5 }}>Agente</label>
               <select value={form.ag} onChange={e => setForm(p => ({ ...p, ag:e.target.value }))} style={inpS}>
                 <option value="">Sin especificar</option>
                 {Object.entries(AG).map(([k, v]) => <option key={k} value={k}>{v.n}</option>)}
@@ -182,10 +182,10 @@ export default function Cuaderno({ leads, addInteraction, getInteractions, updat
       )}
 
       {/* Lista de entradas */}
-      {!loaded && <div style={{ textAlign:"center", padding:"40px", color:B.dim }}>Cargando...</div>}
+      {!loaded && <div style={{ textAlign:"center", padding:"40px", color:B.muted }}>Cargando...</div>}
       {loaded && filtered.length === 0 && (
-        <div style={{ textAlign:"center", padding:"60px 20px", color:B.dim }}>
-          <div style={{ fontSize:13, color:B.muted, marginBottom:8 }}>Sin interacciones todavía</div>
+        <div style={{ textAlign:"center", padding:"60px 20px", color:B.muted }}>
+          <div style={{ fontSize:13, color:"#8AAECC", marginBottom:8 }}>Sin interacciones todavía</div>
           <div style={{ fontSize:12, color:B.dim, lineHeight:1.6, maxWidth:320, margin:"0 auto" }}>
             Cada vez que hablás con un lead, anotalo acá. Con el tiempo tenés el historial completo de cada operación.
           </div>
@@ -204,10 +204,10 @@ export default function Cuaderno({ leads, addInteraction, getInteractions, updat
                   <span style={{ fontSize:11, padding:"2px 8px", borderRadius:12,
                     background:`${tc}18`, color:tc, fontWeight:600 }}>{entry.tipo}</span>
                   <span style={{ fontSize:13, fontWeight:600, color:B.text }}>{entry.leadNom}</span>
-                  {ag && <span style={{ fontSize:10, padding:"1px 6px", borderRadius:4, background:ag.bg, color:ag.c, fontWeight:600 }}>{ag.n}</span>}
+                  {ag && <span style={{ fontSize:12, padding:"1px 6px", borderRadius:4, background:ag.bg, color:ag.c, fontWeight:600 }}>{ag.n}</span>}
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
-                  <span style={{ fontSize:10, color:B.dim, whiteSpace:"nowrap" }}>{fmtFecha(entry.fecha)}</span>
+                  <span style={{ fontSize:12, color:B.dim, whiteSpace:"nowrap" }}>{fmtFecha(entry.fecha)}</span>
                   <button onClick={() => deleteEntry(entry.id)}
                     style={{ background:"transparent", border:"none", color:B.dim, cursor:"pointer", fontSize:14, padding:"0 2px", lineHeight:1 }}
                     title="Eliminar">×</button>

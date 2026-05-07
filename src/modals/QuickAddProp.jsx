@@ -18,7 +18,7 @@ const inp = {
 function Field({ label, required, half, children }) {
   return (
     <div style={{ marginBottom:12, flex: half ? "1 1 calc(50% - 6px)" : "1 1 100%", minWidth: half ? 160 : 0 }}>
-      <label style={{ fontSize:10, color:"#7A96B8", letterSpacing:"0.8px", textTransform:"uppercase", display:"block", marginBottom:5 }}>
+      <label style={{ fontSize:12, color:"#9ABCDA", letterSpacing:"0.8px", textTransform:"uppercase", display:"block", marginBottom:5 }}>
         {label}{required && <span style={{ color:"#E85D30", marginLeft:2 }}>*</span>}
       </label>
       {children}
@@ -29,7 +29,7 @@ function Field({ label, required, half, children }) {
 function Section({ n, title }) {
   return (
     <>
-      <div style={{ height:1, background:"#1A2F50", margin:"14px 0 12px" }} />
+      <div style={{ height:1, background:"#4A6A90", margin:"14px 0 12px" }} />
       <div style={{ fontSize:11, color:"#4A8AE8", fontWeight:600, letterSpacing:"1px", marginBottom:12 }}>
         {n} {title}
       </div>
@@ -126,15 +126,15 @@ function DireccionField({ value, onChange, onSelect, error }) {
               style={{ padding:"9px 12px", cursor:"pointer", fontSize:12, color:"#E8EEF8",
                 borderBottom:"1px solid #1A2F50",
                 transition:"background .1s" }}
-              onMouseEnter={e => e.target.style.background = "#1A2F50"}
+              onMouseEnter={e => e.target.style.background = "#4A6A90"}
               onMouseLeave={e => e.target.style.background = "transparent"}>
               <div style={{ fontWeight:600 }}>{s.structured_formatting?.main_text || s.description}</div>
-              <div style={{ fontSize:10, color:"#7A96B8", marginTop:2 }}>{s.structured_formatting?.secondary_text || ""}</div>
+              <div style={{ fontSize:12, color:"#9ABCDA", marginTop:2 }}>{s.structured_formatting?.secondary_text || ""}</div>
             </div>
           ))}
         </div>
       )}
-      {error && <div style={{ fontSize:10, color:B.hot, marginTop:3 }}>{error}</div>}
+      {error && <div style={{ fontSize:12, color:B.hot, marginTop:3 }}>{error}</div>}
       <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
     </div>
   );
@@ -198,7 +198,7 @@ export default function QuickAddProp({ onClose, onAdd }) {
         <Field label="Zona" required>
           <input style={{ ...inp, ...(err.zona ? { borderColor: B.hot } : {}) }}
             value={f.zona} onChange={set("zona")} placeholder="ej: La Perla, Centro, Chauvin" />
-          {err.zona && <div style={{ fontSize:10, color:B.hot, marginTop:3 }}>{err.zona}</div>}
+          {err.zona && <div style={{ fontSize:12, color:B.hot, marginTop:3 }}>{err.zona}</div>}
         </Field>
         <Field label="Dirección" required>
           <DireccionField
@@ -208,7 +208,7 @@ export default function QuickAddProp({ onClose, onAdd }) {
             error={err.dir}
           />
           {coords && (
-            <div style={{ fontSize:9, color:B.ok, marginTop:4 }}>
+            <div style={{ fontSize:11, color:B.ok, marginTop:4 }}>
               📍 Ubicación confirmada · {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
             </div>
           )}
@@ -226,7 +226,7 @@ export default function QuickAddProp({ onClose, onAdd }) {
         <Field label="Precio USD" required half>
           <input style={{ ...inp, ...(err.precio ? { borderColor: B.hot } : {}) }}
             type="number" value={f.precio} onChange={set("precio")} placeholder="ej: 115000" />
-          {err.precio && <div style={{ fontSize:10, color:B.hot, marginTop:3 }}>{err.precio}</div>}
+          {err.precio && <div style={{ fontSize:12, color:B.hot, marginTop:3 }}>{err.precio}</div>}
         </Field>
         {f.precio && f.m2tot && (
           <Field label="Precio/m² (auto)" half>
@@ -288,7 +288,7 @@ export default function QuickAddProp({ onClose, onAdd }) {
       <div style={{ display:"flex", gap:10, marginTop:16 }}>
         <button onClick={onClose}
           style={{ flex:1, padding:"11px", borderRadius:9, background:"transparent",
-            border:"1px solid " + B.border, color:B.muted, fontSize:13, cursor:"pointer" }}>
+            border:"1px solid " + B.border, color:"#8AAECC", fontSize:13, cursor:"pointer" }}>
           Cancelar
         </button>
         <button onClick={submit}

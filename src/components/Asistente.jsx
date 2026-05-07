@@ -98,7 +98,7 @@ ${ctxProps}`;
             <div style={{ fontSize:13, fontWeight:600, color:B.text }}>Asistente Alba · Opus 4.6</div>
             <div style={{ display:"flex", alignItems:"center", gap:5 }}>
               <div style={{ width:5, height:5, borderRadius:"50%", background:B.ok }} />
-              <span style={{ fontSize:10, color:B.muted }}>Conoce los {leads.length} leads y {allProps.length} propiedades</span>
+              <span style={{ fontSize:12, color:B.muted }}>Conoce los {leads.length} leads y {allProps.length} propiedades</span>
             </div>
           </div>
         </div>
@@ -110,7 +110,7 @@ ${ctxProps}`;
           {msgs.length === 0 && (
             <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, opacity:.5 }}>
               <div style={{ fontSize:26, fontFamily:"Georgia,serif", color:B.accentL, fontWeight:700 }}>A</div>
-              <div style={{ fontSize:12, color:B.muted, textAlign:"center", maxWidth:260, lineHeight:1.6 }}>
+              <div style={{ fontSize:12, color:"#8AAECC", textAlign:"center", maxWidth:260, lineHeight:1.6 }}>
                 Preguntame cualquier cosa sobre tus leads, propiedades o estrategia del día.
               </div>
             </div>
@@ -122,7 +122,7 @@ ${ctxProps}`;
                 {!isUser && (
                   <div style={{ width:24, height:24, borderRadius:"50%", background:"linear-gradient(135deg,#0B1E40,#1A3A7A)",
                     border:`1px solid ${B.accentL}`, display:"flex", alignItems:"center", justifyContent:"center",
-                    fontSize:10, color:B.accentL, fontFamily:"Georgia,serif", fontWeight:700, flexShrink:0, marginTop:2 }}>A</div>
+                    fontSize:12, color:B.accentL, fontFamily:"Georgia,serif", fontWeight:700, flexShrink:0, marginTop:2 }}>A</div>
                 )}
                 <div style={{ maxWidth:"76%", padding:"9px 13px",
                   borderRadius: isUser ? "12px 12px 3px 12px" : "12px 12px 12px 3px",
@@ -138,7 +138,7 @@ ${ctxProps}`;
             <div style={{ display:"flex", gap:7, alignItems:"flex-start" }}>
               <div style={{ width:24, height:24, borderRadius:"50%", background:"linear-gradient(135deg,#0B1E40,#1A3A7A)",
                 border:`1px solid ${B.accentL}`, display:"flex", alignItems:"center", justifyContent:"center",
-                fontSize:10, color:B.accentL, fontFamily:"Georgia,serif", fontWeight:700, flexShrink:0 }}>A</div>
+                fontSize:12, color:B.accentL, fontFamily:"Georgia,serif", fontWeight:700, flexShrink:0 }}>A</div>
               <div style={{ padding:"10px 14px", borderRadius:"12px 12px 12px 3px",
                 background:B.aiMsg, border:`1px solid ${B.border}`, display:"flex", gap:4, alignItems:"center" }}>
                 {[0,1,2].map(i => (
@@ -175,7 +175,7 @@ ${ctxProps}`;
         <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, overflow:"hidden" }}>
           <div style={{ padding:"10px 12px 8px", borderBottom:`1px solid ${B.border}` }}>
             <div style={{ fontSize:12, fontWeight:600, color:B.text }}>Situaciones del día</div>
-            <div style={{ fontSize:9, color:B.muted, marginTop:1 }}>Basadas en tus datos reales</div>
+            <div style={{ fontSize:11, color:"#8AAECC", marginTop:1 }}>Basadas en tus datos reales</div>
           </div>
           <div style={{ padding:"7px", display:"flex", flexDirection:"column", gap:5 }}>
             {SUGERENCIAS.map((s, i) => (

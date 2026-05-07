@@ -70,7 +70,7 @@ export default function Kanban({ leads, updateLead }) {
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10, marginBottom:14, flexShrink:0 }}>
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Kanban</h1>
-          <p style={{ fontSize:11, color:B.muted, margin:"3px 0 0" }}>{vis.length} leads · arrastrá para cambiar etapa</p>
+          <p style={{ fontSize:11, color:"#8AAECC", margin:"3px 0 0" }}>{vis.length} leads · arrastrá para cambiar etapa</p>
         </div>
         <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
           {["Todos", "C", "A", "F", "L"].map(a => (
@@ -104,9 +104,9 @@ export default function Kanban({ leads, updateLead }) {
                     <div style={{ width:6, height:6, borderRadius:"50%", background:ec }} />
                     <span style={{ fontSize:11, fontWeight:600, color:B.text }}>{etapa}</span>
                   </div>
-                  <span style={{ fontSize:10, fontWeight:700, background:`${ec}22`, color:ec, borderRadius:20, padding:"1px 7px" }}>{items.length}</span>
+                  <span style={{ fontSize:12, fontWeight:700, background:`${ec}22`, color:ec, borderRadius:20, padding:"1px 7px" }}>{items.length}</span>
                 </div>
-                {total > 0 && <div style={{ fontSize:9, color:B.dim }}>USD {total.toLocaleString()}</div>}
+                {total > 0 && <div style={{ fontSize:11, color:B.muted }}>USD {total.toLocaleString()}</div>}
               </div>
 
               {/* Cards */}
@@ -127,16 +127,16 @@ export default function Kanban({ leads, updateLead }) {
                         userSelect:"none", opacity: dragging ? .35 : 1,
                         transform: dragging ? "rotate(1.2deg)" : "none", transition:"opacity .15s" }}>
                       <div style={{ fontSize:11, fontWeight:600, color:B.text, marginBottom:2 }}>{lead.nombre}</div>
-                      {lead.zona && <div style={{ fontSize:9, color:B.muted, marginBottom:5 }}>{lead.zona}</div>}
+                      {lead.zona && <div style={{ fontSize:11, color:"#8AAECC", marginBottom:5 }}>{lead.zona}</div>}
                       {lead.presup && <div style={{ fontSize:11, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif", marginBottom:6 }}>USD {lead.presup.toLocaleString()}</div>}
                       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:4 }}>
                         {ag
-                          ? <span style={{ fontSize:9, padding:"1px 5px", borderRadius:3, background:ag.bg, color:ag.c, fontWeight:600 }}>{ag.n}</span>
-                          : <span style={{ fontSize:9, color:B.dim, padding:"1px 5px", borderRadius:3, background:"rgba(61,90,122,0.2)" }}>Sin asignar</span>
+                          ? <span style={{ fontSize:11, padding:"1px 5px", borderRadius:3, background:ag.bg, color:ag.c, fontWeight:600 }}>{ag.n}</span>
+                          : <span style={{ fontSize:11, color:B.dim, padding:"1px 5px", borderRadius:3, background:"rgba(61,90,122,0.2)" }}>Sin asignar</span>
                         }
-                        {lead.dias > 0 && <span style={{ fontSize:9, background:s.bg, color:s.c, padding:"1px 5px", borderRadius:3 }}>{lead.dias}d</span>}
+                        {lead.dias > 0 && <span style={{ fontSize:11, background:s.bg, color:s.c, padding:"1px 5px", borderRadius:3 }}>{lead.dias}d</span>}
                       </div>
-                      {lead.notaImp && <div style={{ fontSize:9, color:B.hot, marginTop:4, fontWeight:600 }}>{lead.notaImp}</div>}
+                      {lead.notaImp && <div style={{ fontSize:11, color:B.hot, marginTop:4, fontWeight:600 }}>{lead.notaImp}</div>}
                     </div>
                   );
                 })}

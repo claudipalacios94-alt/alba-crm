@@ -14,7 +14,7 @@ const inp = {
 function Field({ label, required, half, children }) {
   return (
     <div style={{ marginBottom:12, flex: half ? "1 1 calc(50% - 6px)" : "1 1 100%", minWidth: half ? 160 : 0 }}>
-      <label style={{ fontSize:10, color:"#7A96B8", letterSpacing:"0.8px", textTransform:"uppercase", display:"block", marginBottom:5 }}>
+      <label style={{ fontSize:12, color:"#9ABCDA", letterSpacing:"0.8px", textTransform:"uppercase", display:"block", marginBottom:5 }}>
         {label}{required && <span style={{ color:"#E85D30", marginLeft:2 }}>*</span>}
       </label>
       {children}
@@ -25,7 +25,7 @@ function Field({ label, required, half, children }) {
 function Section({ n, title }) {
   return (
     <>
-      <div style={{ height:1, background:"#1A2F50", margin:"14px 0 12px" }} />
+      <div style={{ height:1, background:"#4A6A90", margin:"14px 0 12px" }} />
       <div style={{ fontSize:11, color:"#4A8AE8", fontWeight:600, letterSpacing:"1px", marginBottom:12 }}>
         {n} {title}
       </div>
@@ -79,7 +79,7 @@ export default function QuickAddLead({ onClose, onAdd }) {
       <div style={{ display:"flex", flexWrap:"wrap", gap:12 }}>
         <Field label="Nombre" required half>
           <input style={{ ...inp, ...has("nombre") }} value={f.nombre} onChange={set("nombre")} placeholder="Nombre del contacto" />
-          {err.nombre && <div style={{ fontSize:10, color:B.hot, marginTop:3 }}>{err.nombre}</div>}
+          {err.nombre && <div style={{ fontSize:12, color:B.hot, marginTop:3 }}>{err.nombre}</div>}
         </Field>
         <Field label="Teléfono" half>
           <input style={inp} value={f.tel} onChange={set("tel")} placeholder="223-xxx-xxxx" />
@@ -130,7 +130,7 @@ export default function QuickAddLead({ onClose, onAdd }) {
         </Field>
         <Field label="Zonas de interés" required>
           <input style={{ ...inp, ...has("zonas") }} value={f.zonas} onChange={set("zonas")} placeholder="ej: La Perla, Chauvin, Centro" />
-          {err.zonas && <div style={{ fontSize:10, color:B.hot, marginTop:3 }}>{err.zonas}</div>}
+          {err.zonas && <div style={{ fontSize:12, color:B.hot, marginTop:3 }}>{err.zonas}</div>}
         </Field>
         <Field label="Ambientes" half>
           <input style={inp} value={f.ambientes} onChange={set("ambientes")} placeholder="ej: 2, 3" />
@@ -178,7 +178,7 @@ export default function QuickAddLead({ onClose, onAdd }) {
       <div style={{ display:"flex", gap:10, marginTop:16 }}>
         <button onClick={onClose}
           style={{ flex:1, padding:"11px", borderRadius:9, background:"transparent",
-            border:`1px solid ${B.border}`, color:B.muted, fontSize:13, cursor:"pointer" }}>
+            border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:13, cursor:"pointer" }}>
           Cancelar
         </button>
         <button onClick={submit}

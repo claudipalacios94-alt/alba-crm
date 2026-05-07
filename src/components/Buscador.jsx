@@ -94,9 +94,9 @@ Respondé en español rioplatense, directo y práctico.`;
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
               <span style={{ fontSize:13, fontWeight:600, color:B.text }}>{lead.nombre}</span>
-              <span style={{ fontSize:10, padding:"1px 7px", borderRadius:12,
+              <span style={{ fontSize:12, padding:"1px 7px", borderRadius:12,
                 background:`${s.c}18`, color:s.c }}>{s.label}</span>
-              {ag && <span style={{ fontSize:10, padding:"1px 6px", borderRadius:4,
+              {ag && <span style={{ fontSize:12, padding:"1px 6px", borderRadius:4,
                 background:ag.bg, color:ag.c, fontWeight:600 }}>{ag.n}</span>}
             </div>
             <div style={{ fontSize:11, color:B.muted }}>
@@ -128,7 +128,7 @@ Respondé en español rioplatense, directo y práctico.`;
           <div style={{ borderTop:`1px solid ${B.border}`, padding:"14px 16px",
             background:"rgba(10,21,37,0.4)" }}>
             {busy && (
-              <div style={{ display:"flex", alignItems:"center", gap:10, color:B.muted, fontSize:13 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, color:"#8AAECC", fontSize:13 }}>
                 <div style={{ width:16, height:16, border:`2px solid ${B.border}`,
                   borderTop:`2px solid ${B.accentL}`, borderRadius:"50%",
                   animation:"spin .7s linear infinite", flexShrink:0 }} />
@@ -142,7 +142,7 @@ Respondé en español rioplatense, directo y práctico.`;
             )}
             {!busy && res && (
               <div>
-                <div style={{ fontSize:10, color:B.dim, marginBottom:10,
+                <div style={{ fontSize:12, color:B.dim, marginBottom:10,
                   display:"flex", justifyContent:"space-between" }}>
                   <span>Búsqueda web en tiempo real</span>
                   <span>{res.timestamp.toLocaleTimeString("es-AR", { hour:"2-digit", minute:"2-digit" })}</span>
@@ -165,7 +165,7 @@ Respondé en español rioplatense, directo y práctico.`;
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:14, marginBottom:22 }}>
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Buscador automático</h1>
-          <p style={{ fontSize:11, color:B.muted, margin:"4px 0 0" }}>
+          <p style={{ fontSize:11, color:"#8AAECC", margin:"4px 0 0" }}>
             ZonaProp · Argenprop · Mercado Libre · búsqueda web en tiempo real
           </p>
         </div>
@@ -191,7 +191,7 @@ Respondé en español rioplatense, directo y práctico.`;
           <div key={s.l} style={{ background:B.card, border:`1px solid ${s.c}30`,
             borderRadius:10, padding:"8px 16px", textAlign:"center" }}>
             <div style={{ fontSize:20, fontWeight:700, color:s.c, fontFamily:"Georgia,serif", lineHeight:1 }}>{s.v}</div>
-            <div style={{ fontSize:10, color:B.muted, marginTop:3 }}>{s.l}</div>
+            <div style={{ fontSize:12, color:"#8AAECC", marginTop:3 }}>{s.l}</div>
           </div>
         ))}
       </div>
@@ -223,14 +223,14 @@ Respondé en español rioplatense, directo y práctico.`;
         <div>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
             <div style={{ width:8, height:8, borderRadius:"50%", background:B.muted }} />
-            <span style={{ fontSize:11, fontWeight:600, color:B.muted, letterSpacing:"1px" }}>OTROS CON ZONA Y PRESUPUESTO</span>
+            <span style={{ fontSize:11, fontWeight:600, color:"#8AAECC", letterSpacing:"1px" }}>OTROS CON ZONA Y PRESUPUESTO</span>
           </div>
           {resto.map(l => <LeadCard key={l.id} lead={l} />)}
         </div>
       )}
  
       {activos.length === 0 && (
-        <div style={{ textAlign:"center", padding:"60px", color:B.dim }}>
+        <div style={{ textAlign:"center", padding:"60px", color:B.muted }}>
           No hay leads activos con zona y presupuesto definidos.
         </div>
       )}
