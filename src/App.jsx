@@ -206,7 +206,7 @@ export default function App() {
  
       {/* ── MAIN ────────────────────────────────────────────── */}
       <div style={{
-        flex:1, minWidth:0,
+        flex:1, minWidth:0, overflow:"hidden",
         padding: isFullH ? "18px 20px 0" : "22px 26px",
         overflowY: isFullH ? "hidden" : "auto",
         display:"flex", flexDirection:"column",
