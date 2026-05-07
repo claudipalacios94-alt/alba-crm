@@ -98,22 +98,35 @@ export default function App() {
   // ── App principal ─────────────────────────────────────────
   return (
     <div style={{ display:"flex", height:"100vh", background:B.bg,
-      fontFamily:"'Trebuchet MS',sans-serif", color:B.text,
+      fontFamily:"'DM Sans',sans-serif", color:B.text,
       overflow:"hidden", position:"relative" }}>
- 
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+        * { box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #1A2F50; border-radius: 2px; }
+        .nav-btn:hover { background: rgba(42,91,173,0.12) !important; color: #6AAEF8 !important; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
+
       {/* ── SIDEBAR ─────────────────────────────────────────── */}
-      <div style={{ width:204, background:B.sidebar, borderRight:`1px solid ${B.border}`,
-        display:"flex", flexDirection:"column", flexShrink:0 }}>
- 
+      <div style={{ width:210, background:"#080F1E", borderRight:"none",
+        display:"flex", flexDirection:"column", flexShrink:0, position:"relative" }}>
+
+        {/* Franja azul superior */}
+        <div style={{ height:3, background:"linear-gradient(90deg,#1A3A7A,#3A6AD4,#5A9AFF,#3A6AD4,#1A3A7A)", flexShrink:0 }} />
+
         {/* Logo */}
-        <div style={{ display:"flex", alignItems:"center", gap:9, padding:"16px 14px 12px" }}>
-          <div style={{ width:33, height:33, borderRadius:"50%",
-            background:"linear-gradient(135deg,#0B1E40,#1A3A7A)", border:"1px solid #2A5BAD",
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"18px 16px 12px" }}>
+          <div style={{ width:34, height:34, borderRadius:8,
+            background:"linear-gradient(135deg,#1A3A7A,#2A5BAD)", border:"1px solid #2A5BAD",
             display:"flex", alignItems:"center", justifyContent:"center",
-            fontSize:15, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif", flexShrink:0 }}>A</div>
+            fontSize:17, fontWeight:700, color:"#7AB8FF",
+            fontFamily:"'Cormorant Garamond',serif", flexShrink:0 }}>A</div>
           <div>
-            <div style={{ fontFamily:"Georgia,serif", fontWeight:700, fontSize:13, color:B.text, letterSpacing:"2px" }}>ALBA</div>
-            <div style={{ fontSize:8, color:B.muted, letterSpacing:"1.2px" }}>INVERSIONES · REG 3832</div>
+            <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:700, fontSize:15, color:"#D0DDEE", letterSpacing:"3px" }}>ALBA</div>
+            <div style={{ fontSize:7, color:"#2A4060", letterSpacing:"1.5px", fontWeight:500 }}>INVERSIONES · REG 3832</div>
           </div>
         </div>
  
@@ -143,20 +156,21 @@ export default function App() {
         {/* Nav items */}
         <nav style={{ flex:1, padding:"0 8px", overflowY:"auto", scrollbarWidth:"none" }}>
           {NAV.map(n => (
-            <button key={n.id} onClick={() => setView(n.id)}
-              style={{ display:"flex", alignItems:"center", gap:7, width:"100%",
-                padding:"9px 10px", borderRadius:8, marginBottom:3,
-                background: view === n.id ? B.accentGlow : "transparent",
-                border: view === n.id ? `1px solid ${B.accent}` : "1px solid transparent",
-                color: view === n.id ? B.accentL : B.muted,
+            <button key={n.id} className="nav-btn" onClick={() => setView(n.id)}
+              style={{ display:"flex", alignItems:"center", gap:8, width:"100%",
+                padding:"9px 10px", borderRadius:8, marginBottom:2,
+                background: view === n.id ? "rgba(42,91,173,0.18)" : "transparent",
+                border: view === n.id ? "1px solid rgba(74,138,232,0.35)" : "1px solid transparent",
+                color: view === n.id ? "#7AB8FF" : "#2A4060",
                 fontSize:12, fontWeight: view === n.id ? 600 : 400,
-                cursor:"pointer", textAlign:"left" }}>
-              <span style={{ width:5, height:5, borderRadius:"50%", flexShrink:0,
-                background: view === n.id ? B.accentL : B.dim }} />
+                cursor:"pointer", textAlign:"left",
+                fontFamily:"'DM Sans',sans-serif", transition:"all .15s" }}>
+              <span style={{ width:4, height:4, borderRadius:"50%", flexShrink:0,
+                background: view === n.id ? "#5A9AFF" : "#1A2F50" }} />
               {n.label}
               {n.badge && view !== n.id && (
-                <span style={{ marginLeft:"auto", background: n.badge === "IA" ? "#2A9B8A" : B.accent,
-                  color:"#fff", fontSize:7, fontWeight:700, borderRadius:4, padding:"1px 6px" }}>
+                <span style={{ marginLeft:"auto", background: n.badge === "IA" ? "rgba(46,158,106,0.2)" : "rgba(42,91,173,0.2)",
+                  color: n.badge === "IA" ? "#4ABF8A" : "#6AAEF8", fontSize:7, fontWeight:700, borderRadius:4, padding:"1px 6px" }}>
                   {n.badge}
                 </span>
               )}
