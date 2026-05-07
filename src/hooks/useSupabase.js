@@ -6,8 +6,8 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { LEADS_DEMO, PROPS_DEMO, ALQUILERES_DEMO } from "../data/constants.js";
 
-const SUPABASE_URL = "https://brhhwcrsoqtptbrnnzlu.supabase.co";
-const SUPABASE_KEY = "sb_publishable_zqtYWADTxXseE7k7M722kA_6p7LEZbs";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 export { supabase };
@@ -129,7 +129,7 @@ export function useSupabase() {
 
   async function geocodeAddress(direccion) {
     if (!direccion) return { lat: null, lng: null };
-    const KEY = "AIzaSyD2ZKp0GLdu7rUTD2DWrOrpCy8LHeulGZM";
+    const KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
     const inMDP = (lat, lng) => lat > -38.15 && lat < -37.85 && lng > -57.75 && lng < -57.40;
     try {
       const r1 = await fetch("https://maps.googleapis.com/maps/api/geocode/json?address=" +

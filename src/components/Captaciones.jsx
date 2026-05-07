@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { B, AG } from "../data/constants.js";
 
-const GOOGLE_KEY = "AIzaSyD2ZKp0GLdu7rUTD2DWrOrpCy8LHeulGZM";
+const GOOGLE_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
 async function geocodeAddress(dir) {
   try {
