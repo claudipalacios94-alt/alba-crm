@@ -102,10 +102,10 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:16 }}>
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>CRM Leads</h1>
-          <p style={{ fontSize:11, color:B.muted, margin:"3px 0 0" }}>{filt.length} contactos</p>
+          <p style={{ fontSize:11, color:"#8AAECC", margin:"3px 0 0" }}>{filt.length} contactos</p>
         </div>
         <button onClick={() => setMostrarPerdidos(p => !p)}
-          style={{ fontSize:10, color:mostrarPerdidos?B.hot:B.dim, cursor:"pointer",
+          style={{ fontSize:12, color:mostrarPerdidos?B.hot:B.dim, cursor:"pointer",
             background:"transparent", border:`1px solid ${mostrarPerdidos?B.hot:B.border}`,
             borderRadius:6, padding:"4px 10px" }}>
           {mostrarPerdidos ? "Ocultar archivados" : `Archivados (${perdidosCount})`}
@@ -122,14 +122,14 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
             marginBottom:10, outline:"none", boxSizing:"border-box" }} />
         <div style={{ display:"flex", flexWrap:"wrap", gap:12 }}>
           <div style={{ display:"flex", gap:4, alignItems:"center" }}>
-            <span style={{ fontSize:9, color:B.dim }}>TEMP</span>
+            <span style={{ fontSize:11, color:B.muted }}>TEMP</span>
             {["Todos","Caliente","Tibio","Frío"].map(s => (
               <button key={s} onClick={() => setFs(s)}
                 style={chip(fs===s, s==="Caliente"?B.hot:s==="Tibio"?B.warm:B.muted)}>{s}</button>
             ))}
           </div>
           <div style={{ display:"flex", gap:4, alignItems:"center" }}>
-            <span style={{ fontSize:9, color:B.dim }}>AGENTE</span>
+            <span style={{ fontSize:11, color:B.muted }}>AGENTE</span>
             {["Todos","C","A","F","L","Sin asignar"].map(a => (
               <button key={a} onClick={() => setFa(a)}
                 style={chip(fa===a, a==="Sin asignar"?B.hot:a!=="Todos"?AG[a]?.c:B.accentL)}>
@@ -138,7 +138,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
             ))}
           </div>
           <div style={{ display:"flex", gap:4, alignItems:"center" }}>
-            <span style={{ fontSize:9, color:B.dim }}>PERFIL</span>
+            <span style={{ fontSize:11, color:B.muted }}>PERFIL</span>
             {["Todos","Comprador","Inversor"].map(o => (
               <button key={o} onClick={() => setFop(o)}
                 style={chip(fop===o, o==="Inversor"?"#9B6DC8":B.accentL)}>{o}</button>
@@ -156,7 +156,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
         <div key={grupo.titulo} style={{ marginBottom:16 }}>
           <div style={{ fontSize:11, fontWeight:700, color:grupo.color, letterSpacing:"1.5px",
             marginBottom:8, paddingLeft:4 }}>
-            {grupo.titulo} <span style={{ fontWeight:400, color:B.dim }}>({grupo.leads.length})</span>
+            {grupo.titulo} <span style={{ fontWeight:400, color:B.muted }}>({grupo.leads.length})</span>
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {grupo.leads.map(lead => {
@@ -181,12 +181,12 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
                     <span style={{ fontSize:13, fontWeight:700, color:B.text }}>{lead.nombre}</span>
-                    {esInv && <span style={{ fontSize:9, padding:"1px 6px", borderRadius:10,
+                    {esInv && <span style={{ fontSize:11, padding:"1px 6px", borderRadius:10,
                       background:"#9B6DC822", color:"#9B6DC8", fontWeight:700 }}>💼 INV</span>}
-                    {ag && <span style={{ fontSize:9, padding:"1px 5px", borderRadius:3,
-                      background:ag.bg||"#1A2F50", color:ag.c, fontWeight:700 }}>{ag.n}</span>}
+                    {ag && <span style={{ fontSize:11, padding:"1px 5px", borderRadius:3,
+                      background:ag.bg||"#4A6A90", color:ag.c, fontWeight:700 }}>{ag.n}</span>}
                   </div>
-                  <div style={{ fontSize:10, color:B.muted, display:"flex", gap:10, flexWrap:"wrap" }}>
+                  <div style={{ fontSize:12, color:"#8AAECC", display:"flex", gap:10, flexWrap:"wrap" }}>
                     {lead.zona && <span>📍 {lead.zona}</span>}
                     {lead.tipo && <span>{lead.tipo}</span>}
                     {lead.presup && <span style={{ color:B.accentL, fontFamily:"Georgia,serif", fontWeight:700 }}>
@@ -203,11 +203,11 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                     ))}
                   </div>
                   <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-                    <span style={{ fontSize:9, padding:"2px 8px", borderRadius:4,
+                    <span style={{ fontSize:11, padding:"2px 8px", borderRadius:4,
                       background:`${ec}18`, color:ec }}>{lead.etapa}</span>
-                    <span style={{ fontSize:9, padding:"2px 8px", borderRadius:4,
+                    <span style={{ fontSize:11, padding:"2px 8px", borderRadius:4,
                       background:s.bg, color:s.c }}>{s.label}</span>
-                    <span style={{ fontSize:9, color:lead.dias>7?B.hot:lead.dias>3?B.warm:B.ok }}>
+                    <span style={{ fontSize:11, color:lead.dias>7?B.hot:lead.dias>3?B.warm:B.ok }}>
                       {lead.dias}d
                     </span>
                   </div>
@@ -227,26 +227,26 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                           ["ORIGEN","origen","text"],["PRÓXIMA ACCIÓN","proxAccion","text"],
                         ].map(([label, key, type]) => (
                           <div key={key}>
-                            <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>{label}</label>
+                            <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>{label}</label>
                             <input type={type} value={editData[key]}
                               onChange={e => setEditData(d => ({...d, [key]:e.target.value}))} style={inp} />
                           </div>
                         ))}
                         <div>
-                          <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>TIPO OP.</label>
+                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO OP.</label>
                           <select value={editData.op} onChange={e=>setEditData(d=>({...d,op:e.target.value}))} style={inp}>
                             {TIPOS_OP.map(t=><option key={t}>{t}</option>)}
                           </select>
                         </div>
                         <div>
-                          <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>TIPO PROP.</label>
+                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO PROP.</label>
                           <select value={editData.tipo} onChange={e=>setEditData(d=>({...d,tipo:e.target.value}))} style={inp}>
                             {TIPOS_PROP.map(t=><option key={t}>{t}</option>)}
                           </select>
                         </div>
                       </div>
                       <div>
-                        <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>NOTA</label>
+                        <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>NOTA</label>
                         <textarea value={editData.nota} onChange={e=>setEditData(d=>({...d,nota:e.target.value}))}
                           rows={3} style={{ ...inp, resize:"none" }} />
                       </div>
@@ -259,7 +259,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                         </button>
                         <button onClick={() => setEditing(null)}
                           style={{ padding:"8px 14px", borderRadius:7, cursor:"pointer",
-                            background:"transparent", border:`1px solid ${B.border}`, color:B.muted, fontSize:12 }}>
+                            background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:12 }}>
                           Cancelar
                         </button>
                       </div>
@@ -268,10 +268,10 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                     <div style={{ paddingTop:12 }}>
                       {/* Etapa selector */}
                       <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
-                        <span style={{ fontSize:9, color:B.dim, alignSelf:"center" }}>ETAPA</span>
+                        <span style={{ fontSize:11, color:B.dim, alignSelf:"center" }}>ETAPA</span>
                         {ETAPAS.map(e => (
                           <button key={e} onClick={() => setEtapa(lead.id, e)}
-                            style={{ padding:"3px 9px", borderRadius:12, cursor:"pointer", fontSize:10,
+                            style={{ padding:"3px 9px", borderRadius:12, cursor:"pointer", fontSize:12,
                               border:`1px solid ${lead.etapa===e?(ECOL[e]||B.dim):B.border}`,
                               background:lead.etapa===e?`${ECOL[e]||B.dim}22`:"transparent",
                               color:lead.etapa===e?(ECOL[e]||B.dim):B.muted, fontWeight:lead.etapa===e?700:400 }}>
@@ -282,10 +282,10 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
  
                       {/* Agente selector */}
                       <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
-                        <span style={{ fontSize:9, color:B.dim, alignSelf:"center" }}>AGENTE</span>
+                        <span style={{ fontSize:11, color:B.dim, alignSelf:"center" }}>AGENTE</span>
                         {Object.entries(AG).map(([k,v]) => (
                           <button key={k} onClick={() => setAgente(lead.id, k)}
-                            style={{ padding:"3px 9px", borderRadius:12, cursor:"pointer", fontSize:10,
+                            style={{ padding:"3px 9px", borderRadius:12, cursor:"pointer", fontSize:12,
                               border:`1px solid ${lead.ag===k?v.c:B.border}`,
                               background:lead.ag===k?`${v.c}22`:"transparent",
                               color:lead.ag===k?v.c:B.muted, fontWeight:lead.ag===k?700:400 }}>
@@ -324,7 +324,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                         if (!matches.length) return null;
                         return (
                           <div style={{ marginBottom:10 }}>
-                            <div style={{ fontSize:9, color:B.muted, letterSpacing:"1px", fontWeight:600, marginBottom:6 }}>
+                            <div style={{ fontSize:11, color:"#8AAECC", letterSpacing:"1px", fontWeight:600, marginBottom:6 }}>
                               🏠 PROPIEDADES COMPATIBLES ({matches.length})
                             </div>
                             {matches.slice(0,3).map(prop => {
@@ -339,13 +339,13 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                                     <span style={{ color:B.text, fontWeight:600 }}>{prop.tipo}</span>
                                     {" · "}{prop.zona}
                                     {" · "}<span style={{ color:B.accentL }}>USD {(prop.precio||0).toLocaleString()}</span>
-                                    {prop.dir && <span style={{ color:B.dim }}> · {prop.dir}</span>}
+                                    {prop.dir && <span style={{ color:B.muted }}> · {prop.dir}</span>}
                                   </div>
                                   {wa && (
                                     <a href={wa} target="_blank" rel="noreferrer"
                                       style={{ padding:"3px 9px", borderRadius:6, whiteSpace:"nowrap",
                                         background:"rgba(37,211,102,0.1)", border:"1px solid rgba(37,211,102,0.25)",
-                                        color:"#25D366", fontSize:10, textDecoration:"none", fontWeight:600 }}>
+                                        color:"#25D366", fontSize:12, textDecoration:"none", fontWeight:600 }}>
                                       💬 WA
                                     </a>
                                   )}
@@ -360,32 +360,32 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                       <div style={{ display:"flex", gap:7, flexWrap:"wrap" }}>
                         <button onClick={() => contacteHoy(lead.id)}
                           style={{ padding:"5px 12px", borderRadius:6, background:`${B.ok}18`,
-                            border:`1px solid ${B.ok}40`, color:B.ok, fontSize:10, cursor:"pointer", fontWeight:600 }}>
+                            border:`1px solid ${B.ok}40`, color:B.ok, fontSize:12, cursor:"pointer", fontWeight:600 }}>
                           ✅ Contacté hoy
                         </button>
                         {lead.tel && (
                           <a href={`https://wa.me/${lead.tel.replace(/\D/g,"")}`} target="_blank" rel="noreferrer"
                             style={{ padding:"5px 12px", borderRadius:6, background:"rgba(37,211,102,0.1)",
                               border:"1px solid rgba(37,211,102,0.25)", color:"#25D366",
-                              fontSize:10, textDecoration:"none", fontWeight:600 }}>
+                              fontSize:12, textDecoration:"none", fontWeight:600 }}>
                             💬 WA
                           </a>
                         )}
                         {lead.tel && (
                           <a href={`tel:${lead.tel}`}
                             style={{ padding:"5px 12px", borderRadius:6, background:`${B.ok}18`,
-                              border:`1px solid ${B.ok}40`, color:B.ok, fontSize:10, textDecoration:"none", fontWeight:600 }}>
+                              border:`1px solid ${B.ok}40`, color:B.ok, fontSize:12, textDecoration:"none", fontWeight:600 }}>
                             📞 Llamar
                           </a>
                         )}
                         <button onClick={() => startEdit(lead)}
                           style={{ padding:"5px 12px", borderRadius:6, background:`${B.accentL}12`,
-                            border:`1px solid ${B.accentL}30`, color:B.accentL, fontSize:10, cursor:"pointer", fontWeight:600 }}>
+                            border:`1px solid ${B.accentL}30`, color:B.accentL, fontSize:12, cursor:"pointer", fontWeight:600 }}>
                           ✏️ Editar
                         </button>
                         <button onClick={() => setConfirmDelete(lead)}
                           style={{ padding:"5px 12px", borderRadius:6, background:`${B.hot}12`,
-                            border:`1px solid ${B.hot}30`, color:B.hot, fontSize:10, cursor:"pointer", fontWeight:600, marginLeft:"auto" }}>
+                            border:`1px solid ${B.hot}30`, color:B.hot, fontSize:12, cursor:"pointer", fontWeight:600, marginLeft:"auto" }}>
                           🗑
                         </button>
                       </div>
@@ -400,7 +400,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
         </div>
       ))}
       {filt.length === 0 && (
-        <div style={{ textAlign:"center", padding:"40px", color:B.muted, fontSize:13 }}>Sin resultados</div>
+        <div style={{ textAlign:"center", padding:"40px", color:"#8AAECC", fontSize:13 }}>Sin resultados</div>
       )}
  
       {/* Modal eliminar */}
@@ -414,13 +414,13 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
             <div style={{ fontSize:22, marginBottom:12, textAlign:"center" }}>🗑</div>
             <div style={{ fontSize:15, fontWeight:700, color:B.text, fontFamily:"Georgia,serif",
               marginBottom:8, textAlign:"center" }}>¿Eliminar lead?</div>
-            <div style={{ fontSize:13, color:B.muted, textAlign:"center", marginBottom:24 }}>
+            <div style={{ fontSize:13, color:"#8AAECC", textAlign:"center", marginBottom:24 }}>
               Vas a eliminar a <strong style={{ color:B.text }}>{confirmDelete.nombre}</strong>. No se puede deshacer.
             </div>
             <div style={{ display:"flex", gap:10 }}>
               <button onClick={() => setConfirmDelete(null)}
                 style={{ flex:1, padding:"11px", borderRadius:9, cursor:"pointer",
-                  background:"transparent", border:`1px solid ${B.border}`, color:B.muted, fontSize:13 }}>
+                  background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:13 }}>
                 Cancelar
               </button>
               <button onClick={ejecutarEliminar}

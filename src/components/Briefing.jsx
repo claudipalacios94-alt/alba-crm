@@ -17,7 +17,7 @@ function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" })
     ctx.clearRect(0, 0, W, H);
     ctx.beginPath();
     ctx.arc(cx, cy, r, startAngle, endAngle);
-    ctx.strokeStyle = "#0D1829";
+    ctx.strokeStyle = "#0F1E35";
     ctx.lineWidth = 10;
     ctx.lineCap = "round";
     ctx.stroke();
@@ -41,7 +41,7 @@ function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" })
     ctx.fill();
     ctx.beginPath();
     ctx.arc(cx, cy, 3, 0, Math.PI * 2);
-    ctx.fillStyle = "#0D1829";
+    ctx.fillStyle = "#0F1E35";
     ctx.fill();
   }, [pct, color]);
 
@@ -60,7 +60,7 @@ function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" })
       <div style={{ fontSize:18, fontWeight:600, color, fontFamily:"'Cormorant Garamond',Georgia,serif",
         marginTop:-8, letterSpacing:"0.5px", lineHeight:1 }}>{fmt(value)}</div>
       <div style={{ fontSize:11, color:"#A8C8E8", fontWeight:500, marginTop:4, textAlign:"center", lineHeight:1.3 }}>{label}</div>
-      {sublabel && <div style={{ fontSize:10, color:"#4A6A9A", marginTop:2 }}>{sublabel}</div>}
+      {sublabel && <div style={{ fontSize:12, color:"#4A6A9A", marginTop:2 }}>{sublabel}</div>}
     </div>
   );
 }
@@ -72,7 +72,7 @@ function PipelineBar({ leads }) {
   const total   = activos.length || 1;
   return (
     <div>
-      <div style={{ fontSize:11, color:"#5A7A9A", fontWeight:600, letterSpacing:"1px", marginBottom:10, textTransform:"uppercase" }}>EMBUDO COMERCIAL</div>
+      <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:10, textTransform:"uppercase" }}>EMBUDO COMERCIAL</div>
       <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
         {etapas.map((e, i) => {
           const n = activos.filter(l => l.etapa === e).length;
@@ -80,12 +80,12 @@ function PipelineBar({ leads }) {
           const isCuello = i > 0 && n < activos.filter(l => l.etapa === etapas[i-1]).length * 0.3 && n > 0;
           return (
             <div key={e} style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <div style={{ fontSize:10, color:B.muted, width:110, textAlign:"right", flexShrink:0 }}>{e}</div>
-              <div style={{ flex:1, height:8, background:"#1A2F50", borderRadius:4, overflow:"hidden" }}>
+              <div style={{ fontSize:12, color:"#8AAECC", width:110, textAlign:"right", flexShrink:0 }}>{e}</div>
+              <div style={{ flex:1, height:8, background:"#4A6A90", borderRadius:4, overflow:"hidden" }}>
                 <div style={{ height:"100%", width:pct+"%", background:colors[i], borderRadius:4, transition:"width .6s ease" }} />
               </div>
               <div style={{ fontSize:11, fontWeight:700, color:colors[i], width:28, flexShrink:0 }}>{n}</div>
-              {isCuello && <div style={{ fontSize:9, color:B.hot }}>⚠️</div>}
+              {isCuello && <div style={{ fontSize:11, color:B.hot }}>⚠️</div>}
             </div>
           );
         })}
@@ -104,15 +104,15 @@ function LeadCard({ lead }) {
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
           <span style={{ fontSize:14, fontWeight:700, color:"#E8F0FA" }}>{lead.nombre}</span>
-          {ag && <span style={{ fontSize:10, padding:"2px 7px", borderRadius:4, background:ag.bg||"rgba(42,91,173,0.25)", color:ag.c, fontWeight:700, border:"1px solid "+ag.c+"40" }}>{ag.n}</span>}
+          {ag && <span style={{ fontSize:12, padding:"2px 7px", borderRadius:4, background:ag.bg||"rgba(42,91,173,0.25)", color:ag.c, fontWeight:700, border:"1px solid "+ag.c+"40" }}>{ag.n}</span>}
         </div>
         <div style={{ fontSize:11, color:"#7A9ABE" }}>{lead.zona} · {lead.tipo} · {lead.presup ? "USD " + lead.presup.toLocaleString() : "—"}</div>
         {lead.nota && <div style={{ fontSize:11, color:"#6A8AAE", marginTop:3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"100%", fontStyle:"italic" }}>{lead.nota}</div>}
       </div>
       <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0 }}>
         <div style={{ fontSize:11, color:urgColor, fontWeight:700 }}>{razon}</div>
-        {lead.etapa && <div style={{ fontSize:10, padding:"2px 8px", borderRadius:10, background:urgColor+"22", color:urgColor, fontWeight:600, border:"1px solid "+urgColor+"40" }}>{lead.etapa}</div>}
-        {waLink && <a href={waLink} target="_blank" rel="noreferrer" style={{ padding:"4px 10px", borderRadius:6, background:"rgba(37,211,102,0.12)", border:"1px solid rgba(37,211,102,0.3)", color:"#25D366", fontSize:10, textDecoration:"none", fontWeight:600 }}>💬 WA</a>}
+        {lead.etapa && <div style={{ fontSize:12, padding:"2px 8px", borderRadius:10, background:urgColor+"22", color:urgColor, fontWeight:600, border:"1px solid "+urgColor+"40" }}>{lead.etapa}</div>}
+        {waLink && <a href={waLink} target="_blank" rel="noreferrer" style={{ padding:"4px 10px", borderRadius:6, background:"rgba(37,211,102,0.12)", border:"1px solid rgba(37,211,102,0.3)", color:"#25D366", fontSize:12, textDecoration:"none", fontWeight:600 }}>💬 WA</a>}
       </div>
     </div>
   );
@@ -169,7 +169,7 @@ export default function Briefing({ leads, properties }) {
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
         <div>
           <h1 style={{ fontSize:24, fontWeight:600, color:"#D0DDEE", margin:0, fontFamily:"Cormorant Garamond,Georgia,serif", letterSpacing:"0.5px" }}>{saludo} ✦</h1>
-          <div style={{ fontSize:11, color:B.muted, marginTop:3 }}>{hoy.toLocaleDateString("es-AR", { weekday:"long", day:"numeric", month:"long", year:"numeric" })}</div>
+          <div style={{ fontSize:11, color:"#8AAECC", marginTop:3 }}>{hoy.toLocaleDateString("es-AR", { weekday:"long", day:"numeric", month:"long", year:"numeric" })}</div>
         </div>
         <div style={{ display:"flex", gap:5 }}>
           {["Todos","C","A","F","L"].map(a => (
@@ -193,7 +193,7 @@ export default function Briefing({ leads, properties }) {
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
         {/* Llamar hoy */}
         <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
-          <div style={{ fontSize:11, color:"#5A7A9A", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>🔥 LLAMAR HOY</div>
+          <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>🔥 LLAMAR HOY</div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {urgentes.length === 0 && <div style={{ textAlign:"center", padding:"20px 0", color:B.dim, fontSize:12 }}>Sin leads urgentes</div>}
             {urgentes.map(l => <LeadCard key={l.id} lead={l} />)}
@@ -204,7 +204,7 @@ export default function Briefing({ leads, properties }) {
         <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16, display:"flex", flexDirection:"column", gap:20 }}>
           <PipelineBar leads={filtrados} />
           <div>
-            <div style={{ fontSize:11, color:"#5A7A9A", fontWeight:600, letterSpacing:"1px", marginBottom:10, textTransform:"uppercase" }}>RESUMEN RÁPIDO</div>
+            <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:10, textTransform:"uppercase" }}>RESUMEN RÁPIDO</div>
             <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
               {[
                 { label:"Sin asignar",       val: activos.filter(l=>!l.ag).length,          color:B.hot  },
@@ -225,7 +225,7 @@ export default function Briefing({ leads, properties }) {
       {/* Matches del día */}
       {matchesHoy.length > 0 && (
         <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
-          <div style={{ fontSize:11, color:"#5A7A9A", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>
+          <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>
             📌 MATCHES DEL DÍA — propiedades en cartera que encajan con tus leads
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
@@ -233,7 +233,7 @@ export default function Briefing({ leads, properties }) {
               <div key={lead.id} style={{ background:B.card, border:"1px solid " + B.border, borderRadius:10, padding:"12px 14px" }}>
                 <div style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:8 }}>
                   {lead.nombre}
-                  <span style={{ fontSize:10, color:B.muted, fontWeight:400, marginLeft:8 }}>
+                  <span style={{ fontSize:12, color:"#8AAECC", fontWeight:400, marginLeft:8 }}>
                     busca {lead.tipo} en {lead.zona} · USD {(lead.presup||0).toLocaleString()}
                   </span>
                 </div>
@@ -247,9 +247,9 @@ export default function Briefing({ leads, properties }) {
                           <span style={{ color:B.text, fontWeight:600 }}>{prop.tipo}</span>
                           {" · "}{prop.zona}
                           {" · "}<span style={{ color:B.accentL, fontFamily:"Georgia,serif" }}>USD {(prop.precio||0).toLocaleString()}</span>
-                          {prop.dir && <span style={{ color:B.dim }}> · {prop.dir}</span>}
+                          {prop.dir && <span style={{ color:B.muted }}> · {prop.dir}</span>}
                         </div>
-                        {wa && <a href={wa} target="_blank" rel="noreferrer" style={{ padding:"4px 10px", borderRadius:6, whiteSpace:"nowrap", background:"rgba(37,211,102,0.1)", border:"1px solid rgba(37,211,102,0.25)", color:"#25D366", fontSize:10, textDecoration:"none", fontWeight:600 }}>💬 WA listo</a>}
+                        {wa && <a href={wa} target="_blank" rel="noreferrer" style={{ padding:"4px 10px", borderRadius:6, whiteSpace:"nowrap", background:"rgba(37,211,102,0.1)", border:"1px solid rgba(37,211,102,0.25)", color:"#25D366", fontSize:12, textDecoration:"none", fontWeight:600 }}>💬 WA listo</a>}
                       </div>
                     );
                   })}

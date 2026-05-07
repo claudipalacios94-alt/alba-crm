@@ -126,7 +126,7 @@ export default function App() {
             fontFamily:"'Cormorant Garamond',serif", flexShrink:0 }}>A</div>
           <div>
             <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:700, fontSize:15, color:"#D0DDEE", letterSpacing:"3px" }}>ALBA</div>
-            <div style={{ fontSize:7, color:"#2A4060", letterSpacing:"1.5px", fontWeight:500 }}>INVERSIONES · REG 3832</div>
+            <div style={{ fontSize:7, color:"#7A9EC0", letterSpacing:"1.5px", fontWeight:500 }}>INVERSIONES · REG 3832</div>
           </div>
         </div>
  
@@ -161,12 +161,12 @@ export default function App() {
                 padding:"9px 10px", borderRadius:8, marginBottom:2,
                 background: view === n.id ? "rgba(42,91,173,0.18)" : "transparent",
                 border: view === n.id ? "1px solid rgba(74,138,232,0.35)" : "1px solid transparent",
-                color: view === n.id ? "#7AB8FF" : "#2A4060",
+                color: view === n.id ? "#7AB8FF" : "#7A9EC0",
                 fontSize:12, fontWeight: view === n.id ? 600 : 400,
                 cursor:"pointer", textAlign:"left",
                 fontFamily:"'DM Sans',sans-serif", transition:"all .15s" }}>
               <span style={{ width:4, height:4, borderRadius:"50%", flexShrink:0,
-                background: view === n.id ? "#5A9AFF" : "#1A2F50" }} />
+                background: view === n.id ? "#5A9AFF" : "#4A6A90" }} />
               {n.label}
               {n.badge && view !== n.id && (
                 <span style={{ marginLeft:"auto", background: n.badge === "IA" ? "rgba(46,158,106,0.2)" : "rgba(42,91,173,0.2)",
@@ -176,7 +176,7 @@ export default function App() {
               )}
               {n.id === "crm" && sinAsignar > 0 && (
                 <span style={{ marginLeft:"auto", background:B.hot, color:"#fff",
-                  fontSize:9, fontWeight:700, borderRadius:"50%",
+                  fontSize:11, fontWeight:700, borderRadius:"50%",
                   width:16, height:16, display:"flex", alignItems:"center", justifyContent:"center" }}>
                   {sinAsignar}
                 </span>
@@ -187,7 +187,7 @@ export default function App() {
  
         {/* Footer con stats + logout */}
         <div style={{ padding:"10px 13px 12px", borderTop:`1px solid ${B.border}` }}>
-          <div style={{ fontSize:9, color:B.dim, marginBottom:5 }}>
+          <div style={{ fontSize:11, color:B.dim, marginBottom:5 }}>
             {user.email} · {leads.length} leads
           </div>
           <div style={{ display:"flex", gap:3, marginBottom:8 }}>

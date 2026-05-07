@@ -69,7 +69,7 @@ export default function Flyer({ properties }) {
       const pad   = 52;
 
       ctx.fillStyle = "#4A8AE8"; ctx.fillRect(pad, infoY, 56, 3);
-      ctx.fillStyle = "#7A96B8"; ctx.font = `500 ${W * 0.028}px Georgia,serif`;
+      ctx.fillStyle = "#9ABCDA"; ctx.font = `500 ${W * 0.028}px Georgia,serif`;
       ctx.textAlign = "left";
       ctx.fillText(`${(prop.tipo || "").toUpperCase()}  ·  ${(prop.zona || "").toUpperCase()}`, pad, infoY + W * 0.045);
 
@@ -84,7 +84,7 @@ export default function Flyer({ properties }) {
         ctx.fillText(`${prop.m2tot} m²${prop.precio ? `  ·  USD ${Math.round(prop.precio / prop.m2tot).toLocaleString()}/m²` : ""}`, pad, infoY + W * 0.207);
       }
       if (texto.trim()) {
-        ctx.fillStyle = "#7A96B8"; ctx.font = `400 italic ${W * 0.024}px Georgia,serif`;
+        ctx.fillStyle = "#9ABCDA"; ctx.font = `400 italic ${W * 0.024}px Georgia,serif`;
         ctx.fillText(texto.trim().slice(0, 80), pad, infoY + W * 0.24);
       }
 
@@ -167,12 +167,12 @@ export default function Flyer({ properties }) {
         overflowY:"auto", scrollbarWidth:"thin", scrollbarColor:`${B.border} transparent` }}>
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Generador Flyer</h1>
-          <p style={{ fontSize:11, color:B.muted, margin:"3px 0 0" }}>Publicaciones estilo Alba</p>
+          <p style={{ fontSize:11, color:"#8AAECC", margin:"3px 0 0" }}>Publicaciones estilo Alba</p>
         </div>
 
         {/* Selector propiedad */}
         <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, padding:"13px 15px" }}>
-          <div style={{ fontSize:10, color:B.muted, letterSpacing:"1px", textTransform:"uppercase", marginBottom:8 }}>Propiedad</div>
+          <div style={{ fontSize:12, color:"#8AAECC", letterSpacing:"1px", textTransform:"uppercase", marginBottom:8 }}>Propiedad</div>
           <select value={propId} onChange={e => setPropId(Number(e.target.value))}
             style={{ width:"100%", background:B.bg, border:`1px solid ${B.border}`, borderRadius:7,
               padding:"8px 10px", color:B.text, fontSize:12, outline:"none", cursor:"pointer" }}>
@@ -183,14 +183,14 @@ export default function Flyer({ properties }) {
           {prop && (
             <div style={{ marginTop:8, padding:"7px 10px", background:B.bg, borderRadius:7, border:`1px solid ${B.border}` }}>
               {prop.precio && <div style={{ fontSize:11, color:B.accentL, fontFamily:"Georgia,serif", fontWeight:700 }}>USD {prop.precio.toLocaleString()}</div>}
-              <div style={{ fontSize:10, color:B.muted, marginTop:1 }}>{prop.zona} · {(prop.caracts || "").slice(0, 40)}</div>
+              <div style={{ fontSize:12, color:"#8AAECC", marginTop:1 }}>{prop.zona} · {(prop.caracts || "").slice(0, 40)}</div>
             </div>
           )}
         </div>
 
         {/* Formato */}
         <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, padding:"13px 15px" }}>
-          <div style={{ fontSize:10, color:B.muted, letterSpacing:"1px", textTransform:"uppercase", marginBottom:10 }}>Formato</div>
+          <div style={{ fontSize:12, color:"#8AAECC", letterSpacing:"1px", textTransform:"uppercase", marginBottom:10 }}>Formato</div>
           <div style={{ display:"flex", gap:8 }}>
             <button onClick={() => setFormato("cuadrado")} style={chip(formato === "cuadrado")}>Cuadrado</button>
             <button onClick={() => setFormato("vertical")} style={chip(formato === "vertical")}>Vertical</button>
@@ -199,7 +199,7 @@ export default function Flyer({ properties }) {
 
         {/* Fotos */}
         <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, padding:"13px 15px" }}>
-          <div style={{ fontSize:10, color:B.muted, letterSpacing:"1px", textTransform:"uppercase", marginBottom:10 }}>Fotos ({fotos.length}/6)</div>
+          <div style={{ fontSize:12, color:"#8AAECC", letterSpacing:"1px", textTransform:"uppercase", marginBottom:10 }}>Fotos ({fotos.length}/6)</div>
           {fotos.length < 6 && (
             <div ref={dropRef} onDrop={onDrop} onDragOver={e => e.preventDefault()}
               style={{ border:`1.5px dashed ${B.border}`, borderRadius:9, padding:"16px", textAlign:"center",
@@ -221,7 +221,7 @@ export default function Flyer({ properties }) {
                   <img src={f} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
                   {fotoSel === i && <div style={{ position:"absolute", top:3, left:3, background:B.accentL, borderRadius:4, padding:"1px 5px", fontSize:8, color:"#fff", fontWeight:700 }}>PRINCIPAL</div>}
                   <button onClick={e => { e.stopPropagation(); removePhoto(i); }}
-                    style={{ position:"absolute", top:3, right:3, background:"rgba(7,14,28,0.8)", border:"none", borderRadius:"50%", width:16, height:16, cursor:"pointer", color:B.muted, fontSize:10, display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
+                    style={{ position:"absolute", top:3, right:3, background:"rgba(7,14,28,0.8)", border:"none", borderRadius:"50%", width:16, height:16, cursor:"pointer", color:"#8AAECC", fontSize:12, display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
                 </div>
               ))}
             </div>
@@ -230,7 +230,7 @@ export default function Flyer({ properties }) {
 
         {/* Texto adicional */}
         <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, padding:"13px 15px" }}>
-          <div style={{ fontSize:10, color:B.muted, letterSpacing:"1px", textTransform:"uppercase", marginBottom:8 }}>Texto adicional</div>
+          <div style={{ fontSize:12, color:"#8AAECC", letterSpacing:"1px", textTransform:"uppercase", marginBottom:8 }}>Texto adicional</div>
           <textarea value={texto} onChange={e => setTexto(e.target.value)} rows={2}
             placeholder="Ej: Piso 3°, luminoso, entrega inmediata..."
             style={{ width:"100%", background:"transparent", border:`1px solid ${B.border}`, borderRadius:7,
@@ -247,7 +247,7 @@ export default function Flyer({ properties }) {
             fontFamily:"Georgia,serif", flexShrink:0 }}>
           {generando ? "Generando..." : "↓ Descargar PNG"}
         </button>
-        <div style={{ fontSize:10, color:B.dim, textAlign:"center" }}>1080×1080px · listo para Instagram y WhatsApp</div>
+        <div style={{ fontSize:12, color:B.dim, textAlign:"center" }}>1080×1080px · listo para Instagram y WhatsApp</div>
       </div>
 
       {/* Preview */}

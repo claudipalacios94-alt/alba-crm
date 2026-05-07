@@ -188,7 +188,7 @@ export default function Captaciones({ supabase }) {
 
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Captación rápida</h1>
-          <p style={{ fontSize:11, color:B.muted, margin:"3px 0 0" }}>
+          <p style={{ fontSize:11, color:"#8AAECC", margin:"3px 0 0" }}>
             Pegá link o texto de WhatsApp — queda guardado y en el mapa
           </p>
         </div>
@@ -205,14 +205,14 @@ export default function Captaciones({ supabase }) {
           />
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
             <div>
-              <label style={{ fontSize:9, color:B.muted, letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:4 }}>Agente</label>
+              <label style={{ fontSize:11, color:"#8AAECC", letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:4 }}>Agente</label>
               <select value={ag} onChange={e => setAg(e.target.value)} style={inpS}>
                 <option value="">Sin especificar</option>
                 {Object.entries(AG).map(([k,v]) => <option key={k} value={k}>{v.n}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize:9, color:B.muted, letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:4 }}>Nota rápida</label>
+              <label style={{ fontSize:11, color:"#8AAECC", letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:4 }}>Nota rápida</label>
               <input value={nota} onChange={e => setNota(e.target.value)} style={inpS} placeholder="ej: pago honorarios" />
             </div>
           </div>
@@ -227,7 +227,7 @@ export default function Captaciones({ supabase }) {
         </div>
 
         {/* Lista de captaciones */}
-        <div style={{ fontSize:11, color:B.muted, fontWeight:600, letterSpacing:"1px" }}>
+        <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px" }}>
           {items.length} CAPTACIONES PENDIENTES
         </div>
 
@@ -248,14 +248,14 @@ export default function Captaciones({ supabase }) {
 
               {/* Header */}
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
-                <span style={{ fontSize:9, padding:"1px 7px", borderRadius:12,
+                <span style={{ fontSize:11, padding:"1px 7px", borderRadius:12,
                   background: item.tipo === "link" ? `${B.accentL}18` : `${B.warm}18`,
                   color: item.tipo === "link" ? B.accentL : B.warm }}>
                   {item.tipo === "link" ? "🔗 Link" : "💬 Texto"}
                 </span>
-                {ag && <span style={{ fontSize:9, padding:"1px 5px", borderRadius:3, background:ag.bg, color:ag.c, fontWeight:600 }}>{ag.n}</span>}
-                {item.lat && <span style={{ fontSize:9, color:B.ok }}>📍 En mapa</span>}
-                <span style={{ fontSize:9, color:B.dim, marginLeft:"auto" }}>{fmtFecha(item.created_at)}</span>
+                {ag && <span style={{ fontSize:11, padding:"1px 5px", borderRadius:3, background:ag.bg, color:ag.c, fontWeight:600 }}>{ag.n}</span>}
+                {item.lat && <span style={{ fontSize:11, color:B.ok }}>📍 En mapa</span>}
+                <span style={{ fontSize:11, color:B.dim, marginLeft:"auto" }}>{fmtFecha(item.created_at)}</span>
               </div>
 
               {/* Contenido */}
@@ -268,32 +268,32 @@ export default function Captaciones({ supabase }) {
               {/* Datos detectados */}
               {(item.direccion || item.precio) && (
                 <div style={{ display:"flex", gap:8, marginBottom:8, flexWrap:"wrap" }}>
-                  {item.direccion && <span style={{ fontSize:10, color:B.muted }}>📍 {item.direccion}</span>}
-                  {item.precio && <span style={{ fontSize:10, color:B.accentL, fontFamily:"Georgia,serif", fontWeight:700 }}>USD {item.precio.toLocaleString()}</span>}
+                  {item.direccion && <span style={{ fontSize:12, color:B.muted }}>📍 {item.direccion}</span>}
+                  {item.precio && <span style={{ fontSize:12, color:B.accentL, fontFamily:"Georgia,serif", fontWeight:700 }}>USD {item.precio.toLocaleString()}</span>}
                 </div>
               )}
 
-              {item.nota && <div style={{ fontSize:10, color:B.muted, fontStyle:"italic", marginBottom:8 }}>"{item.nota}"</div>}
+              {item.nota && <div style={{ fontSize:12, color:"#8AAECC", fontStyle:"italic", marginBottom:8 }}>"{item.nota}"</div>}
 
               {/* Acciones */}
               <div style={{ display:"flex", gap:6 }}>
                 {item.contenido.startsWith("http") && (
                   <a href={item.contenido.split(" ")[0]} target="_blank" rel="noreferrer"
                     style={{ padding:"4px 10px", borderRadius:6, background:`${B.accentL}18`,
-                      border:`1px solid ${B.accentL}40`, color:B.accentL, fontSize:10,
+                      border:`1px solid ${B.accentL}40`, color:B.accentL, fontSize:12,
                       textDecoration:"none", fontWeight:600 }}>
                     Abrir link
                   </a>
                 )}
                 <button onClick={() => convertir(item)}
                   style={{ padding:"4px 10px", borderRadius:6, background:`${B.ok}18`,
-                    border:`1px solid ${B.ok}40`, color:B.ok, fontSize:10,
+                    border:`1px solid ${B.ok}40`, color:B.ok, fontSize:12,
                     cursor:"pointer", fontWeight:600 }}>
                   ✓ Convertida
                 </button>
                 <button onClick={() => setConfirmDelete(item)}
                   style={{ padding:"4px 10px", borderRadius:6, background:`${B.hot}12`,
-                    border:`1px solid ${B.hot}30`, color:B.hot, fontSize:10,
+                    border:`1px solid ${B.hot}30`, color:B.hot, fontSize:12,
                     cursor:"pointer", fontWeight:600, marginLeft:"auto" }}>
                   🗑
                 </button>
@@ -305,7 +305,7 @@ export default function Captaciones({ supabase }) {
 
       {/* Mapa */}
       <div style={{ flex:1, display:"flex", flexDirection:"column", minWidth:0 }}>
-        <div style={{ fontSize:11, color:B.muted, marginBottom:10 }}>
+        <div style={{ fontSize:11, color:"#8AAECC", marginBottom:10 }}>
           📌 Captaciones en el mapa · {items.filter(i => i.lat).length} geolocalizadas de {items.length}
         </div>
         <div style={{ flex:1, borderRadius:12, overflow:"hidden", border:`1px solid ${B.border}`, position:"relative" }}>
@@ -333,14 +333,14 @@ export default function Captaciones({ supabase }) {
             <div style={{ fontSize:22, marginBottom:12, textAlign:"center" }}>🗑</div>
             <div style={{ fontSize:15, fontWeight:700, color:B.text, fontFamily:"Georgia,serif",
               marginBottom:8, textAlign:"center" }}>¿Eliminar captación?</div>
-            <div style={{ fontSize:12, color:B.muted, textAlign:"center", marginBottom:24, lineHeight:1.6 }}>
+            <div style={{ fontSize:12, color:"#8AAECC", textAlign:"center", marginBottom:24, lineHeight:1.6 }}>
               Esta acción no se puede deshacer.
             </div>
             <div style={{ display:"flex", gap:10 }}>
               <button onClick={() => setConfirmDelete(null)}
                 style={{ flex:1, padding:"11px", borderRadius:9, cursor:"pointer",
                   background:"transparent", border:`1px solid ${B.border}`,
-                  color:B.muted, fontSize:13 }}>Cancelar</button>
+                  color:"#8AAECC", fontSize:13 }}>Cancelar</button>
               <button onClick={eliminar}
                 style={{ flex:1, padding:"11px", borderRadius:9, cursor:"pointer",
                   background:B.hot, border:`1px solid ${B.hot}`,

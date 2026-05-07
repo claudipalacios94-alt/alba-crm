@@ -112,7 +112,7 @@ export default function Propiedades({ properties, updateProperty, deleteProperty
     <div>
       <div style={{ marginBottom:16 }}>
         <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Propiedades en venta</h1>
-        <p style={{ fontSize:11, color:B.muted, margin:"3px 0 0" }}>{list.length} de {properties.length} propiedades</p>
+        <p style={{ fontSize:11, color:"#8AAECC", margin:"3px 0 0" }}>{list.length} de {properties.length} propiedades</p>
       </div>
  
       <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:8 }}>
@@ -143,13 +143,13 @@ export default function Propiedades({ properties, updateProperty, deleteProperty
  
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
                     <div>
-                      <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>TIPO</label>
+                      <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO</label>
                       <select value={editData.tipo} onChange={e => setEditData(d => ({...d, tipo:e.target.value}))} style={inp}>
                         {["Departamento","Casa","PH","Dúplex","Local","Terreno","Otro"].map(t => <option key={t}>{t}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>AGENTE</label>
+                      <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>AGENTE</label>
                       <select value={editData.ag} onChange={e => setEditData(d => ({...d, ag:e.target.value}))} style={inp}>
                         <option value="">Sin asignar</option>
                         {Object.entries(AG).map(([k,v]) => <option key={k} value={k}>{v.n}</option>)}
@@ -158,47 +158,47 @@ export default function Propiedades({ properties, updateProperty, deleteProperty
                   </div>
  
                   <div>
-                    <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>ZONA</label>
+                    <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>ZONA</label>
                     <input value={editData.zona} onChange={e => setEditData(d => ({...d, zona:e.target.value}))} style={inp} />
                   </div>
  
                   <div>
-                    <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>DIRECCIÓN (se geocodifica sola)</label>
+                    <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>DIRECCIÓN (se geocodifica sola)</label>
                     <input value={editData.dir} onChange={e => setEditData(d => ({...d, dir:e.target.value}))} style={inp} placeholder="Ej: Bolivar 2379" />
                   </div>
  
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
                     <div>
-                      <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>PRECIO USD</label>
+                      <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>PRECIO USD</label>
                       <input type="number" value={editData.precio} onChange={e => setEditData(d => ({...d, precio:e.target.value}))} style={inp} />
                     </div>
                     <div>
-                      <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>M² TOT</label>
+                      <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>M² TOT</label>
                       <input type="number" value={editData.m2tot} onChange={e => setEditData(d => ({...d, m2tot:e.target.value}))} style={inp} />
                     </div>
                     <div>
-                      <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>M² CUB</label>
+                      <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>M² CUB</label>
                       <input type="number" value={editData.m2cub} onChange={e => setEditData(d => ({...d, m2cub:e.target.value}))} style={inp} />
                     </div>
                   </div>
  
                   <div>
-                    <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>CARACTERÍSTICAS</label>
+                    <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>CARACTERÍSTICAS</label>
                     <input value={editData.caracts} onChange={e => setEditData(d => ({...d, caracts:e.target.value}))} style={inp} />
                   </div>
  
                   <div>
-                    <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>INFO INTERNA</label>
+                    <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>INFO INTERNA</label>
                     <input value={editData.info} onChange={e => setEditData(d => ({...d, info:e.target.value}))} style={inp} />
                   </div>
  
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
                     <div>
-                      <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>LAT (manual)</label>
+                      <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>LAT (manual)</label>
                       <input value={editData.lat} onChange={e => setEditData(d => ({...d, lat:e.target.value}))} style={inp} placeholder="-38.002" />
                     </div>
                     <div>
-                      <label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:2 }}>LNG (manual)</label>
+                      <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>LNG (manual)</label>
                       <input value={editData.lng} onChange={e => setEditData(d => ({...d, lng:e.target.value}))} style={inp} placeholder="-57.555" />
                     </div>
                   </div>
@@ -214,7 +214,7 @@ export default function Propiedades({ properties, updateProperty, deleteProperty
                     <button onClick={() => setEditing(null)}
                       style={{ padding:"8px 14px", borderRadius:7, cursor:"pointer",
                         background:"transparent", border:"1px solid " + B.border,
-                        color:B.muted, fontSize:12 }}>
+                        color:"#8AAECC", fontSize:12 }}>
                       Cancelar
                     </button>
                   </div>
@@ -224,12 +224,12 @@ export default function Propiedades({ properties, updateProperty, deleteProperty
                   <div style={{ display:"flex", justifyContent:"space-between", marginBottom:7 }}>
                     <div>
                       <div style={{ fontSize:12, fontWeight:600, color:B.text }}>{p.tipo}</div>
-                      <div style={{ fontSize:10, color:B.muted, marginTop:1 }}>{p.zona}</div>
+                      <div style={{ fontSize:12, color:"#8AAECC", marginTop:1 }}>{p.zona}</div>
                     </div>
                     <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:3 }}>
-                      <div style={{ fontSize:9, padding:"2px 7px", borderRadius:4, background:c+"18", color:c }}>{p.sc}</div>
+                      <div style={{ fontSize:11, padding:"2px 7px", borderRadius:4, background:c+"18", color:c }}>{p.sc}</div>
                       {p.ag && AG[p.ag] && (
-                        <div style={{ fontSize:9, padding:"1px 5px", borderRadius:3,
+                        <div style={{ fontSize:11, padding:"1px 5px", borderRadius:3,
                           background:AG[p.ag].bg, color:AG[p.ag].c, fontWeight:700 }}>
                           {AG[p.ag].n}
                         </div>
@@ -237,7 +237,7 @@ export default function Propiedades({ properties, updateProperty, deleteProperty
                       <button onClick={() => startEdit(p)}
                         style={{ background:"transparent", border:"1px solid " + B.border,
                           borderRadius:5, padding:"2px 8px", cursor:"pointer",
-                          color:B.muted, fontSize:10 }}>
+                          color:"#8AAECC", fontSize:10 }}>
                         ✏️ Editar
                       </button>
                       <button onClick={() => setConfirmDelete(p)}
@@ -249,7 +249,7 @@ export default function Propiedades({ properties, updateProperty, deleteProperty
                     </div>
                   </div>
  
-                  <div style={{ fontSize:11, color:B.muted, marginBottom:7 }}>
+                  <div style={{ fontSize:11, color:"#8AAECC", marginBottom:7 }}>
                     {p.dir} {p.lat ? "📍" : ""}
                   </div>
                   <div style={{ fontSize:11, color:B.dim, marginBottom:9 }}>{p.caracts}</div>
@@ -258,11 +258,11 @@ export default function Propiedades({ properties, updateProperty, deleteProperty
                     <div style={{ fontSize:15, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif" }}>
                       {p.precio ? "USD " + p.precio.toLocaleString() : "A consultar"}
                     </div>
-                    <div style={{ fontSize:10, color:B.dim }}>{p.dias}d en cartera</div>
+                    <div style={{ fontSize:12, color:B.muted }}>{p.dias}d en cartera</div>
                   </div>
  
                   {p.m2tot && (
-                    <div style={{ fontSize:10, color:B.muted, marginTop:4 }}>
+                    <div style={{ fontSize:12, color:"#8AAECC", marginTop:4 }}>
                       {p.m2tot}m² tot
                       {p.m2cub ? " · " + p.m2cub + "m² cub" : ""}
                       {p.precio && p.m2tot ? " · USD " + Math.round(p.precio / p.m2tot).toLocaleString() + "/m²" : ""}
@@ -270,7 +270,7 @@ export default function Propiedades({ properties, updateProperty, deleteProperty
                   )}
  
                   {p.info && (
-                    <div style={{ fontSize:10, color:B.dim, marginTop:5, fontStyle:"italic" }}>{p.info}</div>
+                    <div style={{ fontSize:12, color:B.dim, marginTop:5, fontStyle:"italic" }}>{p.info}</div>
                   )}
                 </>
               )}
@@ -292,14 +292,14 @@ export default function Propiedades({ properties, updateProperty, deleteProperty
             <div style={{ fontSize:22, marginBottom:12, textAlign:"center" }}>🗑</div>
             <div style={{ fontSize:15, fontWeight:700, color:B.text, fontFamily:"Georgia,serif",
               marginBottom:8, textAlign:"center" }}>¿Eliminar propiedad?</div>
-            <div style={{ fontSize:12, color:B.muted, textAlign:"center", marginBottom:24, lineHeight:1.6 }}>
+            <div style={{ fontSize:12, color:"#8AAECC", textAlign:"center", marginBottom:24, lineHeight:1.6 }}>
               <strong style={{ color:B.text }}>{confirmDelete.tipo} — {confirmDelete.dir}</strong><br/>
               Esta acción no se puede deshacer.
             </div>
             <div style={{ display:"flex", gap:10 }}>
               <button onClick={() => setConfirmDelete(null)}
                 style={{ flex:1, padding:"11px", borderRadius:9, cursor:"pointer",
-                  background:"transparent", border:"1px solid " + B.border, color:B.muted, fontSize:13 }}>
+                  background:"transparent", border:"1px solid " + B.border, color:"#8AAECC", fontSize:13 }}>
                 Cancelar
               </button>
               <button onClick={ejecutarEliminar}
