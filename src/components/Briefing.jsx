@@ -17,8 +17,8 @@ function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" })
     ctx.clearRect(0, 0, W, H);
     ctx.beginPath();
     ctx.arc(cx, cy, r, startAngle, endAngle);
-    ctx.strokeStyle = "#1A2F50";
-    ctx.lineWidth = 14;
+    ctx.strokeStyle = "#0D1829";
+    ctx.lineWidth = 11;
     ctx.lineCap = "round";
     ctx.stroke();
     if (pct > 0) {
@@ -28,7 +28,7 @@ function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" })
       ctx.beginPath();
       ctx.arc(cx, cy, r, startAngle, startAngle + totalArc * pct);
       ctx.strokeStyle = grad;
-      ctx.lineWidth = 14;
+      ctx.lineWidth = 11;
       ctx.lineCap = "round";
       ctx.stroke();
     }
@@ -41,7 +41,7 @@ function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" })
     ctx.fill();
     ctx.beginPath();
     ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-    ctx.fillStyle = "#1A2F50";
+    ctx.fillStyle = "#0D1829";
     ctx.fill();
   }, [pct, color]);
  
@@ -57,7 +57,7 @@ function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" })
   return (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flex:1, minWidth:130 }}>
       <canvas ref={canvasRef} width={160} height={110} style={{ width:130, height:90 }} />
-      <div style={{ fontSize:20, fontWeight:700, color, fontFamily:"Georgia,serif", marginTop:-8 }}>{fmt(value)}</div>
+      <div style={{ fontSize:19, fontWeight:700, color, fontFamily:"Cormorant Garamond,Georgia,serif", marginTop:-6, letterSpacing:"0.5px" }}>{fmt(value)}</div>
       <div style={{ fontSize:11, color:B.text, fontWeight:600, marginTop:2 }}>{label}</div>
       {sublabel && <div style={{ fontSize:9, color:B.dim, marginTop:1 }}>{sublabel}</div>}
     </div>
@@ -71,7 +71,7 @@ function PipelineBar({ leads }) {
   const total   = activos.length || 1;
   return (
     <div>
-      <div style={{ fontSize:11, color:B.muted, fontWeight:600, letterSpacing:"1px", marginBottom:10 }}>EMBUDO COMERCIAL</div>
+      <div style={{ fontSize:10, color:"#2A4060", fontWeight:600, letterSpacing:"1px", marginBottom:10, textTransform:"uppercase" }}>EMBUDO COMERCIAL</div>
       <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
         {etapas.map((e, i) => {
           const n = activos.filter(l => l.etapa === e).length;
@@ -167,7 +167,7 @@ export default function Briefing({ leads, properties }) {
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
         <div>
-          <h1 style={{ fontSize:22, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>{saludo} ☀️</h1>
+          <h1 style={{ fontSize:24, fontWeight:600, color:"#D0DDEE", margin:0, fontFamily:"Cormorant Garamond,Georgia,serif", letterSpacing:"0.5px" }}>{saludo} ✦</h1>
           <div style={{ fontSize:11, color:B.muted, marginTop:3 }}>{hoy.toLocaleDateString("es-AR", { weekday:"long", day:"numeric", month:"long", year:"numeric" })}</div>
         </div>
         <div style={{ display:"flex", gap:5 }}>
@@ -192,7 +192,7 @@ export default function Briefing({ leads, properties }) {
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
         {/* Llamar hoy */}
         <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
-          <div style={{ fontSize:11, color:B.muted, fontWeight:600, letterSpacing:"1px", marginBottom:12 }}>🔥 LLAMAR HOY</div>
+          <div style={{ fontSize:10, color:"#2A4060", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>🔥 LLAMAR HOY</div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {urgentes.length === 0 && <div style={{ textAlign:"center", padding:"20px 0", color:B.dim, fontSize:12 }}>Sin leads urgentes</div>}
             {urgentes.map(l => <LeadCard key={l.id} lead={l} />)}
@@ -203,7 +203,7 @@ export default function Briefing({ leads, properties }) {
         <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16, display:"flex", flexDirection:"column", gap:20 }}>
           <PipelineBar leads={filtrados} />
           <div>
-            <div style={{ fontSize:11, color:B.muted, fontWeight:600, letterSpacing:"1px", marginBottom:10 }}>RESUMEN RÁPIDO</div>
+            <div style={{ fontSize:10, color:"#2A4060", fontWeight:600, letterSpacing:"1px", marginBottom:10, textTransform:"uppercase" }}>RESUMEN RÁPIDO</div>
             <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
               {[
                 { label:"Sin asignar",       val: activos.filter(l=>!l.ag).length,          color:B.hot  },
@@ -224,7 +224,7 @@ export default function Briefing({ leads, properties }) {
       {/* Matches del día */}
       {matchesHoy.length > 0 && (
         <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
-          <div style={{ fontSize:11, color:B.muted, fontWeight:600, letterSpacing:"1px", marginBottom:12 }}>
+          <div style={{ fontSize:10, color:"#2A4060", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>
             📌 MATCHES DEL DÍA — propiedades en cartera que encajan con tus leads
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
