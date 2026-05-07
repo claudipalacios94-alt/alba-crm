@@ -150,10 +150,21 @@ export function matchLeadProps(lead, properties) {
         else return null; // muy caro
       }
  
-      // Tipo (peso 20)
+      // Tipo (excluyente)
       if (tipo && pTipo) {
-        const tipoNorm = tipo.includes("depto") || tipo.includes("departamento") ? "depto" : tipo;
-        if (pTipo.includes(tipoNorm) || tipoNorm.includes(pTipo)) score += 20;
+        // Normalizar variantes
+        const normLead = tipo.replace("departamento", "depto");
+        const normProp = pTipo.replace("departamento", "depto");
+
+        // Tipos simples del lead (ej: "casa / ph" → ["casa", "ph"])
+        const tiposLead = normLead.split(/[\/,]|\s+y\s+/).map(t => t.trim()).filter(Boolean);
+
+        // Si el lead tiene tipo definido y ninguno matchea con la propiedad → excluir
+        const tipoOk = tiposLead.some(t =>
+          normProp.includes(t) || t.includes(normProp)
+        );
+        if (!tipoOk) return null;
+        score += 20;
       }
  
       // Características extra (peso 10)
