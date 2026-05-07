@@ -2,7 +2,49 @@ import React, { useMemo, useState } from "react";
 import { B, AG, matchLeadProps, genMsgWhatsApp } from "../data/constants.js";
  
 function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" }) {
+  const canvasRef = React.useRef(null);
   const pct = Math.min(value / (max || 1), 1);
+  React.useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width, H = canvas.height;
+    const cx = W / 2, cy = H * 0.78;
+    const r = W * 0.38;
+    const startAngle = Math.PI * 0.85;
+    const endAngle   = Math.PI * 2.15;
+    const totalArc   = endAngle - startAngle;
+    ctx.clearRect(0, 0, W, H);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, startAngle, endAngle);
+    ctx.strokeStyle = "#0D1829";
+    ctx.lineWidth = 10;
+    ctx.lineCap = "round";
+    ctx.stroke();
+    if (pct > 0) {
+      const grad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
+      grad.addColorStop(0, color + "66");
+      grad.addColorStop(1, color);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, startAngle, startAngle + totalArc * pct);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 10;
+      ctx.lineCap = "round";
+      ctx.stroke();
+    }
+    const angle = startAngle + totalArc * pct;
+    const nx = cx + (r - 3) * Math.cos(angle);
+    const ny = cy + (r - 3) * Math.sin(angle);
+    ctx.beginPath();
+    ctx.arc(nx, ny, 4, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+    ctx.fillStyle = "#0D1829";
+    ctx.fill();
+  }, [pct, color]);
+
   const fmt = v => {
     if (prefix === "USD") {
       if (v >= 1000000) return "USD " + (v/1000000).toFixed(1) + "M";
@@ -11,21 +53,14 @@ function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" })
     }
     return prefix + v + suffix;
   };
+
   return (
-    <div style={{ flex:1, minWidth:120, padding:"14px 16px", background:"#0A1525",
-      borderRadius:10, border:"1px solid #1A2F50", display:"flex", flexDirection:"column",
-      gap:6, position:"relative", overflow:"hidden" }}>
-      <div style={{ position:"absolute", top:0, left:0, right:0, height:2,
-        background:color, opacity:0.8 }} />
-      <div style={{ fontSize:11, color:"#3A5A7A", fontWeight:500 }}>
-        {label}{sublabel && <span style={{ color:"#2A3A50", marginLeft:4 }}>· {sublabel}</span>}
-      </div>
-      <div style={{ fontSize:28, fontWeight:700, color, fontFamily:"'Cormorant Garamond',Georgia,serif",
-        lineHeight:1, letterSpacing:"-0.5px" }}>{fmt(value)}</div>
-      <div style={{ height:3, background:"#1A2F50", borderRadius:2 }}>
-        <div style={{ height:"100%", width:(pct*100)+"%", background:color,
-          borderRadius:2, opacity:0.6 }} />
-      </div>
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flex:1, minWidth:120 }}>
+      <canvas ref={canvasRef} width={140} height={95} style={{ width:120, height:82 }} />
+      <div style={{ fontSize:22, fontWeight:600, color, fontFamily:"'Cormorant Garamond',Georgia,serif",
+        marginTop:-10, letterSpacing:"0.5px", lineHeight:1 }}>{fmt(value)}</div>
+      <div style={{ fontSize:11, color:"#8AAECC", fontWeight:500, marginTop:4, textAlign:"center" }}>{label}</div>
+      {sublabel && <div style={{ fontSize:9, color:"#2A4060", marginTop:1 }}>{sublabel}</div>}
     </div>
   );
 }
@@ -72,7 +107,7 @@ function LeadCard({ lead }) {
           {ag && <span style={{ fontSize:9, padding:"2px 6px", borderRadius:4, background:ag.bg||"rgba(42,91,173,0.25)", color:ag.c, fontWeight:700, border:"1px solid "+ag.c+"40" }}>{ag.n}</span>}
         </div>
         <div style={{ fontSize:10, color:B.muted }}>{lead.zona} · {lead.tipo} · {lead.presup ? "USD " + lead.presup.toLocaleString() : "—"}</div>
-        {lead.nota && <div style={{ fontSize:10, color:"#4A6A8A", marginTop:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"100%" }}>{lead.nota}</div>}
+        {lead.nota && <div style={{ fontSize:10, color:"#5A7A9A", marginTop:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"100%", fontStyle:"italic" }}>{lead.nota}</div>}
       </div>
       <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0 }}>
         <div style={{ fontSize:10, color:urgColor, fontWeight:700 }}>{razon}</div>
@@ -146,7 +181,7 @@ export default function Briefing({ leads, properties }) {
       </div>
  
       {/* Gauges */}
-      <div style={{ background:"transparent", border:"none", borderRadius:14, padding:"0", marginBottom:14, display:"flex", gap:10 }}>
+      <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:"18px 12px", marginBottom:14, display:"flex", justifyContent:"space-around", gap:8 }}>
         <Gauge value={pipeline} max={Math.max(pipeline * 2, 1000000)} label="Pipeline activo" sublabel="Visita + Negociación" color={B.accentL} prefix="USD" />
         <Gauge value={pipelineMes} max={Math.max(pipeline, 100000)} label="Pipeline este mes" sublabel={hoy.toLocaleDateString("es-AR",{month:"long"})} color="#2E9E6A" prefix="USD" />
         <Gauge value={calientes} max={Math.max(activos.length * 0.4, 10)} label="Leads calientes" color={B.hot} />
