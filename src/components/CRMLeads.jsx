@@ -384,15 +384,15 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                           ✏️ Editar
                         </button>
                         <button onClick={() => {
-                          const msg = genMsgBusqueda(lead);
-                          // Modal editable
+                          const msg = lead.msg_busqueda || genMsgBusqueda(lead);
                           const modal = document.createElement("div");
                           modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
                           modal.innerHTML = `<div style="background:#0F1E35;border:1px solid #2A5BA830;border-radius:14px;padding:22px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.85)">
-                            <div style="font-size:11px;color:#8AAECC;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">📋 MENSAJE BÚSQUEDA — editá antes de copiar</div>
+                            <div style="font-size:11px;color:#8AAECC;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">📋 MENSAJE BÚSQUEDA — editá y se guarda para la próxima</div>
                             <textarea id="busqueda-txt" style="width:100%;height:200px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;color:#E8F0FA;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:inherit;box-sizing:border-box">${msg}</textarea>
                             <div style="display:flex;gap:8px;margin-top:12px">
-                              <button id="busqueda-copy" style="flex:1;padding:10px;border-radius:8px;background:#E8A830;border:none;color:#0F1E35;font-size:13px;font-weight:700;cursor:pointer">Copiar y cerrar</button>
+                              <button id="busqueda-copy" style="flex:1;padding:10px;border-radius:8px;background:#E8A830;border:none;color:#0F1E35;font-size:13px;font-weight:700;cursor:pointer">Copiar y guardar</button>
+                              <button id="busqueda-reset" style="padding:10px 12px;border-radius:8px;background:transparent;border:1px solid #2A4060;color:#8AAECC;font-size:12px;cursor:pointer" title="Regenerar desde datos del lead">↺</button>
                               <button onclick="this.closest('div[style*=fixed]').remove()" style="padding:10px 16px;border-radius:8px;background:transparent;border:1px solid #2A4060;color:#8AAECC;font-size:13px;cursor:pointer">Cancelar</button>
                             </div>
                           </div>`;
@@ -400,7 +400,13 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                           modal.onclick = e => { if(e.target === modal) modal.remove(); };
                           modal.querySelector("#busqueda-copy").onclick = () => {
                             const txt = modal.querySelector("#busqueda-txt").value;
-                            navigator.clipboard.writeText(txt).then(() => modal.remove());
+                            navigator.clipboard.writeText(txt).then(() => {
+                              updateLead(lead.id, { msg_busqueda: txt });
+                              modal.remove();
+                            });
+                          };
+                          modal.querySelector("#busqueda-reset").onclick = () => {
+                            modal.querySelector("#busqueda-txt").value = genMsgBusqueda(lead);
                           };
                         }}
                           style={{ padding:"5px 12px", borderRadius:6, background:"rgba(232,168,48,0.12)",
