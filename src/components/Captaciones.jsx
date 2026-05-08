@@ -38,6 +38,205 @@ async function analizarConIA(texto) {
   }
 }
 
+
+function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
+  const [open,    setOpen]    = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [form,    setForm]    = useState({
+    tipo:               item.tipo || "",
+    zona:               item.zona || "",
+    direccion:          item.direccion || "",
+    precio:             item.precio || "",
+    nombre_propietario: item.nombre_propietario || "",
+    telefono:           item.telefono || "",
+    caracts:            item.caracts || "",
+    operacion:          item.operacion || "venta",
+    nota:               item.nota || "",
+    ag:                 item.ag || "",
+    inmobiliaria:       item.inmobiliaria || "",
+  });
+
+  const agObj = AG[item.ag];
+
+  async function guardarEdicion() {
+    setSaving(true);
+    const updates = {
+      tipo:               form.tipo || null,
+      zona:               form.zona || null,
+      direccion:          form.direccion || null,
+      precio:             form.precio ? Number(form.precio) : null,
+      nombre_propietario: form.nombre_propietario || null,
+      telefono:           form.telefono || null,
+      caracts:            form.caracts || null,
+      operacion:          form.operacion || "venta",
+      nota:               form.nota || null,
+      ag:                 form.ag || null,
+      inmobiliaria:       form.inmobiliaria || null,
+    };
+    const { error } = await supabase.from("captaciones").update(updates).eq("id", item.id);
+    if (!error) { onUpdate(item.id, updates); setEditing(false); }
+    setSaving(false);
+  }
+
+  function fmtFecha(iso) {
+    return new Date(iso).toLocaleDateString("es-AR", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" });
+  }
+
+  const inp = {
+    width:"100%", background:B.bg, border:"1px solid "+B.border, borderRadius:6,
+    padding:"6px 9px", color:B.text, fontSize:12, outline:"none", boxSizing:"border-box",
+  };
+
+  const esCompartida = !!item.inmobiliaria;
+  const borderColor = esCompartida ? "#9B6DC8" : B.accentL;
+
+  return (
+    <div style={{ background:B.card, border:"1px solid "+(open ? borderColor : B.border),
+      borderLeft:"3px solid "+borderColor, borderRadius:10, overflow:"hidden" }}>
+
+      {/* Cabecera */}
+      <div onClick={() => !editing && setOpen(o => !o)}
+        style={{ padding:"11px 13px", cursor:editing?"default":"pointer" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5, flexWrap:"wrap" }}>
+          {item.tipo && <span style={{ fontSize:11, padding:"1px 7px", borderRadius:12, background:B.accentL+"18", color:B.accentL }}>{item.tipo}</span>}
+          {item.operacion && <span style={{ fontSize:11, padding:"1px 7px", borderRadius:12, background:"#4A6A9020", color:"#8AAECC" }}>{item.operacion}</span>}
+          {agObj && <span style={{ fontSize:10, padding:"1px 5px", borderRadius:3, background:agObj.bg, color:agObj.c, fontWeight:600 }}>{agObj.n}</span>}
+          {esCompartida && <span style={{ fontSize:10, padding:"1px 7px", borderRadius:12, background:"#9B6DC820", color:"#9B6DC8", border:"1px solid #9B6DC840", fontWeight:600 }}>🤝 {item.inmobiliaria}</span>}
+          <span style={{ fontSize:11, color:"#4A6A90", marginLeft:"auto" }}>{fmtFecha(item.created_at)}</span>
+          <span style={{ fontSize:12, color:B.accentL }}>{open ? "▲" : "▼"}</span>
+        </div>
+        {(item.zona || item.direccion) && (
+          <div style={{ fontSize:12, color:"#8AAECC", marginBottom:3 }}>
+            {item.zona}{item.zona && item.direccion ? " · " : ""}{item.direccion}
+            {item.lat && " 📍"}
+          </div>
+        )}
+        {item.precio && (
+          <div style={{ fontSize:14, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif" }}>
+            USD {Number(item.precio).toLocaleString()}
+          </div>
+        )}
+      </div>
+
+      {/* Panel expandido */}
+      {open && !editing && (
+        <div style={{ borderTop:"1px solid "+B.border, padding:"11px 13px",
+          background:"rgba(10,21,37,0.4)", display:"flex", flexDirection:"column", gap:8 }}>
+          {item.nombre_propietario && <div style={{ fontSize:12, color:"#8AAECC" }}>👤 {item.nombre_propietario}{item.telefono ? " · "+item.telefono : ""}</div>}
+          {item.caracts && <div style={{ fontSize:12, color:"#8AAECC" }}>{item.caracts}</div>}
+          {item.nota && <div style={{ fontSize:11, color:"#6A8AAE", fontStyle:"italic" }}>"{item.nota}"</div>}
+          <div style={{ fontSize:11, color:"#4A6A90", lineHeight:1.5,
+            display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
+            {item.contenido}
+          </div>
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:4 }}>
+            <button onClick={() => setEditing(true)}
+              style={{ flex:1, padding:"6px", borderRadius:7, cursor:"pointer",
+                background:B.accent+"22", border:"1px solid "+B.accentL+"60", color:B.accentL, fontSize:12, fontWeight:600 }}>
+              Editar
+            </button>
+            <button onClick={() => onConvertir(item)}
+              style={{ flex:1, padding:"6px", borderRadius:7, cursor:"pointer",
+                background:"#2E9E6A18", border:"1px solid #2E9E6A40", color:"#2E9E6A", fontSize:12, fontWeight:600 }}>
+              ✓ Convertida
+            </button>
+            <button onClick={() => onEliminar(item)}
+              style={{ padding:"6px 12px", borderRadius:7, cursor:"pointer",
+                background:"transparent", border:"1px solid "+B.hot+"40", color:B.hot, fontSize:12 }}>
+              🗑
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edición inline */}
+      {editing && (
+        <div style={{ borderTop:"1px solid "+B.accentL+"40", padding:"11px 13px",
+          background:"rgba(10,21,37,0.6)", display:"flex", flexDirection:"column", gap:7 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:B.accentL, marginBottom:2 }}>Editando captación</div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
+            <div>
+              <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO</label>
+              <select value={form.tipo} onChange={e => setForm(f=>({...f,tipo:e.target.value}))} style={inp}>
+                <option value="">Sin tipo</option>
+                {["Departamento","Casa","PH","Dúplex","Local","Terreno","Otro"].map(t=><option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>OPERACIÓN</label>
+              <select value={form.operacion} onChange={e => setForm(f=>({...f,operacion:e.target.value}))} style={inp}>
+                <option value="venta">Venta</option>
+                <option value="alquiler">Alquiler</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>ZONA</label>
+            <input value={form.zona} onChange={e=>setForm(f=>({...f,zona:e.target.value}))} style={inp} />
+          </div>
+          <div>
+            <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>DIRECCIÓN</label>
+            <input value={form.direccion} onChange={e=>setForm(f=>({...f,direccion:e.target.value}))} style={inp} />
+          </div>
+          <div>
+            <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>PRECIO USD</label>
+            <input type="number" value={form.precio} onChange={e=>setForm(f=>({...f,precio:e.target.value}))} style={inp} />
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
+            <div>
+              <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>PROPIETARIO</label>
+              <input value={form.nombre_propietario} onChange={e=>setForm(f=>({...f,nombre_propietario:e.target.value}))} style={inp} />
+            </div>
+            <div>
+              <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>TELÉFONO</label>
+              <input value={form.telefono} onChange={e=>setForm(f=>({...f,telefono:e.target.value}))} style={inp} />
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>CARACTERÍSTICAS</label>
+            <input value={form.caracts} onChange={e=>setForm(f=>({...f,caracts:e.target.value}))} style={inp} />
+          </div>
+          <div>
+            <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>NOTA</label>
+            <input value={form.nota} onChange={e=>setForm(f=>({...f,nota:e.target.value}))} style={inp} />
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
+            <div>
+              <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>AGENTE</label>
+              <select value={form.ag} onChange={e=>setForm(f=>({...f,ag:e.target.value}))} style={inp}>
+                <option value="">Sin agente</option>
+                {Object.entries(AG).map(([k,v])=><option key={k} value={k}>{v.n}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize:10, color:"#9B6DC8", display:"block", marginBottom:2 }}>🤝 INMOBILIARIA</label>
+              <input value={form.inmobiliaria} onChange={e=>setForm(f=>({...f,inmobiliaria:e.target.value}))}
+                placeholder="ej: RE/MAX, Baires..." style={{...inp, borderColor:form.inmobiliaria?"#9B6DC8":B.border}} />
+            </div>
+          </div>
+
+          <div style={{ display:"flex", gap:7, marginTop:4 }}>
+            <button onClick={guardarEdicion} disabled={saving}
+              style={{ flex:1, padding:"8px", borderRadius:7, cursor:"pointer",
+                background:saving?B.border:B.accent, border:"1px solid "+(saving?B.border:B.accentL),
+                color:saving?"#8AAECC":"#fff", fontSize:12, fontWeight:700 }}>
+              {saving?"Guardando...":"Guardar"}
+            </button>
+            <button onClick={()=>setEditing(false)}
+              style={{ padding:"8px 14px", borderRadius:7, cursor:"pointer",
+                background:"transparent", border:"1px solid "+B.border, color:"#8AAECC", fontSize:12 }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Captaciones({ supabase }) {
   const [items,      setItems]      = useState([]);
   const [input,      setInput]      = useState("");
@@ -209,9 +408,6 @@ export default function Captaciones({ supabase }) {
   return (
     <div style={{ overflowY: "auto", maxWidth: 700 }}>
 
-      {/* Panel izquierdo */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: B.text, margin: 0, fontFamily: "Georgia,serif" }}>Captación rápida</h1>
           <p style={{ fontSize: 12, color: "#8AAECC", margin: "3px 0 0" }}>Pegá texto, link o WhatsApp — la IA extrae todo</p>
@@ -326,69 +522,11 @@ export default function Captaciones({ supabase }) {
           <div style={{ textAlign: "center", padding: "30px 0", color: "#8AAECC", fontSize: 12 }}>Sin captaciones pendientes</div>
         )}
 
-        {items.map(item => {
-          const agObj = AG[item.ag];
-          return (
-            <div key={item.id} style={{ background: B.card, border: `1px solid ${B.border}`,
-              borderRadius: 10, padding: "12px 13px", borderLeft: `3px solid ${item.lat ? B.accentL : "#4A6A90"}` }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-                {item.tipo && <span style={{ fontSize: 11, padding: "1px 7px", borderRadius: 12, background: B.accentL + "18", color: B.accentL }}>{item.tipo}</span>}
-                {item.operacion && <span style={{ fontSize: 11, padding: "1px 7px", borderRadius: 12, background: "#4A6A9020", color: "#8AAECC" }}>{item.operacion}</span>}
-                {agObj && <span style={{ fontSize: 11, padding: "1px 5px", borderRadius: 3, background: agObj.bg, color: agObj.c, fontWeight: 600 }}>{agObj.n}</span>}
-                {item.lat && <span style={{ fontSize: 11, color: "#2E9E6A" }}>📍</span>}
-                <span style={{ fontSize: 11, color: "#4A6A90", marginLeft: "auto" }}>{fmtFecha(item.created_at)}</span>
-              </div>
-
-              {(item.zona || item.direccion) && (
-                <div style={{ fontSize: 12, color: "#8AAECC", marginBottom: 4 }}>
-                  {item.zona}{item.zona && item.direccion ? " · " : ""}{item.direccion}
-                </div>
-              )}
-
-              {item.precio && (
-                <div style={{ fontSize: 15, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif", marginBottom: 4 }}>
-                  USD {Number(item.precio).toLocaleString()}
-                </div>
-              )}
-
-              {item.nombre_propietario && (
-                <div style={{ fontSize: 12, color: "#8AAECC", marginBottom: 2 }}>
-                  👤 {item.nombre_propietario}{item.telefono ? " · " + item.telefono : ""}
-                </div>
-              )}
-
-              {item.nota && <div style={{ fontSize: 11, color: "#6A8AAE", fontStyle: "italic", marginBottom: 6 }}>"{item.nota}"</div>}
-
-              <div style={{ fontSize: 11, color: "#4A6A90", lineHeight: 1.4, marginBottom: 8,
-                display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                {item.contenido}
-              </div>
-
-              <div style={{ display: "flex", gap: 6 }}>
-                {item.contenido?.startsWith("http") && (
-                  <a href={item.contenido.split(" ")[0]} target="_blank" rel="noreferrer"
-                    style={{ padding: "4px 10px", borderRadius: 6, background: B.accentL + "18",
-                      border: `1px solid ${B.accentL}40`, color: B.accentL, fontSize: 11,
-                      textDecoration: "none", fontWeight: 600 }}>
-                    Abrir link
-                  </a>
-                )}
-                <button onClick={() => convertir(item)}
-                  style={{ padding: "4px 10px", borderRadius: 6, background: "#2E9E6A18",
-                    border: "1px solid #2E9E6A40", color: "#2E9E6A", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
-                  ✓ Convertida
-                </button>
-                <button onClick={() => setConfirmDel(item)}
-                  style={{ padding: "4px 10px", borderRadius: 6, background: B.hot + "12",
-                    border: `1px solid ${B.hot}30`, color: B.hot, fontSize: 11,
-                    cursor: "pointer", marginLeft: "auto" }}>
-                  🗑
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+        {items.map(item => (
+          <CaptacionCard key={item.id} item={item} supabase={supabase}
+            onConvertir={convertir} onEliminar={setConfirmDel}
+            onUpdate={(id, updates) => setItems(p => p.map(i => i.id === id ? {...i, ...updates} : i))} />
+        ))}
 
       {/* Modal eliminar */}
       {confirmDel && (
