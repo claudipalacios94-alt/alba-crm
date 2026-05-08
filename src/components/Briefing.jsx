@@ -258,8 +258,33 @@ export default function Briefing({ leads, properties, supabase }) {
   const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
   const filtrados = filtroAg === "Todos" ? activos : activos.filter(l => l.ag === filtroAg);
  
+  // Gauge 1: Comisiones potenciales en juego (leads en Visita + Negociación × 3%)
+  const enJuego = filtrados.filter(l => l.etapa === "Negociación" || l.etapa === "Visita");
+  const comisionesPotenciales = enJuego.reduce((s, l) => s + (l.presup || 0) * ((l.comision_pct || 3) / 100), 0);
+  
+  // Gauge 2: Velocidad — días promedio en pipeline
+  const diasPromedio = activos.length > 0
+    ? Math.round(activos.reduce((s, l) => s + (l.dias || 0), 0) / activos.length)
+    : 0;
+
+  // Gauge 3: Tasa de calientes — % leads calientes sobre activos
+  const nCalientes = filtrados.filter(l => l.dias <= 2 || l.etapa === "Negociación").length;
+  const tasaCalientes = activos.length > 0 ? Math.round((nCalientes / activos.length) * 100) : 0;
+
+  // Gauge 4: Propiedades sin interesados
+  const propsSinMatch = (properties || []).filter(p => {
+    const zonaMatches = activos.filter(l => {
+      const zona = (l.zona||"").toLowerCase();
+      const pZona = (p.zona||"").toLowerCase();
+      return zona.split(/[,\/]|\s+y\s+/).some(z => z.trim() && (pZona.includes(z.trim()) || z.trim().includes(pZona)));
+    });
+    return zonaMatches.length === 0;
+  }).length;
+  const totalProps = (properties || []).length;
+
+  // Gauge 5: Captaciones pendientes de convertir
   const pipeline = filtrados.filter(l => l.etapa === "Negociación" || l.etapa === "Visita").reduce((s, l) => s + (l.presup || 0), 0);
-  const calientes = filtrados.filter(l => { const s = (l.scoring || "").toLowerCase(); return s.includes("caliente") || l.etapa === "Negociación" || l.dias <= 2; }).length;
+  const calientes = nCalientes;
   const propsActivas = (properties || []).filter(p => p.activa !== false).length;
   const leadsNuevosMes = leads.filter(l => l.created_at && new Date(l.created_at) >= inicioMes).length;
   const pipelineMes = filtrados.filter(l => l.created_at && new Date(l.created_at) >= inicioMes && (l.etapa === "Negociación" || l.etapa === "Visita")).reduce((s, l) => s + (l.presup || 0), 0);
@@ -312,11 +337,11 @@ export default function Briefing({ leads, properties, supabase }) {
 
       {/* Gauges */}
       <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:"16px 8px", marginBottom:14, display:"flex", justifyContent:"space-between", gap:4, overflowX:"auto" }}>
-        <Gauge value={pipeline} max={Math.max(pipeline * 2, 1000000)} label="Pipeline activo" sublabel="Visita + Neg." color={B.accentL} prefix="USD" />
-        <Gauge value={pipelineMes} max={Math.max(pipeline, 100000)} label="Pipeline mes" sublabel={hoy.toLocaleDateString("es-AR",{month:"long"})} color="#2E9E6A" prefix="USD" />
-        <Gauge value={calientes} max={Math.max(activos.length * 0.4, 10)} label="Calientes" color={B.hot} />
-        <Gauge value={leadsNuevosMes} max={30} label="Leads nuevos" sublabel="Este mes" color={B.warm} />
-        <Gauge value={propsActivas} max={50} label="Propiedades" sublabel="En cartera" color="#9B6DC8" />
+        <Gauge value={comisionesPotenciales} max={Math.max(comisionesPotenciales * 2, 50000)} label="Comisiones" sublabel="en juego" color="#E8A830" prefix="USD" />
+        <Gauge value={diasPromedio} max={60} label="Días promedio" sublabel="en pipeline" color={diasPromedio > 30 ? B.hot : diasPromedio > 15 ? B.warm : B.ok} />
+        <Gauge value={tasaCalientes} max={100} label="Calientes" sublabel="% del total" color={B.hot} suffix="%" />
+        <Gauge value={propsSinMatch} max={Math.max(totalProps, 10)} label="Sin interesados" sublabel="propiedades" color={propsSinMatch > totalProps * 0.5 ? B.hot : B.warm} />
+        <Gauge value={activos.length} max={100} label="Leads activos" sublabel={"/" + leads.length + " totales"} color={B.accentL} />
       </div>
 
       {/* Fila 1: Insights | Calendario */}
