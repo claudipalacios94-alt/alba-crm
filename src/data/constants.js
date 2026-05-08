@@ -193,7 +193,7 @@ export function genMsgBusqueda(lead) {
   const stars = Math.round((lead.prob || 0) / 20);
 
   const encabezado = stars >= 5
-    ? "🔴 PEDIDO URGENTE — CIERRE INMINENTE"
+    ? "🔴 PEDIDO URGENTE — CIERRE RÁPIDO"
     : stars >= 4
     ? "🟠 PEDIDO ACTIVO — CLIENTE MUY INTERESADO"
     : stars >= 3
