@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════
-// ALBA CRM — MÓDULO MAPA
-// Leaflet + Nominatim geocoding + ARBA CARTO
+// ALBA CRM — MAPA UNIFICADO
+// Propiedades + Captaciones en un solo mapa con capas
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useEffect, useRef } from "react";
 import { B, AG } from "../data/constants.js";
@@ -16,60 +16,80 @@ const CAT_COLOR = {
 };
 
 const TIPO_ICONO = {
-  "Departamento": "🏢", "Casa": "🏠", "PH": "🏡",
-  "Dúplex": "🏘", "Local": "🏪", "Terreno": "📐",
+  "Departamento": "D", "Casa": "C", "PH": "P",
+  "Dúplex": "X", "Local": "L", "Terreno": "T",
 };
 
+// ── Pin SVG de Alba ─────────────────────────────────────────
+function makeAlbaPin(color, letra, retasado = false) {
+  return `<div style="position:relative;display:inline-block">
+    <svg width="36" height="44" viewBox="0 0 36 44" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="sh" x="-30%" y="-20%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.45)"/>
+        </filter>
+      </defs>
+      <path d="M18 2 C9.16 2 2 9.16 2 18 C2 28 18 42 18 42 C18 42 34 28 34 18 C34 9.16 26.84 2 18 2Z"
+        fill="${color}" filter="url(#sh)" stroke="white" stroke-width="1.5"/>
+      <text x="18" y="22" text-anchor="middle" dominant-baseline="middle"
+        font-family="Georgia,serif" font-size="13" font-weight="bold" fill="white">${letra}</text>
+    </svg>
+    ${retasado ? `<div style="position:absolute;top:-4px;right:-6px;background:#E8A830;color:white;font-size:8px;font-weight:700;padding:1px 4px;border-radius:4px;white-space:nowrap">↓</div>` : ""}
+  </div>`;
+}
+
+function makeCaptacionPin() {
+  return `<svg width="28" height="34" viewBox="0 0 28 34" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="sh2" x="-30%" y="-20%" width="160%" height="160%">
+        <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.4)"/>
+      </filter>
+    </defs>
+    <path d="M14 2 C7.4 2 2 7.4 2 14 C2 22 14 32 14 32 C14 32 26 22 26 14 C26 7.4 20.6 2 14 2Z"
+      fill="#E8A830" filter="url(#sh2)" stroke="white" stroke-width="1.2" stroke-dasharray="3,2"/>
+    <text x="14" y="16" text-anchor="middle" dominant-baseline="middle"
+      font-family="Georgia,serif" font-size="11" fill="white" font-weight="bold">?</text>
+  </svg>`;
+}
+
 async function nominatim(dir) {
-  // Limpiar dirección y armar query
-  const dirLimpia = dir.trim().replace(/,.*/, ''); // sacar todo después de coma
-  const queries = [
-    dirLimpia + ', Mar del Plata, Buenos Aires, Argentina',
-    dirLimpia + ', Mar del Plata, Argentina',
-  ];
-  for (const q of queries) {
-    try {
-      const url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=3&countrycodes=ar';
-      const r = await fetch(url, { headers: { 'Accept-Language': 'es', 'User-Agent': 'AlbaCRM/1.0 (inmobiliaria MDP)' } });
-      const d = await r.json();
-      for (const res of d) {
-        const lat = parseFloat(res.lat);
-        const lng = parseFloat(res.lon);
-        if (lat > -38.15 && lat < -37.85 && lng > -57.75 && lng < -57.40) {
-          return { lat, lng, display: res.display_name };
-        }
-      }
-    } catch(e) {}
-    await new Promise(r => setTimeout(r, 300));
-  }
+  if (!dir) return null;
+  const query = encodeURIComponent(dir + ", Mar del Plata, Buenos Aires, Argentina");
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=ar`,
+      { headers: { "Accept-Language": "es" } }
+    );
+    const d = await r.json();
+    if (d.length > 0) {
+      const lat = parseFloat(d[0].lat), lng = parseFloat(d[0].lon);
+      if (lat > -38.15 && lat < -37.85 && lng > -57.75 && lng < -57.40) return { lat, lng };
+    }
+  } catch(e) {}
   return null;
 }
 
-export default function Mapa({ properties, updateProperty }) {
+export default function Mapa({ properties, updateProperty, supabase }) {
   const mapRef   = useRef(null);
   const leafRef  = useRef(null);
   const marksRef = useRef([]);
 
-  const [sel,        setSel]        = useState(null);
-  const [filtro,     setFiltro]     = useState("Todos");
-  const [loaded,     setLoaded]     = useState(false);
-  const [geocoding,  setGeocoding]  = useState(false);
-  const [geoStatus,  setGeoStatus]  = useState({ done: 0, total: 0, failed: [] });
-  const [coords,     setCoords]     = useState({}); // id → {lat, lng}
-  const [q,          setQ]          = useState("");
+  const [loaded,      setLoaded]      = useState(false);
+  const [captaciones, setCaptaciones] = useState([]);
+  const [coords,      setCoords]      = useState({});
+  const [geocoding,   setGeocoding]   = useState(false);
+  const [geoStatus,   setGeoStatus]   = useState({ done: 0, total: 0, failed: [] });
+  const [q,           setQ]           = useState("");
+  const [sel,         setSel]         = useState(null);
+  const [capas,       setCapas]       = useState({ propiedades: true, captaciones: true });
+  const [filtroTipo,  setFiltroTipo]  = useState("Todos");
 
-  const tipos = ["Todos", ...new Set(properties.map(p => p.tipo).filter(Boolean))];
-  const lista = properties.filter(p => {
-    if (filtro !== "Todos" && p.tipo !== filtro) return false;
-    if (q && !((p.dir || "") + (p.zona || "") + (p.tipo || "")).toLowerCase().includes(q.toLowerCase())) return false;
-    return true;
-  });
-
-  // Combinar coords guardadas en Supabase con las geocodificadas en sesión
-  const withCoords = (p) => {
-    const local = coords[p.id];
-    return { ...p, lat: local?.lat || p.lat, lng: local?.lng || p.lng };
-  };
+  // ── Cargar captaciones ─────────────────────────────────────
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from("captaciones").select("*").eq("convertida", false)
+      .then(({ data }) => setCaptaciones(data || []));
+  }, []);
 
   // ── Cargar Leaflet ─────────────────────────────────────────
   useEffect(() => {
@@ -84,19 +104,17 @@ export default function Mapa({ properties, updateProperty }) {
     document.head.appendChild(script);
   }, []);
 
-  // ── Inicializar mapa ───────────────────────────────────────
   useEffect(() => {
     if (!loaded || !mapRef.current || leafRef.current) return;
-    const L = window.L;
-    const map = L.map(mapRef.current, { center: [-38.002, -57.555], zoom: 13 });
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    const map = window.L.map(mapRef.current, { center: [-38.002, -57.555], zoom: 13 });
+    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap", maxZoom: 19,
     }).addTo(map);
     leafRef.current = map;
     setTimeout(() => map.invalidateSize(), 100);
   }, [loaded]);
 
-  // ── Geocodificar todas al abrir ────────────────────────────
+  // ── Geocodificar propiedades sin coords ────────────────────
   async function geocodificarTodas() {
     const sinCoords = properties.filter(p => !p.lat && !p.lng && p.dir);
     if (sinCoords.length === 0) return;
@@ -108,24 +126,20 @@ export default function Mapa({ properties, updateProperty }) {
       const result = await nominatim(p.dir);
       if (result) {
         setCoords(prev => ({ ...prev, [p.id]: result }));
-        // Guardar en Supabase si tenemos updateProperty
-        if (updateProperty) {
-          updateProperty(p.id, { lat: result.lat, lng: result.lng }).catch(() => {});
-        }
-      } else {
-        failed.push(p.dir);
-      }
+        if (updateProperty) updateProperty(p.id, { lat: result.lat, lng: result.lng }).catch(() => {});
+      } else failed.push(p.dir);
       setGeoStatus({ done: i + 1, total: sinCoords.length, failed });
-      // Pausa para no saturar Nominatim (máx 1 req/seg)
       if (i < sinCoords.length - 1) await new Promise(r => setTimeout(r, 1100));
     }
     setGeocoding(false);
   }
 
-  // Geocodificar automáticamente al montar
-  useEffect(() => {
-    if (properties.length > 0) geocodificarTodas();
-  }, []);
+  useEffect(() => { if (properties.length > 0) geocodificarTodas(); }, []);
+
+  const withCoords = (p) => {
+    const local = coords[p.id];
+    return { ...p, lat: local?.lat || p.lat, lng: local?.lng || p.lng };
+  };
 
   // ── Actualizar markers ─────────────────────────────────────
   useEffect(() => {
@@ -135,114 +149,129 @@ export default function Mapa({ properties, updateProperty }) {
     marksRef.current.forEach(m => map.removeLayer(m));
     marksRef.current = [];
 
-    const listaConCoords = lista.map(withCoords).filter(p => p.lat && p.lng);
+    const tipos = ["Todos", ...new Set(properties.map(p => p.tipo).filter(Boolean))];
+    const propsFiltered = properties
+      .filter(p => filtroTipo === "Todos" || p.tipo === filtroTipo)
+      .filter(p => !q || ((p.dir || "") + (p.zona || "")).toLowerCase().includes(q.toLowerCase()))
+      .map(withCoords)
+      .filter(p => p.lat && p.lng);
 
-    listaConCoords.forEach(prop => {
-      const catColor = CAT_COLOR[prop.categoria || "normal"];
-      const icono = TIPO_ICONO[prop.tipo] || "📍";
-      const icon = window.L.divIcon({
-        className: "",
-        html: `<div style="background:#0B1628;border:2px solid ${catColor};border-radius:10px 10px 10px 2px;padding:5px 9px;font-size:11px;font-weight:700;color:${catColor};white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.6);cursor:pointer;display:flex;align-items:center;gap:4px;transform:translateY(-100%)">
-          <span style="font-size:13px">${icono}</span>
-          <span style="color:#C8E0FA">${prop.precio ? "USD " + Math.round(prop.precio/1000) + "k" : "?"}</span>
-          ${prop.precio_original && prop.precio && prop.precio < prop.precio_original ? '<span style="font-size:9px;background:rgba(232,168,48,0.3);color:#E8A830;padding:1px 4px;border-radius:4px">↓</span>' : ""}
-        </div>`,
-        iconAnchor: [0, 0],
+    // Pins propiedades
+    if (capas.propiedades) {
+      propsFiltered.forEach(prop => {
+        const catColor = CAT_COLOR[prop.categoria || "normal"];
+        const letra = TIPO_ICONO[prop.tipo] || "A";
+        const retasado = prop.precio_original && prop.precio && prop.precio < prop.precio_original;
+        const icon = L.divIcon({
+          className: "",
+          html: makeAlbaPin(catColor, letra, retasado),
+          iconAnchor: [18, 44],
+          iconSize: [36, 44],
+        });
+        const marker = L.marker([prop.lat, prop.lng], { icon })
+          .addTo(map)
+          .on("click", () => setSel({ ...prop, _tipo: "propiedad" }));
+        marksRef.current.push(marker);
       });
-      const marker = L.marker([prop.lat, prop.lng], { icon })
-        .addTo(map)
-        .on("click", () => setSel(prop));
-      marksRef.current.push(marker);
-    });
+    }
 
-    if (listaConCoords.length > 0) {
-      const bounds = L.latLngBounds(listaConCoords.map(p => [p.lat, p.lng]));
+    // Pins captaciones
+    if (capas.captaciones) {
+      captaciones.filter(c => c.lat && c.lng).forEach(cap => {
+        const icon = L.divIcon({
+          className: "",
+          html: makeCaptacionPin(),
+          iconAnchor: [14, 34],
+          iconSize: [28, 34],
+        });
+        const marker = L.marker([cap.lat, cap.lng], { icon })
+          .addTo(map)
+          .on("click", () => setSel({ ...cap, _tipo: "captacion" }));
+        marksRef.current.push(marker);
+      });
+    }
+
+    // Fit bounds
+    const allCoords = [
+      ...(capas.propiedades ? propsFiltered : []),
+      ...(capas.captaciones ? captaciones.filter(c => c.lat && c.lng) : []),
+    ].map(p => [p.lat, p.lng]);
+
+    if (allCoords.length > 0) {
+      const bounds = L.latLngBounds(allCoords);
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
     }
-  }, [loaded, lista, coords]);
+  }, [loaded, properties, captaciones, coords, capas, filtroTipo, q]);
+
+  const tipos = ["Todos", ...new Set(properties.map(p => p.tipo).filter(Boolean))];
+  const conCoords = properties.map(withCoords).filter(p => p.lat && p.lng).length;
+  const capConCoords = captaciones.filter(c => c.lat && c.lng).length;
 
   const chip = act => ({
-    padding: "4px 11px", borderRadius: 20, fontSize: 11, cursor: "pointer",
+    padding: "4px 10px", borderRadius: 20, fontSize: 11, cursor: "pointer",
     border: `1px solid ${act ? B.accentL : B.border}`,
-    background: act ? `${B.accentL}18` : "transparent",
+    background: act ? B.accentL + "18" : "transparent",
     color: act ? B.accentL : "#8AAECC",
   });
-
-  const conCoords = lista.map(withCoords).filter(p => p.lat && p.lng).length;
-  const sinCoords = lista.filter(p => !p.lat && !p.lng);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 12, flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 10, flexShrink: 0 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: B.text, margin: 0, fontFamily: "Georgia,serif" }}>Mapa de propiedades</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: B.text, margin: 0, fontFamily: "Georgia,serif" }}>Mapa Alba</h1>
           <p style={{ fontSize: 12, color: "#8AAECC", margin: "3px 0 0" }}>
-            {conCoords} en mapa · {sinCoords.length} sin ubicación · Mar del Plata
+            {conCoords} propiedades · {capConCoords} captaciones · Mar del Plata
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {/* Buscador */}
-          <input
-            value={q}
-            onChange={e => {
-              setQ(e.target.value);
-              // Si hay un solo resultado con coords, hacer zoom
-              if (e.target.value.length > 2) {
-                const matches = properties.filter(p =>
-                  ((p.dir || "") + (p.zona || "") + (p.tipo || "")).toLowerCase().includes(e.target.value.toLowerCase())
-                );
-                if (matches.length === 1) {
-                  const pw = withCoords(matches[0]);
-                  if (pw.lat && leafRef.current) {
-                    leafRef.current.setView([pw.lat, pw.lng], 16);
-                    setSel(pw);
-                  }
-                }
-              } else if (e.target.value === "") {
-                setSel(null);
-              }
-            }}
-            placeholder="Buscar dirección, zona..."
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar dirección, zona..."
             style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid " + B.border,
-              background: B.card, color: B.text, fontSize: 12, outline: "none", width: 200 }}
-          />
+              background: B.card, color: B.text, fontSize: 12, outline: "none", width: 190 }} />
           {geocoding && (
             <div style={{ fontSize: 11, color: B.accentL, background: B.accentL + "15",
-              border: "1px solid " + B.accentL + "40", borderRadius: 8, padding: "5px 12px" }}>
+              border: "1px solid " + B.accentL + "40", borderRadius: 8, padding: "5px 10px" }}>
               Geocodificando {geoStatus.done}/{geoStatus.total}...
             </div>
           )}
-          {!geocoding && geoStatus.total > 0 && (
-            <div style={{ fontSize: 11, color: "#2E9E6A", background: "#2E9E6A15",
-              border: "1px solid #2E9E6A40", borderRadius: 8, padding: "5px 12px" }}>
-              ✓ {geoStatus.done - geoStatus.failed.length} ubicadas
-              {geoStatus.failed.length > 0 && ` · ${geoStatus.failed.length} no encontradas`}
-            </div>
-          )}
-          <button onClick={geocodificarTodas} disabled={geocoding}
-            style={{ padding: "6px 12px", borderRadius: 8, cursor: geocoding ? "default" : "pointer",
-              background: "transparent", border: "1px solid " + B.border,
-              color: "#8AAECC", fontSize: 11 }}>
-            Re-geocodificar
-          </button>
         </div>
       </div>
 
-      {/* Filtros */}
-      <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 10, flexShrink: 0 }}>
-        {tipos.map(t => <button key={t} onClick={() => { setFiltro(t); setSel(null); }} style={chip(filtro === t)}>{t}</button>)}
+      {/* Capas + filtros */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, flexShrink: 0, alignItems: "center" }}>
+        {/* Toggle capas */}
+        <button onClick={() => setCapas(c => ({ ...c, propiedades: !c.propiedades }))}
+          style={{ ...chip(capas.propiedades), display: "flex", alignItems: "center", gap: 5 }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: capas.propiedades ? B.accentL : "#4A6A90" }} />
+          Propiedades ({conCoords})
+        </button>
+        <button onClick={() => setCapas(c => ({ ...c, captaciones: !c.captaciones }))}
+          style={{ ...chip(capas.captaciones), display: "flex", alignItems: "center", gap: 5 }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: capas.captaciones ? "#E8A830" : "#4A6A90" }} />
+          Captaciones ({capConCoords})
+        </button>
+
+        <div style={{ width: 1, height: 16, background: B.border, margin: "0 4px" }} />
+
+        {/* Filtro tipo */}
+        {tipos.map(t => <button key={t} onClick={() => setFiltroTipo(t)} style={chip(filtroTipo === t)}>{t}</button>)}
       </div>
 
-      {/* Leyenda categorías */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 12, flexShrink: 0, flexWrap: "wrap" }}>
+      {/* Leyenda */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 10, flexShrink: 0, flexWrap: "wrap", alignItems: "center" }}>
         {Object.entries(CAT_COLOR).map(([k, c]) => (
           <div key={k} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: c }} />
-            <span style={{ fontSize: 11, color: "#8AAECC", textTransform: "capitalize" }}>{k === "hon3" ? "Hon. 3%" : k === "hon6" ? "Hon. 6%" : k}</span>
+            <div style={{ width: 7, height: 7, borderRadius: "50%", background: c }} />
+            <span style={{ fontSize: 11, color: "#8AAECC" }}>
+              {k === "hon3" ? "Hon. 3%" : k === "hon6" ? "Hon. 6%" : k === "normal" ? "Cartera" : k.charAt(0).toUpperCase() + k.slice(1)}
+            </span>
           </div>
         ))}
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#E8A830", border: "2px dashed #E8A830", background: "transparent", borderRadius: "50%" }} />
+          <span style={{ fontSize: 11, color: "#8AAECC" }}>Captación</span>
+        </div>
       </div>
 
       {/* Mapa + lista */}
@@ -262,104 +291,103 @@ export default function Mapa({ properties, updateProperty }) {
         </div>
 
         {/* Lista lateral */}
-        <div style={{ width: 230, flexShrink: 0, display: "flex", flexDirection: "column", gap: 8,
+        <div style={{ width: 220, flexShrink: 0, display: "flex", flexDirection: "column", gap: 6,
           overflowY: "auto", scrollbarWidth: "thin", scrollbarColor: `${B.border} transparent` }}>
-          {lista.map(p => {
-            const pw = withCoords(p);
-            const isSel = sel?.id === p.id;
-            const catColor = CAT_COLOR[p.categoria || "normal"];
-            return (
-              <div key={p.id}
-                onClick={() => {
-                  setSel(isSel ? null : pw);
-                  if (pw.lat && leafRef.current) leafRef.current.setView([pw.lat, pw.lng], 15);
-                }}
-                style={{ background: isSel ? `${B.accent}18` : B.card,
-                  border: `1.5px solid ${isSel ? B.accentL : B.border}`,
-                  borderLeft: `3px solid ${catColor}`, borderRadius: 10, padding: "11px 12px",
-                  cursor: "pointer", opacity: pw.lat ? 1 : 0.5, flexShrink: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: B.text }}>{p.tipo}</div>
-                    <div style={{ fontSize: 11, color: "#8AAECC" }}>{p.zona}</div>
+
+          {capas.propiedades && properties.map(withCoords).filter(p => p.lat && p.lng)
+            .filter(p => filtroTipo === "Todos" || p.tipo === filtroTipo)
+            .filter(p => !q || ((p.dir || "") + (p.zona || "")).toLowerCase().includes(q.toLowerCase()))
+            .map(p => {
+              const catColor = CAT_COLOR[p.categoria || "normal"];
+              const isSel = sel?.id === p.id && sel?._tipo === "propiedad";
+              return (
+                <div key={p.id} onClick={() => { setSel({ ...p, _tipo: "propiedad" }); leafRef.current?.setView([p.lat, p.lng], 16); }}
+                  style={{ background: isSel ? B.accent + "18" : B.card,
+                    border: `1.5px solid ${isSel ? B.accentL : B.border}`,
+                    borderLeft: `3px solid ${catColor}`, borderRadius: 9, padding: "9px 11px", cursor: "pointer", flexShrink: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: B.text }}>{p.tipo}</div>
+                  <div style={{ fontSize: 11, color: "#8AAECC" }}>{p.zona}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif", marginTop: 2 }}>
+                    {p.precio ? "USD " + Number(p.precio).toLocaleString() : "—"}
                   </div>
-                  {!pw.lat && <span style={{ fontSize: 10, color: B.warm }}>Sin pin</span>}
                 </div>
-                <div style={{ fontSize: 11, color: "#6A8AAE", marginBottom: 6,
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.dir}</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif" }}>
-                  {p.precio ? `USD ${Number(p.precio).toLocaleString()}` : "A consultar"}
-                </div>
+              );
+            })}
+
+          {capas.captaciones && captaciones.filter(c => c.lat && c.lng).map(cap => {
+            const isSel = sel?.id === cap.id && sel?._tipo === "captacion";
+            return (
+              <div key={cap.id} onClick={() => { setSel({ ...cap, _tipo: "captacion" }); leafRef.current?.setView([cap.lat, cap.lng], 16); }}
+                style={{ background: isSel ? "#E8A83018" : B.card,
+                  border: `1.5px solid ${isSel ? "#E8A830" : B.border}`,
+                  borderLeft: "3px solid #E8A830", borderRadius: 9, padding: "9px 11px",
+                  cursor: "pointer", flexShrink: 0, borderStyle: "dashed" }}>
+                <div style={{ fontSize: 11, color: "#E8A830", fontWeight: 600 }}>📌 Captación</div>
+                <div style={{ fontSize: 11, color: "#8AAECC" }}>{cap.zona || cap.direccion || "Sin dirección"}</div>
+                {cap.precio && <div style={{ fontSize: 13, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif", marginTop: 2 }}>USD {Number(cap.precio).toLocaleString()}</div>}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Popup selección */}
+      {/* Popup */}
       {sel && (
         <div style={{ position: "absolute", bottom: 24, left: "50%", transform: "translateX(-50%)",
-          background: "#0B1628", border: `1px solid ${B.accentL}50`, borderRadius: 14,
-          padding: "14px 20px", zIndex: 1000, display: "flex", alignItems: "center", gap: 16,
+          background: "#0B1628", border: `1px solid ${sel._tipo === "captacion" ? "#E8A830" : B.accentL}50`,
+          borderRadius: 14, padding: "14px 20px", zIndex: 1000,
+          display: "flex", alignItems: "center", gap: 16,
           boxShadow: "0 8px 40px rgba(0,0,0,0.7)", maxWidth: 500, width: "90%" }}>
-          <div style={{ width: 3, alignSelf: "stretch", background: CAT_COLOR[sel.categoria || "normal"], borderRadius: 2, flexShrink: 0 }} />
+          <div style={{ width: 3, alignSelf: "stretch",
+            background: sel._tipo === "captacion" ? "#E8A830" : CAT_COLOR[sel.categoria || "normal"],
+            borderRadius: 2, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: B.text }}>{sel.tipo}</span>
-              <span style={{ fontSize: 11, color: "#8AAECC" }}>{sel.zona}</span>
-              {sel.ag && AG[sel.ag] && (
-                <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3,
-                  background: AG[sel.ag].bg, color: AG[sel.ag].c, fontWeight: 700 }}>{AG[sel.ag].n}</span>
-              )}
-            </div>
-            <div style={{ fontSize: 12, color: "#8AAECC", marginBottom: 6 }}>{sel.dir}</div>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ fontSize: 16, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif" }}>
-                {sel.precio ? `USD ${Number(sel.precio).toLocaleString()}` : "A consultar"}
-              </span>
-              {sel.m2tot && <span style={{ fontSize: 11, color: "#8AAECC" }}>{sel.m2tot}m²</span>}
-              {sel.caracts && <span style={{ fontSize: 11, color: "#6A8AAE" }}>{sel.caracts}</span>}
-            </div>
-            {sel.info && <div style={{ fontSize: 11, color: "#6A8AAE", marginTop: 5, fontStyle: "italic" }}>{sel.info}</div>}
-            {/* Botón ARBA */}
-<div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-              <a href={ARBA_URL} target="_blank" rel="noreferrer"
-                style={{ display: "inline-flex", alignItems: "center", gap: 5,
-                  padding: "5px 12px", borderRadius: 7, fontSize: 11, textDecoration: "none",
-                  background: "rgba(42,91,173,0.2)", border: "1px solid rgba(42,91,173,0.4)",
-                  color: "#8AAECC", fontWeight: 600 }}>
-                🗺 Abrir ARBA CARTO
-              </a>
-              {sel.lat && (
-                <button onClick={() => {
-                  navigator.clipboard.writeText(sel.lat + ", " + sel.lng);
-                  alert("Coordenadas copiadas: " + sel.lat + ", " + sel.lng + "\nPegalas en el buscador de ARBA");
-                }}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 5,
-                    padding: "5px 12px", borderRadius: 7, fontSize: 11, cursor: "pointer",
-                    background: "rgba(46,158,106,0.15)", border: "1px solid rgba(46,158,106,0.4)",
-                    color: "#2E9E6A", fontWeight: 600 }}>
-                  📋 Copiar coords
-                </button>
-              )}
-            </div>
+            {sel._tipo === "propiedad" ? (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: B.text }}>{sel.tipo}</span>
+                  <span style={{ fontSize: 11, color: "#8AAECC" }}>{sel.zona}</span>
+                  {sel.ag && AG[sel.ag] && <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: AG[sel.ag].bg, color: AG[sel.ag].c, fontWeight: 700 }}>{AG[sel.ag].n}</span>}
+                </div>
+                <div style={{ fontSize: 12, color: "#8AAECC", marginBottom: 6 }}>{sel.dir}</div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif" }}>
+                    {sel.precio ? "USD " + Number(sel.precio).toLocaleString() : "A consultar"}
+                  </span>
+                  {sel.m2tot && <span style={{ fontSize: 11, color: "#8AAECC" }}>{sel.m2tot}m²</span>}
+                  {sel.precio_original && sel.precio < sel.precio_original && (
+                    <span style={{ fontSize: 11, background: "#E8A83020", color: "#E8A830", padding: "1px 7px", borderRadius: 8, fontWeight: 700 }}>RETASADO</span>
+                  )}
+                </div>
+                {sel.info && <div style={{ fontSize: 11, color: "#6A8AAE", marginTop: 4, fontStyle: "italic" }}>{sel.info}</div>}
+                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                  <a href={ARBA_URL} target="_blank" rel="noreferrer"
+                    style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, textDecoration: "none",
+                      background: "rgba(42,91,173,0.15)", border: "1px solid rgba(42,91,173,0.3)", color: "#8AAECC" }}>
+                    🗺 ARBA
+                  </a>
+                  {sel.lat && (
+                    <button onClick={() => { navigator.clipboard.writeText(sel.lat + ", " + sel.lng); }}
+                      style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, cursor: "pointer",
+                        background: "rgba(46,158,106,0.12)", border: "1px solid rgba(46,158,106,0.3)", color: "#2E9E6A" }}>
+                      📋 Coords
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#E8A830", marginBottom: 3 }}>📌 Captación pendiente</div>
+                <div style={{ fontSize: 12, color: "#8AAECC", marginBottom: 4 }}>{sel.zona}{sel.direccion ? " · " + sel.direccion : ""}</div>
+                {sel.precio && <div style={{ fontSize: 15, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif" }}>USD {Number(sel.precio).toLocaleString()}</div>}
+                {sel.tipo && <div style={{ fontSize: 11, color: "#8AAECC", marginTop: 2 }}>{sel.tipo}</div>}
+                {sel.nota && <div style={{ fontSize: 11, color: "#6A8AAE", fontStyle: "italic", marginTop: 4 }}>{sel.nota}</div>}
+              </>
+            )}
           </div>
           <button onClick={() => setSel(null)}
             style={{ background: "transparent", border: "none", color: "#8AAECC",
               fontSize: 20, cursor: "pointer", padding: "0 4px", flexShrink: 0 }}>×</button>
-        </div>
-      )}
-
-      {/* Sin coordenadas */}
-      {!geocoding && geoStatus.failed.length > 0 && (
-        <div style={{ marginTop: 10, padding: "10px 14px", background: B.warm + "12",
-          border: "1px solid " + B.warm + "40", borderRadius: 8, flexShrink: 0 }}>
-          <div style={{ fontSize: 11, color: B.warm, fontWeight: 600, marginBottom: 4 }}>
-            No se encontraron estas direcciones — revisá el formato:
-          </div>
-          {geoStatus.failed.map((d, i) => (
-            <div key={i} style={{ fontSize: 11, color: "#8AAECC" }}>· {d}</div>
-          ))}
         </div>
       )}
 
