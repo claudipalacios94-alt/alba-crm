@@ -225,7 +225,7 @@ export function genMsgBusqueda(lead) {
     `*${encabezado}*`,
     lineaPrincipal,
     detalles.length > 0 ? detalles.join(" · ") : null,
-    "_Alba Inversiones · REG 3832_",
+    "Alba Inversiones · REG 3832",
   ].filter(l => l !== null).join("\n").trim();
 }
 
