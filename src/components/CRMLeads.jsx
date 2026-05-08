@@ -427,17 +427,19 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                               <button onClick={() => updateLead(lead.id, { enviado_manana: okM ? null : hoy })}
                                 title={okM ? "Mañana: enviado ✓" : "Mañana: no enviado"}
                                 style={{ padding:"4px 8px", borderRadius:6, cursor:"pointer", fontSize:11, fontWeight:700,
-                                  background: okM ? "rgba(46,158,106,0.2)"  : "transparent",
-                                  border: `1px solid ${okM ? "#2E9E6A" : B.border}`,
-                                  color: okM ? "#2E9E6A" : "#4A6A90" }}>
+                                  background: okM ? "rgba(204,34,51,0.2)" : "transparent",
+                                  border: `1px solid ${okM ? "#CC2233" : B.border}`,
+                                  color: okM ? "#CC2233" : "#4A6A90",
+                                  fontWeight: 700 }}>
                                 {okM ? "☀✓" : "☀"}
                               </button>
                               <button onClick={() => updateLead(lead.id, { enviado_tarde: okT ? null : hoy })}
                                 title={okT ? "Tarde: enviado ✓" : "Tarde: no enviado"}
                                 style={{ padding:"4px 8px", borderRadius:6, cursor:"pointer", fontSize:11, fontWeight:700,
-                                  background: okT ? "rgba(46,158,106,0.2)"  : "transparent",
-                                  border: `1px solid ${okT ? "#2E9E6A" : B.border}`,
-                                  color: okT ? "#2E9E6A" : "#4A6A90" }}>
+                                  background: okT ? "rgba(204,34,51,0.2)" : "transparent",
+                                  border: `1px solid ${okT ? "#CC2233" : B.border}`,
+                                  color: okT ? "#CC2233" : "#4A6A90",
+                                  fontWeight: 700 }}>
                                 {okT ? "🌙✓" : "🌙"}
                               </button>
                             </div>
