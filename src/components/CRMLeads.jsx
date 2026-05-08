@@ -383,6 +383,15 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                             border:`1px solid ${B.accentL}30`, color:B.accentL, fontSize:12, cursor:"pointer", fontWeight:600 }}>
                           ✏️ Editar
                         </button>
+                        <button onClick={() => {
+                          const msg = genMsgBusqueda(lead);
+                          navigator.clipboard.writeText(msg);
+                          alert("✅ Copiado!\n\n" + msg.slice(0,150) + "...");
+                        }}
+                          style={{ padding:"5px 12px", borderRadius:6, background:"rgba(232,168,48,0.12)",
+                            border:"1px solid rgba(232,168,48,0.3)", color:"#E8A830", fontSize:12, cursor:"pointer", fontWeight:600 }}>
+                          📋 Búsqueda WA
+                        </button>
                         <button onClick={() => setConfirmDelete(lead)}
                           style={{ padding:"5px 12px", borderRadius:6, background:`${B.hot}12`,
                             border:`1px solid ${B.hot}30`, color:B.hot, fontSize:12, cursor:"pointer", fontWeight:600, marginLeft:"auto" }}>
