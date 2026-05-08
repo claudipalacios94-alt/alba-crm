@@ -81,6 +81,8 @@ function parsearTextoLocal(texto) {
     !direccion && "direccion",
   ].filter(Boolean);
 
+  console.log("PARSER:", { tipo, precio, ambientes, m2tot, direccion, zona, cochera, campos_faltantes });
+
   return { tipo, precio, ambientes, m2tot, direccion, zona, telefono,
     cochera, operacion: /alquil/.test(t) ? "alquiler" : "venta",
     campos_faltantes, fuera_de_mdp: false };
