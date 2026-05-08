@@ -169,6 +169,21 @@ function PropCard({ p, updateProperty, deleteProperty }) {
           {p.caracts && <div style={{ fontSize: 12, color: "#8AAECC" }}>{p.caracts}</div>}
           {p.info    && <div style={{ fontSize: 12, color: "#6A8AAE", fontStyle: "italic" }}>{p.info}</div>}
 
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <a href={"https://www.openstreetmap.org/search?query=" + encodeURIComponent((p.dir || "") + ", Mar del Plata, Argentina")}
+              target="_blank" rel="noreferrer"
+              style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, textDecoration: "none",
+                background: "rgba(100,160,220,0.12)", border: "1px solid rgba(100,160,220,0.3)", color: "#8AAECC" }}>
+              🗺 Ver en OSM
+            </a>
+            <a href={"https://maps.google.com/?q=" + encodeURIComponent((p.dir || "") + ", Mar del Plata, Argentina")}
+              target="_blank" rel="noreferrer"
+              style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, textDecoration: "none",
+                background: "rgba(66,133,244,0.12)", border: "1px solid rgba(66,133,244,0.3)", color: "#8AAECC" }}>
+              📍 Google Maps
+            </a>
+          </div>
+
           {/* Acciones */}
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={startEdit}
