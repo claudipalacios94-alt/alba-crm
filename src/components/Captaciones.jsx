@@ -44,13 +44,28 @@ function parsearTextoLocal(texto) {
   const m2Match = texto.match(/(\d{2,4})\s*m[²2]/i);
   const m2tot = m2Match ? parseInt(m2Match[1]) : null;
 
-  const dirMatch = texto.match(/([A-ZÁÉÍÓÚÑ][a-záéíóúñA-ZÁÉÍÓÚÑ\s\.]{3,25})\s+(?:n[°º]?\s*)?(\d{3,5})/);
-  const direccion = dirMatch ? `${dirMatch[1].trim()} ${dirMatch[2]}` : null;
+  // Dirección — varios patrones
+  const dirPatterns = [
+    /direcci[oó]n\s*:\s*([A-ZÁÉÍÓÚÑA-Za-záéíóúñ\s\.]+\s+\d{3,5})/i,
+    /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑA-Za-záéíóúñ\s\.]{3,30})\s+(?:n[°º]?\s*)?(\d{3,5})/,
+  ];
+  let direccion = null;
+  for (const pat of dirPatterns) {
+    const m = texto.match(pat);
+    if (m) {
+      direccion = m[1] ? m[1].trim() + (m[2] ? " " + m[2] : "") : m[0].replace(/direcci[oó]n\s*:\s*/i,"").trim();
+      break;
+    }
+  }
+  // Normalizar capitalización
+  if (direccion) direccion = direccion.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
 
   const BARRIOS = ["la perla","chauvin","centro","güemes","punta mogotes","alfar",
     "bosque grande","san carlos","los pinares","playa grande","divino rostro",
     "constitución","pompeya","santa rosa","floresta","libertad","san jorge",
-    "las heras","camet","villa primera","mar del plata","santa monica","luro"];
+    "las heras","camet","villa primera","mar del plata","santa monica","luro",
+    "caisamar","estrada","chapadmalal","batán","sierra de los padres","peralta ramos",
+    "jardín de peralta","nueva pompey","bernardino rivadavia","félix u. camet"];
   const zona = BARRIOS.find(b => t.includes(b)) || null;
 
   const telMatch = texto.match(/(?:\+?54\s*9?\s*)?(?:223|2235)[\s\-]?(\d[\d\s\-]{6,10}\d)/);
