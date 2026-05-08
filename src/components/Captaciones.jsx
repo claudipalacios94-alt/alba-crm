@@ -56,6 +56,7 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
     ag:                 item.ag || "",
     inmobiliaria:       item.inmobiliaria || "",
     url:                item.url || "",
+    nota_interna:       item.nota_interna || "",
   });
 
   const agObj = AG[item.ag];
@@ -75,6 +76,7 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
       ag:                 form.ag || null,
       inmobiliaria:       form.inmobiliaria || null,
       url:                form.url || null,
+      nota_interna:       form.nota_interna || null,
     };
     const { error } = await supabase.from("captaciones").update(updates).eq("id", item.id);
     if (!error) { onUpdate(item.id, updates); setEditing(false); }
@@ -91,6 +93,9 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
   };
 
   const esCompartida = !!item.inmobiliaria;
+  const diasVida = Math.floor((new Date() - new Date(item.created_at)) / 86400000);
+  const expirada = diasVida >= 21;
+  const proxExpira = diasVida >= 18 && diasVida < 21;
   const borderColor = esCompartida ? "#9B6DC8" : B.accentL;
 
   return (
@@ -106,6 +111,8 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
           {agObj && <span style={{ fontSize:10, padding:"1px 5px", borderRadius:3, background:agObj.bg, color:agObj.c, fontWeight:600 }}>{agObj.n}</span>}
           {esCompartida && <span style={{ fontSize:10, padding:"1px 7px", borderRadius:12, background:"#9B6DC820", color:"#9B6DC8", border:"1px solid #9B6DC840", fontWeight:600 }}>🤝 {item.inmobiliaria}</span>}
           <span style={{ fontSize:11, color:"#4A6A90", marginLeft:"auto" }}>{fmtFecha(item.created_at)}</span>
+          {expirada && <span style={{ fontSize:10, padding:"2px 7px", borderRadius:8, background:"rgba(204,34,51,0.2)", color:"#CC2233", fontWeight:700, border:"1px solid rgba(204,34,51,0.4)" }}>🔴 Expirada — ¿conservar?</span>}
+          {proxExpira && <span style={{ fontSize:10, padding:"2px 7px", borderRadius:8, background:"rgba(232,168,48,0.2)", color:"#E8A830", fontWeight:700 }}>⏰ Expira en {21-diasVida}d</span>}
           <span style={{ fontSize:12, color:B.accentL }}>{open ? "▲" : "▼"}</span>
         </div>
         {(item.zona || item.direccion) && (
@@ -128,6 +135,7 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
           {item.nombre_propietario && <div style={{ fontSize:12, color:"#8AAECC" }}>👤 {item.nombre_propietario}{item.telefono ? " · "+item.telefono : ""}</div>}
           {item.caracts && <div style={{ fontSize:12, color:"#8AAECC" }}>{item.caracts}</div>}
           {item.nota && <div style={{ fontSize:11, color:"#6A8AAE", fontStyle:"italic" }}>"{item.nota}"</div>}
+              {item.nota_interna && <div style={{ fontSize:12, color:"#8AAECC", background:"rgba(42,91,173,0.08)", borderRadius:6, padding:"6px 9px", borderLeft:"2px solid "+B.accentL }}>📝 {item.nota_interna}</div>}
           <div style={{ fontSize:11, color:"#4A6A90", lineHeight:1.5,
             display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
             {item.contenido}
@@ -225,6 +233,11 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
             <input value={form.url} onChange={e=>setForm(f=>({...f,url:e.target.value}))}
               placeholder="https://zonaprop.com.ar/..." style={{...inp, borderColor:form.url?"#4A8ABE":B.border}} />
           </div>
+          <div>
+            <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>📝 NOTA INTERNA</label>
+            <input value={form.nota_interna} onChange={e=>setForm(f=>({...f,nota_interna:e.target.value}))}
+              placeholder="ej: propietario disponible tardes, pide escritura rápida..." style={inp} />
+          </div>
 
           <div style={{ display:"flex", gap:7, marginTop:4 }}>
             <button onClick={guardarEdicion} disabled={saving}
@@ -270,7 +283,31 @@ export default function Captaciones({ supabase }) {
         .select("*")
         .eq("convertida", false)
         .order("created_at", { ascending: false });
-      setItems(data || []);
+
+      const items = data || [];
+      const hoy = new Date();
+
+      // Auto-eliminar las que llevan +24 días y ya fueron notificadas
+      const aEliminar = items.filter(i => {
+        const dias = Math.floor((hoy - new Date(i.created_at)) / 86400000);
+        return dias >= 24 && i.expiracion_notificada;
+      });
+      for (const i of aEliminar) {
+        await supabase.from("captaciones").delete().eq("id", i.id);
+      }
+
+      // Marcar como notificadas las que llevan +21 días
+      const aNotificar = items.filter(i => {
+        const dias = Math.floor((hoy - new Date(i.created_at)) / 86400000);
+        return dias >= 21 && !i.expiracion_notificada;
+      });
+      for (const i of aNotificar) {
+        await supabase.from("captaciones").update({ expiracion_notificada: true }).eq("id", i.id);
+        i.expiracion_notificada = true;
+      }
+
+      const restantes = items.filter(i => !aEliminar.find(e => e.id === i.id));
+      setItems(restantes);
       setLoaded(true);
     }
     load();
