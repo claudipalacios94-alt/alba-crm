@@ -46,7 +46,7 @@ function PropCard({ p, updateProperty, deleteProperty }) {
   const [saving,     setSaving]     = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [savingCat,  setSavingCat]  = useState(false);
-  const [localCat,   setLocalCat]   = useStatelocalCat;
+  const [localCat,   setLocalCat]   = useState(p.categoria || "normal");
 
   const scColor = p.sc?.includes("Urgente") ? B.hot : p.sc?.includes("tenci") ? B.warm : B.ok;
   const cat = catInfolocalCat;
