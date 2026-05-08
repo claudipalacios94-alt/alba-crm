@@ -207,10 +207,10 @@ export default function Captaciones({ supabase }) {
   };
 
   return (
-    <div style={{ display: "flex", gap: 16, height: "100%", overflow: "hidden" }}>
+    <div style={{ overflowY: "auto", maxWidth: 700 }}>
 
       {/* Panel izquierdo */}
-      <div style={{ width: 380, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14, overflowY: "auto", paddingRight: 4 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: B.text, margin: 0, fontFamily: "Georgia,serif" }}>Captación rápida</h1>
@@ -388,23 +388,6 @@ export default function Captaciones({ supabase }) {
             </div>
           );
         })}
-      </div>
-
-      {/* Mapa */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <div style={{ fontSize: 11, color: "#8AAECC", marginBottom: 10 }}>
-          📌 {items.filter(i => i.lat).length} de {items.length} captaciones en mapa
-        </div>
-        <div style={{ flex: 1, borderRadius: 12, overflow: "hidden", border: `1px solid ${B.border}`, position: "relative" }}>
-          {!mapLoaded && (
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center",
-              justifyContent: "center", background: B.card, zIndex: 10, gap: 10 }}>
-              <div style={{ width: 28, height: 28, border: `2px solid ${B.border}`,
-                borderTop: `2px solid ${B.accentL}`, borderRadius: "50%", animation: "spin .7s linear infinite" }} />
-            </div>
-          )}
-          <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
-        </div>
       </div>
 
       {/* Modal eliminar */}
