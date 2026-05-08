@@ -81,8 +81,6 @@ function parsearTextoLocal(texto) {
     !direccion && "direccion",
   ].filter(Boolean);
 
-  console.log("PARSER:", { tipo, precio, ambientes, m2tot, direccion, zona, cochera, campos_faltantes });
-
   return { tipo, precio, ambientes, m2tot, direccion, zona, telefono,
     cochera, operacion: /alquil/.test(t) ? "alquiler" : "venta",
     campos_faltantes, fuera_de_mdp: false };
@@ -452,29 +450,40 @@ export default function Captaciones({ supabase }) {
     setGuardando(true);
 
     const merged = { ...campos, ...completos };
-    const dir = merged.direccion || null;
+    // completos tiene los valores editados por el usuario (toman precedencia)
+    const tipo      = completos.tipo      || campos?.tipo      || null;
+    const zona      = completos.zona      || campos?.zona      || null;
+    const dir       = completos.direccion || campos?.direccion || null;
+    const precio    = completos.precio    || campos?.precio    || null;
+    const ambientes = completos.ambientes || campos?.ambientes || null;
+    const m2tot     = completos.m2tot     || campos?.m2tot     || null;
+    const cochera   = completos.cochera   || campos?.cochera   || null;
+    const nomProp   = completos.nombre_propietario || campos?.nombre_propietario || null;
+    const tel       = completos.telefono  || campos?.telefono  || null;
+    const operacion = completos.operacion || campos?.operacion || "venta";
     let lat = null, lng = null;
     if (dir) {
       const coords = await nominatim(dir);
       lat = coords.lat; lng = coords.lng;
     }
-    // Si no encontró con dirección, intentar con zona
-    if (!lat && merged.zona) {
-      const coords = await nominatim(merged.zona + ', Mar del Plata');
+    if (!lat && zona) {
+      const coords = await nominatim(zona + ', Mar del Plata');
       lat = coords.lat; lng = coords.lng;
     }
 
     const { data, error } = await supabase.from("captaciones").insert([{
       contenido:          input.trim(),
-      tipo:               merged.tipo || null,
-      zona:               merged.zona || null,
+      tipo,
+      zona,
       direccion:          dir,
-      precio:             merged.precio ? Number(merged.precio) : null,
-      nombre_propietario: merged.nombre_propietario || null,
-      telefono:           merged.telefono || null,
+      precio:             precio ? Number(precio) : null,
+      nombre_propietario: nomProp,
+      telefono:           tel,
       caracts:            merged.caracts || null,
-      m2tot:              merged.m2tot ? Number(merged.m2tot) : null,
-      operacion:          merged.operacion || "venta",
+      m2tot:              m2tot ? Number(m2tot) : null,
+      ambientes:          ambientes || null,
+      cochera:            cochera || null,
+      operacion,
       nota:               nota.trim() || null,
       url:                input.trim().startsWith('http') ? input.trim().split(' ')[0] : null,
       ag:                 ag || null,
@@ -568,51 +577,42 @@ export default function Captaciones({ supabase }) {
               </div>
             )}
 
-            {/* Campos extraídos */}
-            {["tipo","zona","direccion","precio","nombre_propietario","telefono","m2tot","caracts","operacion"].map(k => {
-              const val = campos[k];
-              if (!val) return null;
-              return (
-                <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                  <span style={{ color: "#5A7A9A", fontSize: 11 }}>{LABEL_MAP[k] || k}:</span>
-                  <span style={{ color: B.text, fontWeight: 600 }}>{k === "precio" ? "USD " + Number(val).toLocaleString() : String(val)}</span>
-                </div>
-              );
-            })}
-
-            {/* Campos faltantes — pedir manualmente */}
-            {pendientes.length > 0 && (
-              <div style={{ borderTop: `1px solid ${B.border}`, paddingTop: 10 }}>
-                <div style={{ fontSize: 11, color: B.warm, fontWeight: 600, marginBottom: 8 }}>
-                  ⚠ Falta completar:
-                </div>
-                {pendientes.map(k => (
-                  <div key={k} style={{ marginBottom: 7 }}>
-                    <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 3 }}>{LABEL_MAP[k] || k}</label>
-                    {k === "tipo" ? (
-                      <select value={completos[k] || ""} onChange={e => setCompletos(p => ({...p, [k]: e.target.value}))} style={inpS}>
-                        <option value="">Elegir tipo...</option>
-                        {["Departamento","Casa","PH","Dúplex","Local","Terreno","Otro"].map(t => <option key={t}>{t}</option>)}
-                      </select>
-                    ) : k === "operacion" ? (
-                      <select value={completos[k] || ""} onChange={e => setCompletos(p => ({...p, [k]: e.target.value}))} style={inpS}>
-                        <option value="">Elegir...</option>
-                        <option value="venta">Venta</option>
-                        <option value="alquiler">Alquiler</option>
+            {/* Todos los campos — editables, pre-rellenados con lo detectado */}
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {[
+                { k:"tipo", label:"Tipo", type:"select", opts:["Departamento","Casa","PH","Dúplex","Local","Terreno","Otro"] },
+                { k:"zona", label:"Zona/barrio", type:"text", placeholder:"ej: La Perla" },
+                { k:"direccion", label:"Dirección", type:"text", placeholder:"ej: San Martín 1234" },
+                { k:"precio", label:"Precio USD", type:"number", placeholder:"ej: 85000" },
+                { k:"ambientes", label:"Ambientes", type:"text", placeholder:"ej: 2" },
+                { k:"m2tot", label:"Superficie m²", type:"number", placeholder:"ej: 50" },
+                { k:"cochera", label:"Cochera", type:"select", opts:["", "si", "no"] },
+                { k:"nombre_propietario", label:"Propietario", type:"text" },
+                { k:"telefono", label:"Teléfono", type:"text" },
+                { k:"operacion", label:"Operación", type:"select", opts:["venta","alquiler"] },
+              ].map(({ k, label, type, opts, placeholder }) => {
+                const detVal = campos[k];
+                const curVal = completos[k] !== undefined ? completos[k] : (detVal || "");
+                const detected = !!detVal && !pendientes.includes(k);
+                return (
+                  <div key={k}>
+                    <label style={{ fontSize:10, color: detected ? "#2E9E6A" : "#8AAECC", display:"block", marginBottom:2 }}>
+                      {detected ? "✓ " : ""}{label.toUpperCase()}
+                    </label>
+                    {type === "select" ? (
+                      <select value={curVal} onChange={e => setCompletos(p => ({...p, [k]: e.target.value}))} style={inpS}>
+                        {opts.map(o => <option key={o} value={o}>{o || "—"}</option>)}
                       </select>
                     ) : (
-                      <input
-                        value={completos[k] || ""}
+                      <input type={type} value={curVal}
                         onChange={e => setCompletos(p => ({...p, [k]: e.target.value}))}
-                        style={inpS}
-                        placeholder={k === "precio" ? "ej: 85000" : k === "zona" ? "ej: La Perla" : ""}
-                        type={["precio","m2tot"].includes(k) ? "number" : "text"}
-                      />
+                        style={{ ...inpS, borderColor: detected ? "#2E9E6A40" : inpS.border }}
+                        placeholder={placeholder || ""} />
                     )}
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
 
             <button onClick={guardar} disabled={guardando}
               style={{ width: "100%", padding: 10, borderRadius: 9, cursor: guardando ? "default" : "pointer",
