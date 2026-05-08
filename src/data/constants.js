@@ -228,11 +228,7 @@ export function genMsgBusqueda(lead) {
     stars >= 4 && !inversor && "📅 Visita coordinada",
   ].filter(Boolean);
 
-  const urgencia = stars >= 5
-    ? "Cliente con decisión tomada."
-    : stars >= 4
-    ? "Cliente avanzado, no especular con precio."
-    : "";
+  const urgencia = "";
 
   return [
     `*${encabezado}*`,
