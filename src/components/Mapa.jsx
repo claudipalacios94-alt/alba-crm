@@ -91,6 +91,8 @@ export default function Mapa({ properties, updateProperty, supabase }) {
   const [geoStatus,   setGeoStatus]   = useState({ done: 0, total: 0, failed: [] });
   const [q,           setQ]           = useState("");
   const [sel,         setSel]         = useState(null);
+  const [notaRapida,  setNotaRapida]  = useState("");
+  const [guardandoNota, setGuardandoNota] = useState(false);
   const [capas,       setCapas]       = useState({ propiedades: true, captaciones: true });
   const [filtroTipo,  setFiltroTipo]  = useState("Todos");
 
@@ -146,6 +148,15 @@ export default function Mapa({ properties, updateProperty, supabase }) {
 
   useEffect(() => { if (properties.length > 0) geocodificarTodas(); }, []);
 
+  async function guardarNota() {
+    if (!sel || !notaRapida.trim() || !updateProperty) return;
+    setGuardandoNota(true);
+    await updateProperty(sel.id, { info: notaRapida.trim() });
+    setSel(prev => ({ ...prev, info: notaRapida.trim() }));
+    setNotaRapida("");
+    setGuardandoNota(false);
+  }
+
   const withCoords = (p) => {
     const local = coords[p.id];
     return { ...p, lat: local?.lat || p.lat, lng: local?.lng || p.lng };
@@ -180,7 +191,7 @@ export default function Mapa({ properties, updateProperty, supabase }) {
         });
         const marker = L.marker([prop.lat, prop.lng], { icon })
           .addTo(map)
-          .on("click", () => setSel({ ...prop, _tipo: "propiedad" }));
+          .on("click", () => { setSel({ ...prop, _tipo: "propiedad" }); setNotaRapida(""); });
         marksRef.current.push(marker);
       });
     }
@@ -354,22 +365,55 @@ export default function Mapa({ properties, updateProperty, supabase }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             {sel._tipo === "propiedad" ? (
               <>
+                {/* Cabecera */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: B.text }}>{sel.tipo}</span>
                   <span style={{ fontSize: 11, color: "#8AAECC" }}>{sel.zona}</span>
                   {sel.ag && AG[sel.ag] && <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: AG[sel.ag].bg, color: AG[sel.ag].c, fontWeight: 700 }}>{AG[sel.ag].n}</span>}
+                  {sel.sc && <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: (sel.sc.includes("Urgente") ? "#CC223320" : sel.sc.includes("tenci") ? "#E8A83020" : "#2E9E6A20"), color: (sel.sc.includes("Urgente") ? "#CC2233" : sel.sc.includes("tenci") ? "#E8A830" : "#2E9E6A") }}>{sel.sc}</span>}
                 </div>
+
+                {/* Dirección */}
                 <div style={{ fontSize: 12, color: "#8AAECC", marginBottom: 6 }}>{sel.dir}</div>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+
+                {/* Precio */}
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 6 }}>
                   <span style={{ fontSize: 16, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif" }}>
                     {sel.precio ? "USD " + Number(sel.precio).toLocaleString() : "A consultar"}
                   </span>
                   {sel.m2tot && <span style={{ fontSize: 11, color: "#8AAECC" }}>{sel.m2tot}m²</span>}
-                  {sel.precio_original && sel.precio < sel.precio_original && (
-                    <span style={{ fontSize: 11, background: "#E8A83020", color: "#E8A830", padding: "1px 7px", borderRadius: 8, fontWeight: 700 }}>RETASADO</span>
+                  {sel.precio && sel.m2tot && <span style={{ fontSize: 11, color: "#6A8AAE" }}>USD {Math.round(sel.precio/sel.m2tot).toLocaleString()}/m²</span>}
+                  {sel.precio_original && Number(sel.precio) < Number(sel.precio_original) && (
+                    <span style={{ fontSize: 11, background: "#FF6B3520", color: "#FF6B35", padding: "1px 7px", borderRadius: 8, fontWeight: 700 }}>↓ RETASADO</span>
                   )}
                 </div>
-                {sel.info && <div style={{ fontSize: 11, color: "#6A8AAE", marginTop: 4, fontStyle: "italic" }}>{sel.info}</div>}
+
+                {/* Características */}
+                {sel.caracts && <div style={{ fontSize: 11, color: "#8AAECC", marginBottom: 4 }}>{sel.caracts}</div>}
+
+                {/* Info interna */}
+                {sel.info && <div style={{ fontSize: 11, color: "#6A8AAE", fontStyle: "italic", marginBottom: 6 }}>"{sel.info}"</div>}
+
+                {/* Nota rápida */}
+                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                  <input
+                    value={notaRapida}
+                    onChange={e => setNotaRapida(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && guardarNota()}
+                    placeholder="Añadir nota rápida..."
+                    style={{ flex: 1, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 6, padding: "5px 9px", color: B.text, fontSize: 11, outline: "none" }}
+                  />
+                  <button onClick={guardarNota} disabled={!notaRapida.trim() || guardandoNota}
+                    style={{ padding: "5px 10px", borderRadius: 6, cursor: "pointer", fontSize: 11,
+                      background: notaRapida.trim() ? B.accent : "transparent",
+                      border: "1px solid " + (notaRapida.trim() ? B.accentL : B.border),
+                      color: notaRapida.trim() ? "#fff" : "#8AAECC" }}>
+                    {guardandoNota ? "..." : "✓"}
+                  </button>
+                </div>
+
+                {/* Acciones */}
                 <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                   <a href={ARBA_URL} target="_blank" rel="noreferrer"
                     style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, textDecoration: "none",
@@ -377,7 +421,7 @@ export default function Mapa({ properties, updateProperty, supabase }) {
                     🗺 ARBA
                   </a>
                   {sel.lat && (
-                    <button onClick={() => { navigator.clipboard.writeText(sel.lat + ", " + sel.lng); }}
+                    <button onClick={() => navigator.clipboard.writeText(sel.lat + ", " + sel.lng)}
                       style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, cursor: "pointer",
                         background: "rgba(46,158,106,0.12)", border: "1px solid rgba(46,158,106,0.3)", color: "#2E9E6A" }}>
                       📋 Coords

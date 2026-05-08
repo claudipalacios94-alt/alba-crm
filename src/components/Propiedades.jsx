@@ -129,10 +129,11 @@ function PropCard({ p, updateProperty, deleteProperty }) {
               <div style={{ fontSize: 15, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif" }}>
                 {p.precio ? "USD " + Number(p.precio).toLocaleString() : "A consultar"}
               </div>
-              {p.precio_original && p.precio && p.precio < p.precio_original && (
-                <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                  <span style={{ fontSize:10, color:"#8AAECC", textDecoration:"line-through" }}>USD {Number(p.precio_original).toLocaleString()}</span>
-                  <span style={{ fontSize:10, padding:"1px 6px", borderRadius:8, background:"rgba(232,168,48,0.2)", color:"#E8A830", fontWeight:700, border:"1px solid rgba(232,168,48,0.4)" }}>RETASADO</span>
+              {p.precio_original && p.precio && Number(p.precio) < Number(p.precio_original) && (
+                <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:2 }}>
+                  <span style={{ fontSize:11, color:"#8AAECC", textDecoration:"line-through" }}>USD {Number(p.precio_original).toLocaleString()}</span>
+                  <span style={{ fontSize:11, padding:"2px 8px", borderRadius:8, background:"rgba(255,107,53,0.2)", color:"#FF6B35", fontWeight:700, border:"1px solid rgba(255,107,53,0.5)", letterSpacing:"0.5px" }}>↓ RETASADO</span>
+                  <span style={{ fontSize:10, color:"#FF6B35" }}>-{Math.round((1 - Number(p.precio)/Number(p.precio_original))*100)}%</span>
                 </div>
               )}
             </div>
@@ -352,11 +353,13 @@ export default function Propiedades({ properties, updateProperty, deleteProperty
     return true;
   });
 
-  const destacadas = filtered.filter(p => p.categoria === "destacada");
-  const hon3       = filtered.filter(p => p.categoria === "hon3");
-  const hon6       = filtered.filter(p => p.categoria === "hon6");
-  const colegas    = filtered.filter(p => p.categoria === "colega");
-  const resto      = filtered.filter(p => !p.categoria || p.categoria === "normal");
+  const isRetasado = p => p.precio_original && p.precio && Number(p.precio) < Number(p.precio_original);
+  const retasadas  = filtered.filter(isRetasado);
+  const destacadas = filtered.filter(p => p.categoria === "destacada" && !isRetasado(p));
+  const hon3       = filtered.filter(p => p.categoria === "hon3" && !isRetasado(p));
+  const hon6       = filtered.filter(p => p.categoria === "hon6" && !isRetasado(p));
+  const colegas    = filtered.filter(p => p.categoria === "colega" && !isRetasado(p));
+  const resto      = filtered.filter(p => (!p.categoria || p.categoria === "normal") && !isRetasado(p));
 
   const ch = act => ({
     padding: "4px 10px", borderRadius: 20, fontSize: 11, cursor: "pointer",
@@ -381,6 +384,7 @@ export default function Propiedades({ properties, updateProperty, deleteProperty
         {tipos.map(t => <button key={t} onClick={() => setFt(t)} style={ch(ft === t)}>{t}</button>)}
       </div>
 
+      <Seccion titulo="🔥 Retasadas — precio reducido" color="#FF6B35" props={retasadas} updateProperty={updateProperty} deleteProperty={deleteProperty} />
       <Seccion titulo="Destacadas" color="#E8A830" props={destacadas} updateProperty={updateProperty} deleteProperty={deleteProperty} />
       <Seccion titulo="Honorarios 3%" color="#2E9E6A" props={hon3} updateProperty={updateProperty} deleteProperty={deleteProperty} />
       <Seccion titulo="Honorarios 6%" color="#3EAA72" props={hon6} updateProperty={updateProperty} deleteProperty={deleteProperty} />
