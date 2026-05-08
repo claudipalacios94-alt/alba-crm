@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { B, AG, matchLeadProps, genMsgWhatsApp } from "../data/constants.js";
+import Tareas from "./Tareas.jsx";
  
 function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" }) {
   const canvasRef = React.useRef(null);
@@ -130,7 +131,7 @@ function LeadCard({ lead }) {
 }
 
 
-export default function Briefing({ leads, properties }) {
+export default function Briefing({ leads, properties, supabase }) {
   const [filtroAg, setFiltroAg] = useState("Todos");
   const hoy = new Date();
   const hora = hoy.getHours();
@@ -271,6 +272,12 @@ export default function Briefing({ leads, properties }) {
           </div>
         </div>
       )}
+
+      {/* Tareas + Agenda */}
+      <div style={{ marginBottom: 20 }}>
+        <Tareas supabase={supabase} />
+      </div>
+
     </div>
   );
 }
