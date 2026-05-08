@@ -66,20 +66,24 @@ function makeAlbaPin(color, icono, retasado = false) {
   </div>`;
 }
 
-function makeCaptacionPin() {
-  return `<div style="display:inline-flex;flex-direction:column;align-items:center">
+function makeCaptacionPin(tipo) {
+  const icono = TIPO_ICONO[tipo] || "📌";
+  return `<div style="position:relative;display:inline-flex;flex-direction:column;align-items:center">
     <div style="
       background:white;
-      border:3px solid #CC2233;
+      border:3px dashed #E8A830;
       border-radius:50%;
-      width:32px;height:32px;
+      width:36px;height:36px;
       display:flex;align-items:center;justify-content:center;
-      font-size:16px;
+      font-size:18px;
       box-shadow:0 3px 10px rgba(0,0,0,0.4);
-      border-style:dashed;
-    ">🎅</div>
-    <div style="width:2px;height:7px;background:#CC2233;margin-top:-1px"></div>
-    <div style="width:5px;height:5px;background:#CC2233;border-radius:50%;margin-top:-1px"></div>
+      position:relative;
+    ">
+      ${icono}
+      <div style="position:absolute;top:-5px;right:-5px;background:#E8A830;color:#0F1E35;font-size:8px;font-weight:800;padding:1px 4px;border-radius:4px;line-height:1.4">?</div>
+    </div>
+    <div style="width:2px;height:8px;background:#E8A830;margin-top:-1px"></div>
+    <div style="width:6px;height:6px;background:#E8A830;border-radius:50%;margin-top:-1px;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>
   </div>`;
 }
 
@@ -242,7 +246,7 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
       captaciones.filter(c => c.lat && c.lng).forEach(cap => {
         const icon = L.divIcon({
           className: "",
-          html: makeCaptacionPin(),
+          html: makeCaptacionPin(cap.tipo),
           iconAnchor: [16, 44],
           iconSize: [32, 44],
         });
@@ -508,11 +512,22 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
               </>
             ) : (
               <>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#E8A830", marginBottom: 3 }}>📌 Captación pendiente</div>
-                <div style={{ fontSize: 12, color: "#8AAECC", marginBottom: 4 }}>{sel.zona}{sel.direccion ? " · " + sel.direccion : ""}</div>
-                {sel.precio && <div style={{ fontSize: 15, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif", marginBottom: 4 }}>USD {Number(sel.precio).toLocaleString()}</div>}
-                {sel.tipo && <div style={{ fontSize: 11, color: "#8AAECC", marginBottom: 4 }}>{sel.tipo}{sel.operacion ? " · " + sel.operacion : ""}</div>}
-                {sel.nota && <div style={{ fontSize: 11, color: "#6A8AAE", fontStyle: "italic", marginBottom: 6 }}>{sel.nota}</div>}
+                {/* Cabecera — igual que propiedad */}
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3, flexWrap:"wrap" }}>
+                  <span style={{ fontSize:14, fontWeight:700, color:B.text }}>{sel.tipo || "Captación"}</span>
+                  <span style={{ fontSize:11, color:"#8AAECC" }}>{sel.zona}</span>
+                  {sel.ag && AG[sel.ag] && <span style={{ fontSize:10, padding:"1px 6px", borderRadius:3, background:AG[sel.ag].bg, color:AG[sel.ag].c, fontWeight:700 }}>{AG[sel.ag].n}</span>}
+                  {sel.inmobiliaria && <span style={{ fontSize:10, padding:"1px 7px", borderRadius:10, background:"#9B6DC820", color:"#9B6DC8", border:"1px solid #9B6DC840", fontWeight:600 }}>🤝 {sel.inmobiliaria}</span>}
+                  <span style={{ fontSize:10, padding:"1px 6px", borderRadius:4, background:"#E8A83020", color:"#E8A830" }}>📌 Captación</span>
+                </div>
+                <div style={{ fontSize:12, color:"#8AAECC", marginBottom:6 }}>{sel.direccion}</div>
+                <div style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"center", marginBottom:6 }}>
+                  {sel.precio && <span style={{ fontSize:16, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif" }}>USD {Number(sel.precio).toLocaleString()}</span>}
+                  {sel.operacion && <span style={{ fontSize:11, color:"#8AAECC" }}>{sel.operacion}</span>}
+                  {sel.nombre_propietario && <span style={{ fontSize:11, color:"#8AAECC" }}>👤 {sel.nombre_propietario}</span>}
+                </div>
+                {sel.caracts && <div style={{ fontSize:11, color:"#8AAECC", marginBottom:4 }}>{sel.caracts}</div>}
+                {sel.nota && <div style={{ fontSize:11, color:"#6A8AAE", fontStyle:"italic", marginBottom:6 }}>"{sel.nota}"</div>}
                 {sel.url && (
                   <a href={sel.url} target="_blank" rel="noreferrer"
                     style={{ display:"block", fontSize:11, color:"#4A8ABE", marginBottom:8,
@@ -522,6 +537,19 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
                     🔗 Ver ficha / portal
                   </a>
                 )}
+                {/* ARBA */}
+                <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+                  <a href={ARBA_URL} target="_blank" rel="noreferrer"
+                    style={{ padding:"4px 10px", borderRadius:6, fontSize:11, textDecoration:"none",
+                      background:"rgba(42,91,173,0.15)", border:"1px solid rgba(42,91,173,0.3)", color:"#8AAECC" }}>
+                    🗺 ARBA
+                  </a>
+                  {sel.lat && <button onClick={() => navigator.clipboard.writeText(sel.lat + ", " + sel.lng)}
+                    style={{ padding:"4px 10px", borderRadius:6, fontSize:11, cursor:"pointer",
+                      background:"rgba(46,158,106,0.12)", border:"1px solid rgba(46,158,106,0.3)", color:"#2E9E6A" }}>
+                    📋 Coords
+                  </button>}
+                </div>
                 {/* Matching con leads */}
                 {(() => {
                   const matches = matchLeadsParaProp(sel, leads);
