@@ -218,7 +218,7 @@ export default function App() {
         {view === "cuaderno"    && <Cuaderno    leads={leads} addInteraction={addInteraction} getInteractions={getInteractions} updateLead={updateLead} />}
         {view === "kanban"      && <Kanban      leads={leads} updateLead={updateLead} />}
         {view === "crm"         && <CRMLeads    leads={leads} updateLead={updateLead} deleteLead={deleteLead} properties={properties} />}
-        {view === "propiedades" && <Propiedades properties={properties} leads={leads} updateProperty={updateProperty} deleteProperty={deleteProperty} />}
+        {view === "propiedades" && <Propiedades properties={properties} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />}
         {view === "alquileres"  && <Alquileres  rentals={rentals} />}
         {view === "mapa"        && <Mapa        properties={properties} leads={leads} updateProperty={updateProperty} supabase={supabase} />}
         {view === "flyer"       && <Flyer       properties={properties} />}

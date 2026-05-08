@@ -68,7 +68,7 @@ function matchingInverso(prop, leads) {
   });
 }
 
-function PropCard({ p, leads, updateProperty, deleteProperty }) {
+function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
   const [open,       setOpen]       = useState(false);
   const [editing,    setEditing]    = useState(false);
   const [editData,   setEditData]   = useState({});
@@ -76,6 +76,49 @@ function PropCard({ p, leads, updateProperty, deleteProperty }) {
   const [confirmDel, setConfirmDel] = useState(false);
   const [savingCat,  setSavingCat]  = useState(false);
   const [localCat,   setLocalCat]   = useState(p.categoria || "normal");
+  const [docs,       setDocs]       = useState([]);
+  const [docsLoaded, setDocsLoaded] = useState(false);
+  const [uploading,  setUploading]  = useState(false);
+  const fileRef = React.useRef(null);
+
+  async function loadDocs() {
+    if (!supabase || docsLoaded) return;
+    const { data } = await supabase.storage.from("documentos").list(`prop-${p.id}/`);
+    setDocs(data || []);
+    setDocsLoaded(true);
+  }
+
+  async function uploadDoc(e) {
+    const file = e.target.files[0];
+    if (!file || !supabase) return;
+    setUploading(true);
+    const path = `prop-${p.id}/${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from("documentos").upload(path, file);
+    if (!error) {
+      const { data } = await supabase.storage.from("documentos").list(`prop-${p.id}/`);
+      setDocs(data || []);
+    }
+    setUploading(false);
+    e.target.value = "";
+  }
+
+  async function deleteDoc(name) {
+    await supabase.storage.from("documentos").remove([`prop-${p.id}/${name}`]);
+    setDocs(prev => prev.filter(d => d.name !== name));
+  }
+
+  function getUrl(name) {
+    return supabase.storage.from("documentos").getPublicUrl(`prop-${p.id}/${name}`).data.publicUrl;
+  }
+
+  function docIcon(name) {
+    const ext = name.split(".").pop().toLowerCase();
+    if (["pdf"].includes(ext)) return "📄";
+    if (["jpg","jpeg","png","webp"].includes(ext)) return "🖼";
+    if (["doc","docx"].includes(ext)) return "📝";
+    if (["xls","xlsx"].includes(ext)) return "📊";
+    return "📎";
+  }
 
   const scColor = p.sc?.includes("Urgente") ? B.hot : p.sc?.includes("tenci") ? B.warm : B.ok;
   const cat = catInfo(localCat);
@@ -133,7 +176,7 @@ function PropCard({ p, leads, updateProperty, deleteProperty }) {
       borderLeft: "3px solid " + cat.color, borderRadius: 12, overflow: "hidden" }}>
 
       {/* Cabecera */}
-      <div onClick={() => !editing && setOpen(o => !o)}
+      <div onClick={() => { if (!editing) { setOpen(o => !o); if (!open) loadDocs(); } }}
         style={{ padding: "13px 14px", cursor: editing ? "default" : "pointer" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
           <div style={{ minWidth: 0, flex: 1 }}>
@@ -269,6 +312,43 @@ function PropCard({ p, leads, updateProperty, deleteProperty }) {
             </a>
           </div>
 
+          {/* Documentos */}
+          <div style={{ borderTop:"1px solid "+B.border, paddingTop:10 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:7 }}>
+              <span style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", textTransform:"uppercase" }}>
+                📁 Documentos {docs.length > 0 && `(${docs.length})`}
+              </span>
+              <button onClick={() => fileRef.current?.click()} disabled={uploading}
+                style={{ fontSize:11, padding:"3px 10px", borderRadius:6, cursor:"pointer",
+                  background:B.accent+"22", border:"1px solid "+B.accentL+"60", color:B.accentL }}>
+                {uploading ? "Subiendo..." : "+ Subir"}
+              </button>
+              <input ref={fileRef} type="file" style={{ display:"none" }} onChange={uploadDoc} />
+            </div>
+            {docs.length === 0 && !uploading && (
+              <div style={{ fontSize:11, color:"#4A6A90", fontStyle:"italic" }}>Sin documentos</div>
+            )}
+            <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+              {docs.map(doc => (
+                <div key={doc.name} style={{ display:"flex", alignItems:"center", gap:8,
+                  background:B.bg, borderRadius:7, padding:"7px 10px", border:"1px solid "+B.border }}>
+                  <span style={{ fontSize:14 }}>{docIcon(doc.name)}</span>
+                  <a href={getUrl(doc.name)} target="_blank" rel="noreferrer"
+                    style={{ flex:1, fontSize:12, color:B.accentL, textDecoration:"none",
+                      overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                    {doc.name.replace(/^\d+-/, "")}
+                  </a>
+                  <span style={{ fontSize:10, color:"#4A6A90", flexShrink:0 }}>
+                    {doc.metadata?.size ? Math.round(doc.metadata.size/1024)+"kb" : ""}
+                  </span>
+                  <button onClick={() => deleteDoc(doc.name)}
+                    style={{ background:"transparent", border:"none", color:B.hot,
+                      cursor:"pointer", fontSize:13, padding:"0 2px", flexShrink:0 }}>×</button>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Acciones */}
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={startEdit}
@@ -387,7 +467,7 @@ function PropCard({ p, leads, updateProperty, deleteProperty }) {
   );
 }
 
-function Seccion({ titulo, color, props, leads, updateProperty, deleteProperty, defaultOpen = true }) {
+function Seccion({ titulo, color, props, leads, supabase, updateProperty, deleteProperty, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
   if (props.length === 0) return null;
   return (
@@ -405,7 +485,7 @@ function Seccion({ titulo, color, props, leads, updateProperty, deleteProperty, 
       {open && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))", gap: 12 }}>
           {props.map(p => (
-            <PropCard key={p.id} p={p} leads={leads} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+            <PropCard key={p.id} p={p} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
           ))}
         </div>
       )}
@@ -413,7 +493,7 @@ function Seccion({ titulo, color, props, leads, updateProperty, deleteProperty, 
   );
 }
 
-export default function Propiedades({ properties, leads = [], updateProperty, deleteProperty }) {
+export default function Propiedades({ properties, leads = [], supabase, updateProperty, deleteProperty }) {
   const [ft, setFt] = useState("Todos");
   const [q,  setQ]  = useState("");
 
@@ -457,11 +537,11 @@ export default function Propiedades({ properties, leads = [], updateProperty, de
       </div>
 
       <Seccion titulo="🔥 Retasadas — precio reducido" color="#FF6B35" props={retasadas} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-      <Seccion titulo="Destacadas" color="#E8A830" props={destacadas} leads={leads} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-      <Seccion titulo="Honorarios 3%" color="#2E9E6A" props={hon3} leads={leads} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-      <Seccion titulo="Honorarios 6%" color="#3EAA72" props={hon6} leads={leads} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-      <Seccion titulo="Compartidas por colegas" color="#9B6DC8" props={colegas} leads={leads} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-      <Seccion titulo="Sin categoría" color="#4A6A90" props={resto} leads={leads} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+      <Seccion titulo="Destacadas" color="#E8A830" props={destacadas} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+      <Seccion titulo="Honorarios 3%" color="#2E9E6A" props={hon3} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+      <Seccion titulo="Honorarios 6%" color="#3EAA72" props={hon6} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+      <Seccion titulo="Compartidas por colegas" color="#9B6DC8" props={colegas} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+      <Seccion titulo="Sin categoría" color="#4A6A90" props={resto} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
 
       {filtered.length === 0 && (
         <div style={{ textAlign: "center", padding: "40px", color: "#8AAECC" }}>Sin propiedades</div>
