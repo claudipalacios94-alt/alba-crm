@@ -1,59 +1,84 @@
 // ══════════════════════════════════════════════════════════════
 // ALBA CRM — MÓDULO CAPTACIÓN RÁPIDA
-// Pegás link o texto de WhatsApp → queda guardado y en el mapa
+// Texto libre → IA extrae campos → pide lo que falta → guarda
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useEffect, useRef } from "react";
 import { B, AG } from "../data/constants.js";
 
-const GOOGLE_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
-
-async function geocodeAddress(dir) {
+async function nominatim(dir) {
+  if (!dir) return { lat: null, lng: null };
+  const query = encodeURIComponent(dir + ", Mar del Plata, Buenos Aires, Argentina");
   try {
     const r = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(dir + ", Mar del Plata, Argentina")}&key=${GOOGLE_KEY}`
+      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=ar`,
+      { headers: { "Accept-Language": "es" } }
     );
     const d = await r.json();
-    if (d.status === "OK" && d.results.length > 0) {
-      return { lat: d.results[0].geometry.location.lat, lng: d.results[0].geometry.location.lng };
+    if (d.length > 0) {
+      const lat = parseFloat(d[0].lat), lng = parseFloat(d[0].lon);
+      if (lat > -38.15 && lat < -37.85 && lng > -57.75 && lng < -57.40) return { lat, lng };
     }
   } catch(e) {}
   return { lat: null, lng: null };
 }
 
-function detectarTipo(texto) {
-  if (/zonaprop|argenprop|mercadolibre|inmuebles|properati/i.test(texto)) return "link";
-  if (/https?:\/\//i.test(texto)) return "link";
-  return "texto";
+async function analizarConIA(texto) {
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        system: `Sos un asistente de inmobiliaria en Mar del Plata, Argentina. Analizás texto libre (mensajes de WhatsApp, descripciones de portales, notas) y extraés información de propiedades en venta o alquiler.
+
+Respondé SOLO con JSON válido, sin texto adicional, sin backticks:
+{
+  "nombre_propietario": string o null,
+  "telefono": string o null,
+  "tipo": "Departamento"|"Casa"|"PH"|"Dúplex"|"Local"|"Terreno"|"Otro" o null,
+  "zona": string o null,
+  "direccion": string o null,
+  "precio": number o null,
+  "m2tot": number o null,
+  "m2cub": number o null,
+  "ambientes": number o null,
+  "caracts": string o null,
+  "operacion": "venta"|"alquiler" o null,
+  "campos_faltantes": array de strings con los campos importantes que no pudiste detectar
 }
 
-function extraerPrecio(texto) {
-  const m = texto.match(/USD?\s*[\$]?\s*(\d[\d.,]+)/i);
-  if (m) return parseInt(m[1].replace(/[.,]/g, "").slice(0, 7));
-  return null;
-}
-
-function extraerDireccion(texto) {
-  // Busca patrones tipo "Calle 1234" o "Av. Algo 456"
-  const m = texto.match(/(?:Av\.|Calle|Bv\.|Dr\.|Gral\.|Ing\.)?\s*[A-ZÁÉÍÓÚÑ][a-záéíóúñA-ZÁÉÍÓÚÑ\s]+\s+\d{3,4}/);
-  if (m) return m[0].trim();
-  return null;
+campos_faltantes debe incluir solo los que son realmente importantes para una captación: tipo, zona, precio. No incluyas campos opcionales como m2 o ambientes.`,
+        messages: [{ role: "user", content: texto }]
+      })
+    });
+    const data = await res.json();
+    const content = data.content?.[0]?.text || "{}";
+    return JSON.parse(content.replace(/```json|```/g, "").trim());
+  } catch(e) {
+    console.error("IA error:", e);
+    return null;
+  }
 }
 
 export default function Captaciones({ supabase }) {
-  const [items,         setItems]         = useState([]);
-  const [input,         setInput]         = useState("");
-  const [ag,            setAg]            = useState("");
-  const [nota,          setNota]          = useState("");
-  const [guardando,     setGuardando]     = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(null);
-  const [loaded,        setLoaded]        = useState(false);
-  const [mapLoaded,     setMapLoaded]     = useState(false);
-  const mapRef  = useRef(null);
-  const leafRef = useRef(null);
+  const [items,      setItems]      = useState([]);
+  const [input,      setInput]      = useState("");
+  const [ag,         setAg]         = useState("");
+  const [nota,       setNota]       = useState("");
+  const [analizando, setAnalizando] = useState(false);
+  const [guardando,  setGuardando]  = useState(false);
+  const [campos,     setCampos]     = useState(null);   // resultado IA
+  const [pendientes, setPendientes] = useState([]);     // campos que faltan
+  const [completos,  setCompletos]  = useState({});     // valores manuales
+  const [confirmDel, setConfirmDel] = useState(null);
+  const [loaded,     setLoaded]     = useState(false);
+  const [mapLoaded,  setMapLoaded]  = useState(false);
+  const mapRef   = useRef(null);
+  const leafRef  = useRef(null);
   const marksRef = useRef([]);
-  const textareaRef = useRef(null);
 
-  // ── Cargar captaciones ──────────────────────────────────
+  // ── Cargar captaciones ──────────────────────────────────────
   useEffect(() => {
     async function load() {
       const { data } = await supabase
@@ -67,7 +92,7 @@ export default function Captaciones({ supabase }) {
     load();
   }, []);
 
-  // ── Cargar Leaflet ──────────────────────────────────────
+  // ── Leaflet ─────────────────────────────────────────────────
   useEffect(() => {
     if (window.L) { setMapLoaded(true); return; }
     const link = document.createElement("link");
@@ -80,221 +105,293 @@ export default function Captaciones({ supabase }) {
     document.head.appendChild(script);
   }, []);
 
-  // ── Inicializar mapa ────────────────────────────────────
   useEffect(() => {
     if (!mapLoaded || !mapRef.current || leafRef.current) return;
-    const L = window.L;
-    const map = L.map(mapRef.current, { center: [-38.002, -57.555], zoom: 13 });
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    const map = window.L.map(mapRef.current, { center: [-38.002, -57.555], zoom: 13 });
+    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap", maxZoom: 19,
     }).addTo(map);
     leafRef.current = map;
     setTimeout(() => map.invalidateSize(), 100);
   }, [mapLoaded]);
 
-  // ── Actualizar markers ──────────────────────────────────
   useEffect(() => {
     if (!mapLoaded || !leafRef.current) return;
-    const L = window.L;
     const map = leafRef.current;
     marksRef.current.forEach(m => map.removeLayer(m));
     marksRef.current = [];
-
     items.filter(i => i.lat && i.lng).forEach(item => {
-      const icon = L.divIcon({
+      const icon = window.L.divIcon({
         className: "",
-        html: `<div style="background:#0F1E35;border:2.5px solid #E8A830;border-radius:10px 10px 10px 2px;padding:5px 9px;font-family:'Trebuchet MS',sans-serif;font-size:11px;font-weight:700;color:#E8A830;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.55);cursor:pointer;transform:translateY(-100%)">
+        html: `<div style="background:#0F1E35;border:2.5px solid #E8A830;border-radius:10px 10px 10px 2px;padding:5px 9px;font-size:11px;font-weight:700;color:#E8A830;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.55);cursor:pointer;transform:translateY(-100%)">
           📌 ${item.precio ? "USD " + (item.precio/1000).toFixed(0) + "k" : "Sin precio"}
         </div>`,
         iconAnchor: [0, 0],
       });
-      const marker = L.marker([item.lat, item.lng], { icon }).addTo(map);
-      marksRef.current.push(marker);
+      marksRef.current.push(window.L.marker([item.lat, item.lng], { icon }).addTo(map));
     });
-
     const withCoords = items.filter(i => i.lat && i.lng);
     if (withCoords.length > 0) {
-      const bounds = L.latLngBounds(withCoords.map(i => [i.lat, i.lng]));
+      const bounds = window.L.latLngBounds(withCoords.map(i => [i.lat, i.lng]));
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
     }
   }, [mapLoaded, items]);
 
-  // ── Guardar captación ───────────────────────────────────
+  // ── Analizar con IA ─────────────────────────────────────────
+  async function analizar() {
+    if (!input.trim() || analizando) return;
+    setAnalizando(true);
+    setCampos(null);
+    setPendientes([]);
+    setCompletos({});
+
+    const result = await analizarConIA(input);
+    if (result) {
+      setCampos(result);
+      setPendientes(result.campos_faltantes || []);
+    } else {
+      // Sin créditos IA → modo manual simple
+      setCampos({});
+      setPendientes(["tipo", "zona", "precio"]);
+    }
+    setAnalizando(false);
+  }
+
+  // ── Guardar ─────────────────────────────────────────────────
   async function guardar() {
-    if (!input.trim() || guardando) return;
+    if (guardando) return;
     setGuardando(true);
 
-    const tipo      = detectarTipo(input);
-    const precio    = extraerPrecio(input);
-    const direccion = extraerDireccion(input);
+    const merged = { ...campos, ...completos };
+    const dir = merged.direccion || null;
     let lat = null, lng = null;
-
-    if (direccion) {
-      const coords = await geocodeAddress(direccion);
-      lat = coords.lat;
-      lng = coords.lng;
+    if (dir) {
+      const coords = await nominatim(dir);
+      lat = coords.lat; lng = coords.lng;
     }
 
     const { data, error } = await supabase.from("captaciones").insert([{
-      contenido: input.trim(),
-      tipo,
-      direccion: direccion || null,
-      precio:    precio    || null,
-      nota:      nota.trim() || null,
-      ag:        ag        || null,
+      contenido:          input.trim(),
+      tipo:               merged.tipo || null,
+      zona:               merged.zona || null,
+      direccion:          dir,
+      precio:             merged.precio ? Number(merged.precio) : null,
+      nombre_propietario: merged.nombre_propietario || null,
+      telefono:           merged.telefono || null,
+      caracts:            merged.caracts || null,
+      m2tot:              merged.m2tot ? Number(merged.m2tot) : null,
+      operacion:          merged.operacion || "venta",
+      nota:               nota.trim() || null,
+      ag:                 ag || null,
       lat, lng,
       convertida: false,
     }]).select().single();
 
     if (!error && data) {
       setItems(p => [data, ...p]);
-      setInput("");
-      setNota("");
+      setInput(""); setNota(""); setCampos(null); setPendientes([]); setCompletos({});
     }
     setGuardando(false);
   }
 
-  // ── Eliminar ────────────────────────────────────────────
   async function eliminar() {
-    if (!confirmDelete) return;
-    await supabase.from("captaciones").delete().eq("id", confirmDelete.id);
-    setItems(p => p.filter(i => i.id !== confirmDelete.id));
-    setConfirmDelete(null);
+    if (!confirmDel) return;
+    await supabase.from("captaciones").delete().eq("id", confirmDel.id);
+    setItems(p => p.filter(i => i.id !== confirmDel.id));
+    setConfirmDel(null);
   }
 
-  // ── Marcar como convertida ──────────────────────────────
   async function convertir(item) {
     await supabase.from("captaciones").update({ convertida: true }).eq("id", item.id);
     setItems(p => p.filter(i => i.id !== item.id));
   }
 
   function fmtFecha(iso) {
-    const d = new Date(iso);
-    return d.toLocaleDateString("es-AR", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" });
+    return new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   }
 
   const inpS = {
     width: "100%", background: B.card, border: `1px solid ${B.border}`,
-    borderRadius: 8, padding: "8px 11px", color: B.text, fontSize: 12,
-    outline: "none", boxSizing: "border-box", fontFamily: "'Trebuchet MS',sans-serif",
+    borderRadius: 7, padding: "7px 10px", color: B.text, fontSize: 12,
+    outline: "none", boxSizing: "border-box",
+  };
+
+  const LABEL_MAP = {
+    tipo: "Tipo de propiedad", zona: "Zona/barrio", precio: "Precio USD",
+    direccion: "Dirección", nombre_propietario: "Nombre del propietario",
+    telefono: "Teléfono", m2tot: "Superficie m²", operacion: "Venta o alquiler",
   };
 
   return (
-    <div style={{ display:"flex", height:"100%", gap:14, overflow:"hidden" }}>
+    <div style={{ display: "flex", gap: 16, height: "100%", overflow: "hidden" }}>
 
       {/* Panel izquierdo */}
-      <div style={{ width:320, flexShrink:0, display:"flex", flexDirection:"column", gap:12,
-        overflowY:"auto", scrollbarWidth:"thin", scrollbarColor:`${B.border} transparent` }}>
+      <div style={{ width: 380, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14, overflowY: "auto", paddingRight: 4 }}>
 
         <div>
-          <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Captación rápida</h1>
-          <p style={{ fontSize:11, color:"#8AAECC", margin:"3px 0 0" }}>
-            Pegá link o texto de WhatsApp — queda guardado y en el mapa
-          </p>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: B.text, margin: 0, fontFamily: "Georgia,serif" }}>Captación rápida</h1>
+          <p style={{ fontSize: 12, color: "#8AAECC", margin: "3px 0 0" }}>Pegá texto, link o WhatsApp — la IA extrae todo</p>
         </div>
 
-        {/* Input principal */}
-        <div style={{ background:B.card, border:`1px solid ${B.accentL}40`, borderRadius:12, padding:"14px" }}>
+        {/* Textarea */}
+        <div style={{ background: B.card, border: `1px solid ${B.accentL}40`, borderRadius: 12, padding: 14 }}>
           <textarea
-            ref={textareaRef}
             value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder="Pegá acá el link de ZonaProp, texto de WhatsApp, dirección y precio... lo que sea"
+            onChange={e => { setInput(e.target.value); setCampos(null); setPendientes([]); }}
+            placeholder="Pegá acá el texto de WhatsApp, descripción del portal, dirección y precio... lo que tengas"
             rows={5}
-            style={{ ...inpS, resize:"none", lineHeight:1.6, marginBottom:10 }}
+            style={{ ...inpS, resize: "none", lineHeight: 1.6, marginBottom: 10 }}
           />
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
             <div>
-              <label style={{ fontSize:11, color:"#8AAECC", letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:4 }}>Agente</label>
+              <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 3 }}>AGENTE</label>
               <select value={ag} onChange={e => setAg(e.target.value)} style={inpS}>
                 <option value="">Sin especificar</option>
-                {Object.entries(AG).map(([k,v]) => <option key={k} value={k}>{v.n}</option>)}
+                {Object.entries(AG).map(([k, v]) => <option key={k} value={k}>{v.n}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize:11, color:"#8AAECC", letterSpacing:".8px", textTransform:"uppercase", display:"block", marginBottom:4 }}>Nota rápida</label>
-              <input value={nota} onChange={e => setNota(e.target.value)} style={inpS} placeholder="ej: pago honorarios" />
+              <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 3 }}>NOTA</label>
+              <input value={nota} onChange={e => setNota(e.target.value)} style={inpS} placeholder="ej: paga honorarios" />
             </div>
           </div>
-          <button onClick={guardar} disabled={guardando || !input.trim()}
-            style={{ width:"100%", padding:"11px", borderRadius:9, cursor: input.trim() && !guardando ? "pointer" : "default",
-              background: input.trim() && !guardando ? B.accent : B.border,
-              border: `1px solid ${input.trim() && !guardando ? B.accentL : B.border}`,
-              color: input.trim() && !guardando ? "#fff" : B.muted,
-              fontSize:13, fontWeight:700, fontFamily:"Georgia,serif" }}>
-            {guardando ? "Guardando..." : "📌 Guardar captación"}
+          <button onClick={analizar} disabled={analizando || !input.trim()}
+            style={{ width: "100%", padding: 11, borderRadius: 9, cursor: input.trim() && !analizando ? "pointer" : "default",
+              background: input.trim() && !analizando ? B.accent : B.border,
+              border: `1px solid ${input.trim() && !analizando ? B.accentL : B.border}`,
+              color: input.trim() && !analizando ? "#fff" : "#8AAECC",
+              fontSize: 13, fontWeight: 700 }}>
+            {analizando ? "✨ Analizando..." : "✨ Analizar con IA"}
           </button>
         </div>
 
-        {/* Lista de captaciones */}
-        <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px" }}>
-          {items.length} CAPTACIONES PENDIENTES
-        </div>
+        {/* Resultado IA */}
+        {campos && (
+          <div style={{ background: B.card, border: `1px solid ${B.accentL}40`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: B.accentL, letterSpacing: "0.8px" }}>DATOS DETECTADOS</div>
 
-        {!loaded && <div style={{ textAlign:"center", color:B.dim, fontSize:12 }}>Cargando...</div>}
+            {/* Campos extraídos */}
+            {["tipo","zona","direccion","precio","nombre_propietario","telefono","m2tot","caracts","operacion"].map(k => {
+              const val = campos[k];
+              if (!val) return null;
+              return (
+                <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                  <span style={{ color: "#5A7A9A", fontSize: 11 }}>{LABEL_MAP[k] || k}:</span>
+                  <span style={{ color: B.text, fontWeight: 600 }}>{k === "precio" ? "USD " + Number(val).toLocaleString() : String(val)}</span>
+                </div>
+              );
+            })}
 
-        {loaded && items.length === 0 && (
-          <div style={{ textAlign:"center", padding:"30px 0", color:B.dim, fontSize:12 }}>
-            Sin captaciones pendientes
+            {/* Campos faltantes — pedir manualmente */}
+            {pendientes.length > 0 && (
+              <div style={{ borderTop: `1px solid ${B.border}`, paddingTop: 10 }}>
+                <div style={{ fontSize: 11, color: B.warm, fontWeight: 600, marginBottom: 8 }}>
+                  ⚠ Falta completar:
+                </div>
+                {pendientes.map(k => (
+                  <div key={k} style={{ marginBottom: 7 }}>
+                    <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 3 }}>{LABEL_MAP[k] || k}</label>
+                    {k === "tipo" ? (
+                      <select value={completos[k] || ""} onChange={e => setCompletos(p => ({...p, [k]: e.target.value}))} style={inpS}>
+                        <option value="">Elegir tipo...</option>
+                        {["Departamento","Casa","PH","Dúplex","Local","Terreno","Otro"].map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    ) : k === "operacion" ? (
+                      <select value={completos[k] || ""} onChange={e => setCompletos(p => ({...p, [k]: e.target.value}))} style={inpS}>
+                        <option value="">Elegir...</option>
+                        <option value="venta">Venta</option>
+                        <option value="alquiler">Alquiler</option>
+                      </select>
+                    ) : (
+                      <input
+                        value={completos[k] || ""}
+                        onChange={e => setCompletos(p => ({...p, [k]: e.target.value}))}
+                        style={inpS}
+                        placeholder={k === "precio" ? "ej: 85000" : k === "zona" ? "ej: La Perla" : ""}
+                        type={["precio","m2tot"].includes(k) ? "number" : "text"}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button onClick={guardar} disabled={guardando}
+              style={{ width: "100%", padding: 10, borderRadius: 9, cursor: guardando ? "default" : "pointer",
+                background: guardando ? B.border : "#2E9E6A",
+                border: `1px solid ${guardando ? B.border : "#2E9E6A"}`,
+                color: guardando ? "#8AAECC" : "#fff", fontSize: 13, fontWeight: 700, marginTop: 4 }}>
+              {guardando ? "Guardando..." : "📌 Guardar captación"}
+            </button>
           </div>
         )}
 
+        {/* Lista */}
+        <div style={{ fontSize: 11, color: "#8AAECC", fontWeight: 600, letterSpacing: "1px" }}>
+          {items.length} CAPTACIONES PENDIENTES
+        </div>
+
+        {!loaded && <div style={{ textAlign: "center", color: "#8AAECC", fontSize: 12 }}>Cargando...</div>}
+        {loaded && items.length === 0 && (
+          <div style={{ textAlign: "center", padding: "30px 0", color: "#8AAECC", fontSize: 12 }}>Sin captaciones pendientes</div>
+        )}
+
         {items.map(item => {
-          const ag = AG[item.ag];
+          const agObj = AG[item.ag];
           return (
-            <div key={item.id} style={{ background:B.card, border:`1px solid ${B.border}`,
-              borderRadius:10, padding:"12px 13px",
-              borderLeft:`3px solid ${item.lat ? B.accentL : B.dim}` }}>
-
-              {/* Header */}
-              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
-                <span style={{ fontSize:11, padding:"1px 7px", borderRadius:12,
-                  background: item.tipo === "link" ? `${B.accentL}18` : `${B.warm}18`,
-                  color: item.tipo === "link" ? B.accentL : B.warm }}>
-                  {item.tipo === "link" ? "🔗 Link" : "💬 Texto"}
-                </span>
-                {ag && <span style={{ fontSize:11, padding:"1px 5px", borderRadius:3, background:ag.bg, color:ag.c, fontWeight:600 }}>{ag.n}</span>}
-                {item.lat && <span style={{ fontSize:11, color:B.ok }}>📍 En mapa</span>}
-                <span style={{ fontSize:11, color:B.dim, marginLeft:"auto" }}>{fmtFecha(item.created_at)}</span>
+            <div key={item.id} style={{ background: B.card, border: `1px solid ${B.border}`,
+              borderRadius: 10, padding: "12px 13px", borderLeft: `3px solid ${item.lat ? B.accentL : "#4A6A90"}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+                {item.tipo && <span style={{ fontSize: 11, padding: "1px 7px", borderRadius: 12, background: B.accentL + "18", color: B.accentL }}>{item.tipo}</span>}
+                {item.operacion && <span style={{ fontSize: 11, padding: "1px 7px", borderRadius: 12, background: "#4A6A9020", color: "#8AAECC" }}>{item.operacion}</span>}
+                {agObj && <span style={{ fontSize: 11, padding: "1px 5px", borderRadius: 3, background: agObj.bg, color: agObj.c, fontWeight: 600 }}>{agObj.n}</span>}
+                {item.lat && <span style={{ fontSize: 11, color: "#2E9E6A" }}>📍</span>}
+                <span style={{ fontSize: 11, color: "#4A6A90", marginLeft: "auto" }}>{fmtFecha(item.created_at)}</span>
               </div>
 
-              {/* Contenido */}
-              <div style={{ fontSize:11, color:B.text, lineHeight:1.5, marginBottom:8,
-                wordBreak:"break-all",
-                display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
-                {item.contenido}
-              </div>
-
-              {/* Datos detectados */}
-              {(item.direccion || item.precio) && (
-                <div style={{ display:"flex", gap:8, marginBottom:8, flexWrap:"wrap" }}>
-                  {item.direccion && <span style={{ fontSize:12, color:B.muted }}>📍 {item.direccion}</span>}
-                  {item.precio && <span style={{ fontSize:12, color:B.accentL, fontFamily:"Georgia,serif", fontWeight:700 }}>USD {item.precio.toLocaleString()}</span>}
+              {(item.zona || item.direccion) && (
+                <div style={{ fontSize: 12, color: "#8AAECC", marginBottom: 4 }}>
+                  {item.zona}{item.zona && item.direccion ? " · " : ""}{item.direccion}
                 </div>
               )}
 
-              {item.nota && <div style={{ fontSize:12, color:"#8AAECC", fontStyle:"italic", marginBottom:8 }}>"{item.nota}"</div>}
+              {item.precio && (
+                <div style={{ fontSize: 15, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif", marginBottom: 4 }}>
+                  USD {Number(item.precio).toLocaleString()}
+                </div>
+              )}
 
-              {/* Acciones */}
-              <div style={{ display:"flex", gap:6 }}>
-                {item.contenido.startsWith("http") && (
+              {item.nombre_propietario && (
+                <div style={{ fontSize: 12, color: "#8AAECC", marginBottom: 2 }}>
+                  👤 {item.nombre_propietario}{item.telefono ? " · " + item.telefono : ""}
+                </div>
+              )}
+
+              {item.nota && <div style={{ fontSize: 11, color: "#6A8AAE", fontStyle: "italic", marginBottom: 6 }}>"{item.nota}"</div>}
+
+              <div style={{ fontSize: 11, color: "#4A6A90", lineHeight: 1.4, marginBottom: 8,
+                display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                {item.contenido}
+              </div>
+
+              <div style={{ display: "flex", gap: 6 }}>
+                {item.contenido?.startsWith("http") && (
                   <a href={item.contenido.split(" ")[0]} target="_blank" rel="noreferrer"
-                    style={{ padding:"4px 10px", borderRadius:6, background:`${B.accentL}18`,
-                      border:`1px solid ${B.accentL}40`, color:B.accentL, fontSize:12,
-                      textDecoration:"none", fontWeight:600 }}>
+                    style={{ padding: "4px 10px", borderRadius: 6, background: B.accentL + "18",
+                      border: `1px solid ${B.accentL}40`, color: B.accentL, fontSize: 11,
+                      textDecoration: "none", fontWeight: 600 }}>
                     Abrir link
                   </a>
                 )}
                 <button onClick={() => convertir(item)}
-                  style={{ padding:"4px 10px", borderRadius:6, background:`${B.ok}18`,
-                    border:`1px solid ${B.ok}40`, color:B.ok, fontSize:12,
-                    cursor:"pointer", fontWeight:600 }}>
+                  style={{ padding: "4px 10px", borderRadius: 6, background: "#2E9E6A18",
+                    border: "1px solid #2E9E6A40", color: "#2E9E6A", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
                   ✓ Convertida
                 </button>
-                <button onClick={() => setConfirmDelete(item)}
-                  style={{ padding:"4px 10px", borderRadius:6, background:`${B.hot}12`,
-                    border:`1px solid ${B.hot}30`, color:B.hot, fontSize:12,
-                    cursor:"pointer", fontWeight:600, marginLeft:"auto" }}>
+                <button onClick={() => setConfirmDel(item)}
+                  style={{ padding: "4px 10px", borderRadius: 6, background: B.hot + "12",
+                    border: `1px solid ${B.hot}30`, color: B.hot, fontSize: 11,
+                    cursor: "pointer", marginLeft: "auto" }}>
                   🗑
                 </button>
               </div>
@@ -304,47 +401,43 @@ export default function Captaciones({ supabase }) {
       </div>
 
       {/* Mapa */}
-      <div style={{ flex:1, display:"flex", flexDirection:"column", minWidth:0 }}>
-        <div style={{ fontSize:11, color:"#8AAECC", marginBottom:10 }}>
-          📌 Captaciones en el mapa · {items.filter(i => i.lat).length} geolocalizadas de {items.length}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <div style={{ fontSize: 11, color: "#8AAECC", marginBottom: 10 }}>
+          📌 {items.filter(i => i.lat).length} de {items.length} captaciones en mapa
         </div>
-        <div style={{ flex:1, borderRadius:12, overflow:"hidden", border:`1px solid ${B.border}`, position:"relative" }}>
+        <div style={{ flex: 1, borderRadius: 12, overflow: "hidden", border: `1px solid ${B.border}`, position: "relative" }}>
           {!mapLoaded && (
-            <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
-              background:B.card, zIndex:10, flexDirection:"column", gap:10 }}>
-              <div style={{ width:28, height:28, border:`2px solid ${B.border}`,
-                borderTop:`2px solid ${B.accentL}`, borderRadius:"50%", animation:"spin .7s linear infinite" }} />
-              <span style={{ fontSize:12, color:B.muted }}>Cargando mapa...</span>
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center",
+              justifyContent: "center", background: B.card, zIndex: 10, gap: 10 }}>
+              <div style={{ width: 28, height: 28, border: `2px solid ${B.border}`,
+                borderTop: `2px solid ${B.accentL}`, borderRadius: "50%", animation: "spin .7s linear infinite" }} />
             </div>
           )}
-          <div ref={mapRef} style={{ width:"100%", height:"100%" }} />
+          <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
         </div>
       </div>
 
-      {/* Modal confirmación eliminar */}
-      {confirmDelete && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)",
-          display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999 }}
-          onClick={() => setConfirmDelete(null)}>
-          <div style={{ background:B.sidebar, border:`1px solid ${B.hot}50`, borderRadius:14,
-            padding:"28px 32px", maxWidth:380, width:"90%",
-            boxShadow:"0 24px 80px rgba(0,0,0,0.8)" }}
+      {/* Modal eliminar */}
+      {confirmDel && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}
+          onClick={() => setConfirmDel(null)}>
+          <div style={{ background: B.sidebar, border: `1px solid ${B.hot}50`, borderRadius: 14,
+            padding: "28px 32px", maxWidth: 360, width: "90%" }}
             onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize:22, marginBottom:12, textAlign:"center" }}>🗑</div>
-            <div style={{ fontSize:15, fontWeight:700, color:B.text, fontFamily:"Georgia,serif",
-              marginBottom:8, textAlign:"center" }}>¿Eliminar captación?</div>
-            <div style={{ fontSize:12, color:"#8AAECC", textAlign:"center", marginBottom:24, lineHeight:1.6 }}>
-              Esta acción no se puede deshacer.
-            </div>
-            <div style={{ display:"flex", gap:10 }}>
-              <button onClick={() => setConfirmDelete(null)}
-                style={{ flex:1, padding:"11px", borderRadius:9, cursor:"pointer",
-                  background:"transparent", border:`1px solid ${B.border}`,
-                  color:"#8AAECC", fontSize:13 }}>Cancelar</button>
+            <div style={{ fontSize: 14, fontWeight: 700, color: B.text, marginBottom: 6 }}>¿Eliminar captación?</div>
+            <div style={{ fontSize: 12, color: "#8AAECC", marginBottom: 20 }}>Esta acción no se puede deshacer.</div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setConfirmDel(null)}
+                style={{ flex: 1, padding: 10, borderRadius: 8, cursor: "pointer",
+                  background: "transparent", border: `1px solid ${B.border}`, color: "#8AAECC", fontSize: 12 }}>
+                Cancelar
+              </button>
               <button onClick={eliminar}
-                style={{ flex:1, padding:"11px", borderRadius:9, cursor:"pointer",
-                  background:B.hot, border:`1px solid ${B.hot}`,
-                  color:"#fff", fontSize:13, fontWeight:700 }}>Sí, eliminar</button>
+                style={{ flex: 1, padding: 10, borderRadius: 8, cursor: "pointer",
+                  background: B.hot, border: "none", color: "#fff", fontSize: 12, fontWeight: 700 }}>
+                Eliminar
+              </button>
             </div>
           </div>
         </div>
@@ -355,8 +448,7 @@ export default function Captaciones({ supabase }) {
         .leaflet-container { background: ${B.bg} !important; }
         .leaflet-tile { filter: brightness(0.85) saturate(0.7) hue-rotate(200deg); }
         .leaflet-control-zoom a { background: ${B.card} !important; color: ${B.accentL} !important; border-color: ${B.border} !important; }
-        .leaflet-control-attribution { background: rgba(7,14,28,0.8) !important; color: ${B.dim} !important; font-size: 9px; }
-        textarea::-webkit-scrollbar { display: none; }
+        .leaflet-control-attribution { background: rgba(7,14,28,0.8) !important; color: #4A6A90 !important; font-size: 9px; }
       `}</style>
     </div>
   );
