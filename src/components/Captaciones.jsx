@@ -152,7 +152,9 @@ export default function Captaciones({ supabase }) {
     const result = await analizarConIA(input);
     if (result) {
       setCampos(result);
-      setPendientes(result.campos_faltantes || []);
+      const faltantes = result.campos_faltantes || [];
+      if (!result.direccion && !faltantes.includes('direccion')) faltantes.push('direccion');
+      setPendientes(faltantes);
     } else {
       // Sin créditos IA → modo manual simple
       setCampos({});
@@ -171,6 +173,11 @@ export default function Captaciones({ supabase }) {
     let lat = null, lng = null;
     if (dir) {
       const coords = await nominatim(dir);
+      lat = coords.lat; lng = coords.lng;
+    }
+    // Si no encontró con dirección, intentar con zona
+    if (!lat && merged.zona) {
+      const coords = await nominatim(merged.zona + ', Mar del Plata');
       lat = coords.lat; lng = coords.lng;
     }
 
