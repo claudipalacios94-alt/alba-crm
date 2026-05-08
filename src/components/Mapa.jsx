@@ -335,7 +335,7 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
           </div>
         ))}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#E8A830", border: "2px dashed #E8A830", background: "transparent", borderRadius: "50%" }} />
+          <div style={{ width: 7, height: 7, borderRadius: "50%", background: "transparent", border: "2px dashed #E8A830" }} />
           <span style={{ fontSize: 11, color: "#8AAECC" }}>Captación</span>
         </div>
       </div>

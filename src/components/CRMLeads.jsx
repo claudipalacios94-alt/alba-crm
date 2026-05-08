@@ -426,7 +426,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                             <div style={{ display:"flex", gap:4, alignItems:"center" }}>
                               <button onClick={() => updateLead(lead.id, { enviado_manana: okM ? null : hoy })}
                                 title={okM ? "Mañana: enviado ✓" : "Mañana: no enviado"}
-                                style={{ padding:"4px 8px", borderRadius:6, cursor:"pointer", fontSize:11, fontWeight:700,
+                                style={{ padding:"4px 8px", borderRadius:6, cursor:"pointer", fontSize:11,
                                   background: okM ? "rgba(204,34,51,0.2)" : "transparent",
                                   border: `1px solid ${okM ? "#CC2233" : B.border}`,
                                   color: okM ? "#CC2233" : "#4A6A90",
@@ -435,7 +435,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                               </button>
                               <button onClick={() => updateLead(lead.id, { enviado_tarde: okT ? null : hoy })}
                                 title={okT ? "Tarde: enviado ✓" : "Tarde: no enviado"}
-                                style={{ padding:"4px 8px", borderRadius:6, cursor:"pointer", fontSize:11, fontWeight:700,
+                                style={{ padding:"4px 8px", borderRadius:6, cursor:"pointer", fontSize:11,
                                   background: okT ? "rgba(204,34,51,0.2)" : "transparent",
                                   border: `1px solid ${okT ? "#CC2233" : B.border}`,
                                   color: okT ? "#CC2233" : "#4A6A90",
