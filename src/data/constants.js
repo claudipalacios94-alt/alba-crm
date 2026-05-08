@@ -195,49 +195,38 @@ export function genMsgBusqueda(lead) {
   const encabezado = stars >= 5
     ? "🔴 PEDIDO URGENTE — CIERRE RÁPIDO"
     : stars >= 4
-    ? "🟠 PEDIDO ACTIVO — CLIENTE MUY INTERESADO"
+    ? "🟠 PEDIDO ACTIVO — MUY INTERESADO"
     : stars >= 3
     ? "🟡 BÚSQUEDA EN CURSO"
     : "📋 PEDIDO DE BÚSQUEDA";
 
-  const tipo  = lead.tipo  || "Propiedad";
-  const zona  = lead.zona  || "Mar del Plata";
+  const tipo   = lead.tipo  || "Propiedad";
+  const zona   = lead.zona  || "Mar del Plata";
   const presup = lead.presup ? `USD ${Number(lead.presup).toLocaleString()}` : null;
 
-  const credito  = lead.credito === "si" || (lead.nota||"").toLowerCase().includes("crédit") || (lead.nota||"").toLowerCase().includes("credit");
-  const cochera  = lead.cochera === "si";
-  const balcon   = lead.balcon  === "si";
-  const inversor = lead.op === "Inversor";
-  const ambientes = lead.ambientes ? `${lead.ambientes} amb.` : null;
-  const m2min = lead.m2min ? `mín. ${lead.m2min}m²` : null;
+  const partes = [tipo];
+  if (lead.ambientes) partes.push(`${lead.ambientes} amb.`);
+  partes.push(zona);
+  if (presup) partes.push(`*${presup}*`);
+  const lineaPrincipal = partes.join(" · ");
 
-  const specs = [
-    tipo,
-    ambientes,
-    m2min,
-    zona,
-    presup ? `*${presup}*` : null,
-  ].filter(Boolean).join(" · ");
-
-  const condiciones = [
-    credito  && "✅ Crédito aprobado",
-    cochera  && "🚗 Con cochera",
-    balcon   && "🏙 Con balcón",
-    inversor && "📈 Inversor",
-    stars >= 5 && "⚡ Firma inmediata",
-    stars >= 4 && !inversor && "📅 Visita coordinada",
+  const detalles = [
+    lead.credito === "si"  && "✅ Crédito aprobado",
+    lead.cochera === "si"  && "🚗 Cochera (excluyente)",
+    lead.cochera === "no"  && "❌ Sin cochera",
+    lead.balcon  === "si"  && "🏙 Balcón",
+    lead.patio   === "si"  && "🌿 Patio",
+    lead.m2min             && `📐 Mín. ${lead.m2min}m²`,
+    lead.op === "Inversor" && "📈 Inversor",
+    stars >= 4             && "⚡ Prioridad alta",
   ].filter(Boolean);
-
-  const urgencia = "";
 
   return [
     `*${encabezado}*`,
     "",
-    specs,
-    condiciones.length > 0 ? condiciones.join("  ·  ") : null,
-    urgencia || null,
+    lineaPrincipal,
+    detalles.length > 0 ? detalles.join("  ·  ") : null,
     "",
-    "Contacto directo por privado.",
     "_Alba Inversiones · REG 3832_",
   ].filter(l => l !== null).join("\n").trim();
 }
