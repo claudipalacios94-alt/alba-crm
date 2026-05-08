@@ -145,6 +145,7 @@ export default function Mapa({ properties, updateProperty }) {
         html: `<div style="background:#0B1628;border:2px solid ${catColor};border-radius:10px 10px 10px 2px;padding:5px 9px;font-size:11px;font-weight:700;color:${catColor};white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.6);cursor:pointer;display:flex;align-items:center;gap:4px;transform:translateY(-100%)">
           <span style="font-size:13px">${icono}</span>
           <span style="color:#C8E0FA">${prop.precio ? "USD " + Math.round(prop.precio/1000) + "k" : "?"}</span>
+          ${prop.precio_original && prop.precio && prop.precio < prop.precio_original ? '<span style="font-size:9px;background:rgba(232,168,48,0.3);color:#E8A830;padding:1px 4px;border-radius:4px">↓</span>' : ""}
         </div>`,
         iconAnchor: [0, 0],
       });
