@@ -83,7 +83,13 @@ export function useSupabase() {
 
   useEffect(() => {
     const leadsChannel = supabase.channel("leads-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => loadAll())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "leads" }, (payload) => {
+        setLeads(prev => prev.map(l => l.id === payload.new.id ? { ...l, ...normalizeLead(payload.new) } : l));
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "leads" }, () => loadAll())
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "leads" }, (payload) => {
+        setLeads(prev => prev.filter(l => l.id !== payload.old.id));
+      })
       .subscribe();
     const propsChannel = supabase.channel("props-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "properties" }, () => loadAll())
