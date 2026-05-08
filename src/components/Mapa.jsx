@@ -7,6 +7,27 @@ import { B, AG } from "../data/constants.js";
 
 const ARBA_URL = "https://carto.arba.gov.ar/cartoArba/";
 
+function matchLeadsParaProp(prop, leads) {
+  const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
+  return activos.filter(lead => {
+    const zona  = (lead.zona  || "").toLowerCase();
+    const tipo  = (lead.tipo  || "").toLowerCase().replace("departamento","depto");
+    const presup = Number(lead.presup) || 0;
+    const pZona  = (prop.zona || prop.direccion || "").toLowerCase();
+    const pTipo  = (prop.tipo || "").toLowerCase().replace("departamento","depto");
+    const pPrecio = Number(prop.precio) || 0;
+    const zonas = zona.split(/[,\/]|\s+y\s+/).map(z => z.trim()).filter(Boolean);
+    const zonaOk = zonas.some(z => pZona.includes(z) || z.includes(pZona));
+    if (!zonaOk) return false;
+    if (presup > 0 && pPrecio > 0 && pPrecio > presup * 1.20) return false;
+    if (tipo && pTipo) {
+      const tiposLead = tipo.split(/[\/,]|\s+y\s+/).map(t => t.trim());
+      if (!tiposLead.some(t => pTipo.includes(t) || t.includes(pTipo))) return false;
+    }
+    return true;
+  });
+}
+
 const CAT_COLOR = {
   destacada: "#E8A830",  // dorado
   hon3:      "#4A7A3A",  // verde militar
@@ -79,7 +100,7 @@ async function nominatim(dir) {
   return null;
 }
 
-export default function Mapa({ properties, updateProperty, supabase }) {
+export default function Mapa({ properties, leads = [], updateProperty, supabase }) {
   const mapRef   = useRef(null);
   const leafRef  = useRef(null);
   const marksRef = useRef([]);
@@ -433,9 +454,41 @@ export default function Mapa({ properties, updateProperty, supabase }) {
               <>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#E8A830", marginBottom: 3 }}>📌 Captación pendiente</div>
                 <div style={{ fontSize: 12, color: "#8AAECC", marginBottom: 4 }}>{sel.zona}{sel.direccion ? " · " + sel.direccion : ""}</div>
-                {sel.precio && <div style={{ fontSize: 15, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif" }}>USD {Number(sel.precio).toLocaleString()}</div>}
-                {sel.tipo && <div style={{ fontSize: 11, color: "#8AAECC", marginTop: 2 }}>{sel.tipo}</div>}
-                {sel.nota && <div style={{ fontSize: 11, color: "#6A8AAE", fontStyle: "italic", marginTop: 4 }}>{sel.nota}</div>}
+                {sel.precio && <div style={{ fontSize: 15, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif", marginBottom: 4 }}>USD {Number(sel.precio).toLocaleString()}</div>}
+                {sel.tipo && <div style={{ fontSize: 11, color: "#8AAECC", marginBottom: 4 }}>{sel.tipo}{sel.operacion ? " · " + sel.operacion : ""}</div>}
+                {sel.nota && <div style={{ fontSize: 11, color: "#6A8AAE", fontStyle: "italic", marginBottom: 8 }}>{sel.nota}</div>}
+                {/* Matching con leads */}
+                {(() => {
+                  const matches = matchLeadsParaProp(sel, leads);
+                  if (matches.length === 0) return (
+                    <div style={{ fontSize: 11, color: "#CC2233", background: "rgba(204,34,51,0.1)", padding: "6px 10px", borderRadius: 6 }}>
+                      Sin leads que encajen con esta captación
+                    </div>
+                  );
+                  return (
+                    <div style={{ background: "rgba(46,158,106,0.08)", border: "1px solid rgba(46,158,106,0.25)", borderRadius: 8, padding: "8px 10px" }}>
+                      <div style={{ fontSize: 11, color: "#2E9E6A", fontWeight: 600, marginBottom: 5 }}>
+                        {matches.length} lead{matches.length > 1 ? "s" : ""} interesado{matches.length > 1 ? "s" : ""}
+                      </div>
+                      {matches.slice(0, 3).map(l => {
+                        const wa = l.tel ? `https://wa.me/${l.tel.replace(/\D/g,"")}` : null;
+                        return (
+                          <div key={l.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+                            <div style={{ fontSize: 12, color: "#E8F0FA" }}>
+                              {l.nombre}
+                              <span style={{ fontSize: 10, color: "#6A8AAE", marginLeft: 6 }}>USD {(l.presup||0).toLocaleString()}</span>
+                            </div>
+                            {wa && <a href={wa} target="_blank" rel="noreferrer"
+                              style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5,
+                                background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.3)",
+                                color: "#25D366", textDecoration: "none", fontWeight: 600 }}>WA</a>}
+                          </div>
+                        );
+                      })}
+                      {matches.length > 3 && <div style={{ fontSize: 10, color: "#6A8AAE", marginTop: 3 }}>+{matches.length - 3} más</div>}
+                    </div>
+                  );
+                })()}
               </>
             )}
           </div>
