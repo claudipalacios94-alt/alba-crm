@@ -8,48 +8,58 @@ import { B, AG } from "../data/constants.js";
 const ARBA_URL = "https://carto.arba.gov.ar/cartoArba/";
 
 const CAT_COLOR = {
-  destacada: "#E8A830",
-  hon3:      "#2E9E6A",
-  hon6:      "#3EAA72",
-  colega:    "#9B6DC8",
-  normal:    "#4A8ABE",
+  destacada: "#E8A830",  // dorado
+  hon3:      "#4A7A3A",  // verde militar
+  hon6:      "#1A3A6A",  // azul marino
+  colega:    "#CC2233",  // rojo navideño
+  normal:    "#4A8ABE",  // azul neutro
 };
 
 const TIPO_ICONO = {
-  "Departamento": "D", "Casa": "C", "PH": "P",
-  "Dúplex": "X", "Local": "L", "Terreno": "T",
+  "Departamento": "🏢",
+  "Casa":         "🏠",
+  "PH":           "🏡",
+  "Dúplex":       "🏘",
+  "Local":        "🏪",
+  "Terreno":      "📐",
 };
 
-// ── Pin SVG de Alba ─────────────────────────────────────────
-function makeAlbaPin(color, letra, retasado = false) {
-  return `<div style="position:relative;display:inline-block">
-    <svg width="36" height="44" viewBox="0 0 36 44" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <filter id="sh" x="-30%" y="-20%" width="160%" height="160%">
-          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.45)"/>
-        </filter>
-      </defs>
-      <path d="M18 2 C9.16 2 2 9.16 2 18 C2 28 18 42 18 42 C18 42 34 28 34 18 C34 9.16 26.84 2 18 2Z"
-        fill="${color}" filter="url(#sh)" stroke="white" stroke-width="1.5"/>
-      <text x="18" y="22" text-anchor="middle" dominant-baseline="middle"
-        font-family="Georgia,serif" font-size="13" font-weight="bold" fill="white">${letra}</text>
-    </svg>
-    ${retasado ? `<div style="position:absolute;top:-4px;right:-6px;background:#E8A830;color:white;font-size:8px;font-weight:700;padding:1px 4px;border-radius:4px;white-space:nowrap">↓</div>` : ""}
+// ── Pin con emoji de tipo y borde de categoría ──────────────
+function makeAlbaPin(color, icono, retasado = false) {
+  return `<div style="position:relative;display:inline-flex;flex-direction:column;align-items:center">
+    <div style="
+      background:white;
+      border:3px solid ${color};
+      border-radius:50%;
+      width:36px;height:36px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:18px;
+      box-shadow:0 3px 10px rgba(0,0,0,0.4);
+      position:relative;
+    ">
+      ${icono}
+      ${retasado ? `<div style="position:absolute;top:-5px;right:-5px;background:#E8A830;color:white;font-size:8px;font-weight:700;padding:1px 4px;border-radius:4px">↓</div>` : ""}
+    </div>
+    <div style="width:2px;height:8px;background:${color};margin-top:-1px"></div>
+    <div style="width:6px;height:6px;background:${color};border-radius:50%;margin-top:-1px;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>
   </div>`;
 }
 
 function makeCaptacionPin() {
-  return `<svg width="28" height="34" viewBox="0 0 28 34" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <filter id="sh2" x="-30%" y="-20%" width="160%" height="160%">
-        <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.4)"/>
-      </filter>
-    </defs>
-    <path d="M14 2 C7.4 2 2 7.4 2 14 C2 22 14 32 14 32 C14 32 26 22 26 14 C26 7.4 20.6 2 14 2Z"
-      fill="#E8A830" filter="url(#sh2)" stroke="white" stroke-width="1.2" stroke-dasharray="3,2"/>
-    <text x="14" y="16" text-anchor="middle" dominant-baseline="middle"
-      font-family="Georgia,serif" font-size="11" fill="white" font-weight="bold">?</text>
-  </svg>`;
+  return `<div style="display:inline-flex;flex-direction:column;align-items:center">
+    <div style="
+      background:white;
+      border:3px solid #CC2233;
+      border-radius:50%;
+      width:32px;height:32px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:16px;
+      box-shadow:0 3px 10px rgba(0,0,0,0.4);
+      border-style:dashed;
+    ">🎅</div>
+    <div style="width:2px;height:7px;background:#CC2233;margin-top:-1px"></div>
+    <div style="width:5px;height:5px;background:#CC2233;border-radius:50%;margin-top:-1px"></div>
+  </div>`;
 }
 
 async function nominatim(dir) {
@@ -160,13 +170,13 @@ export default function Mapa({ properties, updateProperty, supabase }) {
     if (capas.propiedades) {
       propsFiltered.forEach(prop => {
         const catColor = CAT_COLOR[prop.categoria || "normal"];
-        const letra = TIPO_ICONO[prop.tipo] || "A";
+        const icono = TIPO_ICONO[prop.tipo] || "🏠";
         const retasado = prop.precio_original && prop.precio && prop.precio < prop.precio_original;
         const icon = L.divIcon({
           className: "",
-          html: makeAlbaPin(catColor, letra, retasado),
-          iconAnchor: [18, 44],
-          iconSize: [36, 44],
+          html: makeAlbaPin(catColor, icono, retasado),
+          iconAnchor: [18, 50],
+          iconSize: [36, 50],
         });
         const marker = L.marker([prop.lat, prop.lng], { icon })
           .addTo(map)
@@ -181,8 +191,8 @@ export default function Mapa({ properties, updateProperty, supabase }) {
         const icon = L.divIcon({
           className: "",
           html: makeCaptacionPin(),
-          iconAnchor: [14, 34],
-          iconSize: [28, 34],
+          iconAnchor: [16, 44],
+          iconSize: [32, 44],
         });
         const marker = L.marker([cap.lat, cap.lng], { icon })
           .addTo(map)
