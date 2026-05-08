@@ -22,6 +22,55 @@ async function nominatim(dir) {
   return { lat: null, lng: null };
 }
 
+function parsearTextoLocal(texto) {
+  const t = texto.toLowerCase();
+
+  const tipo =
+    /departamento|depto|dpto/.test(t) ? "Departamento" :
+    /\bph\b|planta alta/.test(t)      ? "PH" :
+    /duplex|d[úu]plex/.test(t)        ? "Dúplex" :
+    /\blocal\b|comercial/.test(t)     ? "Local" :
+    /terreno|lote/.test(t)            ? "Terreno" :
+    /\bcasa\b|chalet/.test(t)         ? "Casa" : null;
+
+  const precioMatch = texto.match(/(?:usd?|u\$s?|dólares?)\s*[\$]?\s*([\d.,]+)/i)
+    || texto.match(/([\d]{2,3}[.,][\d]{3})\s*(?:usd?|dólares?|u\$)/i);
+  const precioRaw = precioMatch ? precioMatch[1].replace(/\./g,"").replace(",","") : null;
+  const precio = precioRaw ? parseInt(precioRaw) : null;
+
+  const ambMatch = texto.match(/(\d)\s*amb(?:ientes?)?/i) || texto.match(/monoambiente/i);
+  const ambientes = ambMatch ? (ambMatch[0].toLowerCase().includes("mono") ? "1" : ambMatch[1]) : null;
+
+  const m2Match = texto.match(/(\d{2,4})\s*m[²2]/i);
+  const m2tot = m2Match ? parseInt(m2Match[1]) : null;
+
+  const dirMatch = texto.match(/([A-ZÁÉÍÓÚÑ][a-záéíóúñA-ZÁÉÍÓÚÑ\s\.]{3,25})\s+(?:n[°º]?\s*)?(\d{3,5})/);
+  const direccion = dirMatch ? `${dirMatch[1].trim()} ${dirMatch[2]}` : null;
+
+  const BARRIOS = ["la perla","chauvin","centro","güemes","punta mogotes","alfar",
+    "bosque grande","san carlos","los pinares","playa grande","divino rostro",
+    "constitución","pompeya","santa rosa","floresta","libertad","san jorge",
+    "las heras","camet","villa primera","mar del plata","santa monica","luro"];
+  const zona = BARRIOS.find(b => t.includes(b)) || null;
+
+  const telMatch = texto.match(/(?:\+?54\s*9?\s*)?(?:223|2235)[\s\-]?(\d[\d\s\-]{6,10}\d)/);
+  const telefono = telMatch ? telMatch[0].replace(/[\s\-]/g,"") : null;
+
+  const cochera = /con cochera|cochera:\s*s[ií]/i.test(texto) ? "si"
+    : /sin cochera|cochera:\s*no/i.test(texto) ? "no" : null;
+
+  const campos_faltantes = [
+    !tipo      && "tipo",
+    !zona      && "zona",
+    !precio    && "precio",
+    !direccion && "direccion",
+  ].filter(Boolean);
+
+  return { tipo, precio, ambientes, m2tot, direccion, zona, telefono,
+    cochera, operacion: /alquil/.test(t) ? "alquiler" : "venta",
+    campos_faltantes, fuera_de_mdp: false };
+}
+
 async function analizarConIA(texto) {
   try {
     const res = await fetch("/api/analyze", {
@@ -29,13 +78,13 @@ async function analizarConIA(texto) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ texto }),
     });
-    if (!res.ok) return null;
-    const text = await res.text();
-    return JSON.parse(text.replace(/```json|```/g, "").trim());
-  } catch(e) {
-    console.error("IA error:", e);
-    return null;
-  }
+    if (res.ok) {
+      const text = await res.text();
+      return JSON.parse(text.replace(/```json|```/g, "").trim());
+    }
+  } catch(e) {}
+  // Fallback local — sin créditos
+  return parsearTextoLocal(texto);
 }
 
 
