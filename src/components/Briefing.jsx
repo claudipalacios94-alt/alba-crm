@@ -131,6 +131,79 @@ function LeadCard({ lead }) {
 }
 
 
+
+function CalendarioSemanal({ supabase }) {
+  const [tareas, setTareas] = React.useState([]);
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const lunes = new Date(hoy); lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
+  const semana = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(lunes); d.setDate(lunes.getDate() + i); return d;
+  });
+  const DIAS = ["Lu","Ma","Mi","Ju","Vi","Sa","Do"];
+  const PRIO_COLOR = { urgente:"#CC2233", importante:"#E8A830", normal:"#4A8ABE" };
+
+  React.useEffect(() => {
+    if (!supabase) return;
+    const desde = lunes.toISOString().slice(0,10);
+    const hasta = new Date(lunes.getTime() + 6*86400000).toISOString().slice(0,10);
+    supabase.from("tareas").select("*").eq("completada", false)
+      .gte("fecha", desde).lte("fecha", hasta)
+      .then(({ data }) => setTareas(data || []));
+  }, []);
+
+  const tareasDelDia = (d) => tareas.filter(t => t.fecha === d.toISOString().slice(0,10));
+  const totalSemana = tareas.length;
+
+  return (
+    <div>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+        <span style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", textTransform:"uppercase" }}>📅 Esta semana</span>
+        {totalSemana > 0 && <span style={{ fontSize:11, color:B.accentL, background:B.accentL+"18", padding:"1px 7px", borderRadius:8, fontWeight:600 }}>{totalSemana} tareas</span>}
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:6 }}>
+        {semana.map((dia, i) => {
+          const isHoy = dia.toDateString() === hoy.toDateString();
+          const td = tareasDelDia(dia);
+          return (
+            <div key={i}>
+              <div style={{ textAlign:"center", marginBottom:6 }}>
+                <div style={{ fontSize:10, color: isHoy ? B.accentL : "#6A8AAE", fontWeight: isHoy ? 700 : 400 }}>{DIAS[i]}</div>
+                <div style={{ fontSize:16, fontWeight: isHoy ? 700 : 400,
+                  color: isHoy ? "#fff" : "#8AAECC",
+                  background: isHoy ? B.accentL : "transparent",
+                  borderRadius:"50%", width:28, height:28,
+                  display:"flex", alignItems:"center", justifyContent:"center", margin:"2px auto" }}>
+                  {dia.getDate()}
+                </div>
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:2, minHeight:40 }}>
+                {td.length === 0 ? (
+                  <div style={{ height:3, borderRadius:2, background:B.border, opacity:0.3, margin:"4px 0" }} />
+                ) : td.map(t => (
+                  <div key={t.id} title={t.titulo}
+                    style={{ fontSize:9, padding:"2px 4px", borderRadius:3,
+                      background: (PRIO_COLOR[t.prioridad]||"#4A8ABE") + "20",
+                      color: PRIO_COLOR[t.prioridad]||"#4A8ABE",
+                      border: "1px solid " + (PRIO_COLOR[t.prioridad]||"#4A8ABE") + "40",
+                      overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
+                      lineHeight:1.4 }}>
+                    {t.titulo}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {totalSemana === 0 && (
+        <div style={{ textAlign:"center", fontSize:12, color:"#4A6A90", marginTop:8 }}>
+          Sin tareas esta semana
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Briefing({ leads, properties, supabase }) {
   const [filtroAg, setFiltroAg] = useState("Todos");
   const hoy = new Date();
@@ -192,7 +265,7 @@ export default function Briefing({ leads, properties, supabase }) {
           ))}
         </div>
       </div>
- 
+
       {/* Gauges */}
       <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:"16px 8px", marginBottom:14, display:"flex", justifyContent:"space-between", gap:4, overflowX:"auto" }}>
         <Gauge value={pipeline} max={Math.max(pipeline * 2, 1000000)} label="Pipeline activo" sublabel="Visita + Neg." color={B.accentL} prefix="USD" />
@@ -201,23 +274,13 @@ export default function Briefing({ leads, properties, supabase }) {
         <Gauge value={leadsNuevosMes} max={30} label="Leads nuevos" sublabel="Este mes" color={B.warm} />
         <Gauge value={propsActivas} max={50} label="Propiedades" sublabel="En cartera" color="#9B6DC8" />
       </div>
- 
-      {/* Dos columnas */}
+
+      {/* Fila 1: Insights | Calendario */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
-        {/* Llamar hoy */}
-        <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
-          <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>🔥 LLAMAR HOY</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {urgentes.length === 0 && <div style={{ textAlign:"center", padding:"20px 0", color:B.dim, fontSize:12 }}>Sin leads urgentes</div>}
-            {urgentes.map(l => <LeadCard key={l.id} lead={l} />)}
-          </div>
-        </div>
- 
-        {/* Pipeline */}
         <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16, display:"flex", flexDirection:"column", gap:20 }}>
           <PipelineBar leads={filtrados} />
           <div>
-            <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:10, textTransform:"uppercase" }}>RESUMEN RÁPIDO</div>
+            <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:10, textTransform:"uppercase" }}>Resumen rápido</div>
             <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
               {[
                 { label:"Sin asignar",       val: activos.filter(l=>!l.ag).length,          color:B.hot  },
@@ -233,13 +296,30 @@ export default function Briefing({ leads, properties, supabase }) {
             </div>
           </div>
         </div>
+        <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
+          <CalendarioSemanal supabase={supabase} />
+        </div>
       </div>
- 
-      {/* Matches del día */}
+
+      {/* Fila 2: Tareas */}
+      <div style={{ marginBottom:14 }}>
+        <Tareas supabase={supabase} />
+      </div>
+
+      {/* Fila 3: Llamar hoy */}
+      <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16, marginBottom:14 }}>
+        <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>🔥 Llamar hoy</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          {urgentes.length === 0 && <div style={{ textAlign:"center", padding:"20px 0", color:B.dim, fontSize:12 }}>Sin leads urgentes</div>}
+          {urgentes.map(l => <LeadCard key={l.id} lead={l} />)}
+        </div>
+      </div>
+
+      {/* Fila 4: Matches del día */}
       {matchesHoy.length > 0 && (
         <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
           <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>
-            📌 MATCHES DEL DÍA — propiedades en cartera que encajan con tus leads
+            📌 Matches del día — propiedades que encajan con tus leads
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
             {matchesHoy.map(({ lead, matches }) => (
@@ -272,12 +352,6 @@ export default function Briefing({ leads, properties, supabase }) {
           </div>
         </div>
       )}
-
-      {/* Tareas + Agenda */}
-      <div style={{ marginBottom: 20 }}>
-        <Tareas supabase={supabase} />
-      </div>
-
     </div>
   );
 }
