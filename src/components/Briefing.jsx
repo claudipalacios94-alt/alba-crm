@@ -66,31 +66,75 @@ function Gauge({ value, max, label, sublabel, color, prefix = "", suffix = "" })
   );
 }
  
-function PipelineBar({ leads }) {
-  const etapas = ["Nuevo Contacto","Calificado","Visita","Negociación"];
-  const colors  = [B.dim, B.accentL, B.warm, B.ok];
+function InsightPanel({ leads, properties }) {
   const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
-  const total   = activos.length || 1;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+
+  // Señales reales de alarma
+  const sinAsignar     = activos.filter(l => !l.ag);
+  const calientes      = activos.filter(l => l.dias <= 2);
+  const enNegociacion  = activos.filter(l => l.etapa === "Negociación");
+  const frios          = activos.filter(l => l.dias > 15 && l.etapa !== "Negociación");
+  const sinAccion      = activos.filter(l => !l.proxAccion && l.dias > 3);
+  const propsSinInteresados = (properties || []).filter(p => {
+    const matches = activos.filter(l => {
+      const zona = (l.zona||"").toLowerCase();
+      const pZona = (p.zona||"").toLowerCase();
+      const zonas = zona.split(/[,\/]|\s+y\s+/).map(z => z.trim());
+      return zonas.some(z => pZona.includes(z) || z.includes(pZona));
+    });
+    return matches.length === 0;
+  });
+
+  // Embudo simplificado — solo lo que importa
+  const visitas      = activos.filter(l => l.etapa === "Visita").length;
+  const negociacion  = activos.filter(l => l.etapa === "Negociación").length;
+  const pipeline     = enNegociacion.reduce((s, l) => s + (l.presup||0), 0);
+  const convRate     = activos.length > 0 ? Math.round((negociacion / activos.length) * 100) : 0;
+
+  const alarmas = [
+    sinAsignar.length > 0 && { texto: `${sinAsignar.length} lead${sinAsignar.length>1?"s":""} sin agente`, color:"#CC2233", icono:"⚠", urgente:true },
+    sinAccion.length > 0  && { texto: `${sinAccion.length} sin próxima acción (+3d)`, color:"#E8A830", icono:"⏰", urgente:false },
+    frios.length > 0      && { texto: `${frios.length} frío${frios.length>1?"s":""} (+15 días sin contacto)`, color:"#4A8ABE", icono:"❄", urgente:false },
+    propsSinInteresados.length > 0 && { texto: `${propsSinInteresados.length} propiedad${propsSinInteresados.length>1?"es":""} sin interesados`, color:"#9B6DC8", icono:"🏠", urgente:false },
+  ].filter(Boolean);
+
   return (
-    <div>
-      <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:10, textTransform:"uppercase" }}>EMBUDO COMERCIAL</div>
-      <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-        {etapas.map((e, i) => {
-          const n = activos.filter(l => l.etapa === e).length;
-          const pct = (n / total) * 100;
-          const isCuello = i > 0 && n < activos.filter(l => l.etapa === etapas[i-1]).length * 0.3 && n > 0;
-          return (
-            <div key={e} style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <div style={{ fontSize:12, color:"#8AAECC", width:110, textAlign:"right", flexShrink:0 }}>{e}</div>
-              <div style={{ flex:1, height:8, background:"#4A6A90", borderRadius:4, overflow:"hidden" }}>
-                <div style={{ height:"100%", width:pct+"%", background:colors[i], borderRadius:4, transition:"width .6s ease" }} />
-              </div>
-              <div style={{ fontSize:11, fontWeight:700, color:colors[i], width:28, flexShrink:0 }}>{n}</div>
-              {isCuello && <div style={{ fontSize:11, color:B.hot }}>⚠️</div>}
-            </div>
-          );
-        })}
+    <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+      {/* KPIs clave */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+        {[
+          { label:"En negociación", val:negociacion, color:B.ok, sub: pipeline > 0 ? "USD "+pipeline.toLocaleString() : "sin monto" },
+          { label:"Visitas", val:visitas, color:B.warm, sub: activos.length+" activos" },
+          { label:"Calientes hoy", val:calientes.length, color:B.hot, sub:"≤2 días sin contacto" },
+          { label:"Conversión", val:convRate+"%", color:B.accentL, sub:"a negociación" },
+        ].map(k => (
+          <div key={k.label} style={{ background:B.card, borderRadius:10, padding:"10px 12px",
+            border:"1px solid " + k.color + "30", borderLeft:"3px solid " + k.color }}>
+            <div style={{ fontSize:18, fontWeight:700, color:k.color, fontFamily:"Georgia,serif", lineHeight:1 }}>{k.val}</div>
+            <div style={{ fontSize:11, color:"#E8F0FA", fontWeight:500, marginTop:3 }}>{k.label}</div>
+            <div style={{ fontSize:10, color:"#6A8AAE", marginTop:1 }}>{k.sub}</div>
+          </div>
+        ))}
       </div>
+
+      {/* Alarmas accionables */}
+      {alarmas.length > 0 && (
+        <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+          <div style={{ fontSize:10, color:"#5A7A9A", fontWeight:600, letterSpacing:"0.8px", textTransform:"uppercase", marginBottom:2 }}>Requieren atención</div>
+          {alarmas.map((a, i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px",
+              background:a.color+"12", border:"1px solid "+a.color+"30", borderRadius:8 }}>
+              <span style={{ fontSize:13 }}>{a.icono}</span>
+              <span style={{ fontSize:12, color:a.urgente ? "#E8F0FA" : "#8AAECC", fontWeight:a.urgente?600:400 }}>{a.texto}</span>
+              {a.urgente && <span style={{ fontSize:9, padding:"1px 5px", borderRadius:4, background:a.color+"30", color:a.color, fontWeight:700, marginLeft:"auto" }}>AHORA</span>}
+            </div>
+          ))}
+        </div>
+      )}
+      {alarmas.length === 0 && (
+        <div style={{ fontSize:12, color:"#2E9E6A", textAlign:"center", padding:"8px 0" }}>✓ Todo en orden</div>
+      )}
     </div>
   );
 }
@@ -277,24 +321,8 @@ export default function Briefing({ leads, properties, supabase }) {
 
       {/* Fila 1: Insights | Calendario */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
-        <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16, display:"flex", flexDirection:"column", gap:20 }}>
-          <PipelineBar leads={filtrados} />
-          <div>
-            <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:10, textTransform:"uppercase" }}>Resumen rápido</div>
-            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-              {[
-                { label:"Sin asignar",       val: activos.filter(l=>!l.ag).length,          color:B.hot  },
-                { label:"Sin próx. acción",  val: activos.filter(l=>!l.proxAccion).length,   color:B.warm },
-                { label:"Prob. alta (≥70%)", val: activos.filter(l=>(l.prob||0)>=70).length, color:B.ok   },
-                { label:"Fríos (+15 días)",  val: activos.filter(l=>l.dias>15).length,        color:B.dim  },
-              ].map(r => (
-                <div key={r.label} style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:"#7A9ABE" }}>
-                  <span>{r.label}</span>
-                  <span style={{ fontWeight:700, color:r.color }}>{r.val}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
+          <InsightPanel leads={filtrados} properties={properties} />
         </div>
         <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
           <CalendarioSemanal supabase={supabase} />
