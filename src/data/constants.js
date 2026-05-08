@@ -192,39 +192,48 @@ export function genMsgWhatsApp(lead, prop) {
 export function genMsgBusqueda(lead) {
   const stars = Math.round((lead.prob || 0) / 20);
 
-  const urgencia = stars >= 5
-    ? "🔴 *URGENTE — cliente con decisión tomada*"
+  const encabezado = stars >= 5
+    ? "🔴 PEDIDO URGENTE — CLIENTE LISTO PARA CERRAR"
     : stars >= 4
-    ? "🟠 *MUY INTERESADO — visita coordinada*"
+    ? "🟠 PEDIDO ACTIVO — MUY INTERESADO"
     : stars >= 3
-    ? "🟡 *EN BÚSQUEDA ACTIVA*"
-    : "🔵 *CONSULTA — explorando opciones*";
+    ? "🟡 BÚSQUEDA EN CURSO"
+    : "📋 PEDIDO DE BÚSQUEDA";
 
-  const tipos = [].concat(lead.tipo || []).join(" / ") || "Propiedad";
-  const zona  = lead.zona  || "Mar del Plata";
+  const tipo = lead.tipo || "propiedad";
+  const zona = lead.zona || "Mar del Plata";
   const presup = lead.presup ? `USD ${Number(lead.presup).toLocaleString()}` : "a consultar";
 
-  const extras = [
-    lead.cochera  === "si"  && "Cochera: ✅",
-    lead.cochera  === "no"  && "Cochera: ❌",
-    lead.balcon   === "si"  && "Balcón: ✅",
-    lead.credito  === "si"  && "Crédito aprobado ✅",
-    lead.op === "Inversor"  && "Inversor 📈",
-  ].filter(Boolean).join(" · ");
+  const credito  = (lead.credito  === "si" || (lead.nota||"").toLowerCase().includes("crédito") || (lead.nota||"").toLowerCase().includes("credito"));
+  const cochera  = lead.cochera === "si";
+  const balcon   = lead.balcon  === "si";
+  const inversor = lead.op === "Inversor";
 
-  const starsStr = "⭐".repeat(Math.max(stars, 1));
+  const condiciones = [
+    credito  && "✅ Crédito aprobado",
+    cochera  && "🚗 Con cochera",
+    balcon   && "🏙 Con balcón",
+    inversor && "📈 Perfil inversor",
+  ].filter(Boolean);
 
-  return (
-`${urgencia}
-${starsStr}
+  const urgenciaExtra = stars >= 5
+    ? "\nEl cliente tiene todo en orden para firmar. No demores en escribirme."
+    : stars >= 4
+    ? "\nCliente en etapa avanzada, ya coordinamos visita. Prioridad alta."
+    : "";
 
-🏠 *${tipos}* en *${zona}*
-💰 Presupuesto: *${presup}*${extras ? "\n✅ " + extras : ""}
-${lead.nota ? "\n📝 " + lead.nota : ""}
+  const firma = `\n_Alba Inversiones Inmobiliarias_\nREG 3832 · Mar del Plata`;
 
-Si tenés algo que pueda encajar, escribime por acá 👇
-
-📲 *Alba Inversiones Inmobiliarias* · REG 3832`
-  ).trim();
+  return [
+    `*${encabezado}*`,
+    "",
+    `Busco *${tipo}* en *${zona}*`,
+    `Presupuesto: *${presup}*`,
+    condiciones.length > 0 ? condiciones.join("  ·  ") : null,
+    urgenciaExtra || null,
+    "",
+    "Si tenés algo que pueda encajar, escribime por privado.",
+    firma,
+  ].filter(l => l !== null).join("\n").trim();
 }
 
