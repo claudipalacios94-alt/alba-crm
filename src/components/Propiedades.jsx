@@ -3,7 +3,7 @@
 // Cards expandibles, categorías, edición inline
 // ══════════════════════════════════════════════════════════════
 import React, { useState } from "react";
-import { B, AG } from "../data/constants.js";
+import { B, AG, matchLeadProps } from "../data/constants.js";
 
 const CATEGORIAS = [
   { key: "destacada", label: "Destacada",        color: "#E8A830" },
@@ -39,7 +39,35 @@ async function geocodeAddress(dir) {
   return null;
 }
 
-function PropCard({ p, updateProperty, deleteProperty }) {
+function matchingInverso(prop, leads) {
+  const leadsActivos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
+  return leadsActivos.filter(lead => {
+    const zona  = (lead.zona  || "").toLowerCase();
+    const tipo  = (lead.tipo  || "").toLowerCase();
+    const presup = Number(lead.presup) || 0;
+    const pZona = (prop.zona || "").toLowerCase();
+    const pTipo = (prop.tipo || "").toLowerCase().replace("departamento", "depto");
+    const pPrecio = Number(prop.precio) || 0;
+
+    // Zona match
+    const zonas = zona.split(/[,\/]|\s+y\s+/).map(z => z.trim()).filter(Boolean);
+    const zonaOk = zonas.some(z => pZona.includes(z) || z.includes(pZona));
+    if (!zonaOk) return false;
+
+    // Precio — no más de 20% sobre presupuesto
+    if (presup > 0 && pPrecio > 0 && pPrecio > presup * 1.20) return false;
+
+    // Tipo excluyente
+    if (tipo && pTipo) {
+      const tiposLead = tipo.replace("departamento","depto").split(/[\/,]|\s+y\s+/).map(t => t.trim());
+      if (!tiposLead.some(t => pTipo.includes(t) || t.includes(pTipo))) return false;
+    }
+
+    return true;
+  });
+}
+
+function PropCard({ p, leads, updateProperty, deleteProperty }) {
   const [open,       setOpen]       = useState(false);
   const [editing,    setEditing]    = useState(false);
   const [editData,   setEditData]   = useState({});
@@ -154,6 +182,49 @@ function PropCard({ p, updateProperty, deleteProperty }) {
       {open && !editing && (
         <div style={{ borderTop: "1px solid " + B.border, padding: "12px 14px",
           background: "rgba(10,21,37,0.4)", display: "flex", flexDirection: "column", gap: 12 }}>
+
+          {/* Matching inverso */}
+          {(() => {
+            const matches = matchingInverso(p, leads);
+            if (matches.length === 0) return (
+              <div style={{ padding: "8px 12px", borderRadius: 8,
+                background: "rgba(204,34,51,0.1)", border: "1px solid rgba(204,34,51,0.3)" }}>
+                <div style={{ fontSize: 11, color: "#CC2233", fontWeight: 600, marginBottom: 2 }}>Sin leads interesados</div>
+                <div style={{ fontSize: 11, color: "#8AAECC" }}>Ningún lead activo matchea esta propiedad. Considerá retasar o ampliar la búsqueda.</div>
+              </div>
+            );
+            return (
+              <div style={{ padding: "8px 12px", borderRadius: 8,
+                background: "rgba(46,158,106,0.08)", border: "1px solid rgba(46,158,106,0.25)" }}>
+                <div style={{ fontSize: 11, color: "#2E9E6A", fontWeight: 600, marginBottom: 6 }}>
+                  {matches.length} lead{matches.length > 1 ? "s" : ""} interesado{matches.length > 1 ? "s" : ""}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {matches.map(lead => {
+                    const waLink = lead.tel ? "https://wa.me/" + lead.tel.replace(/\D/g, "") : null;
+                    return (
+                      <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" }}>
+                        <div>
+                          <span style={{ fontSize: 12, color: "#E8F0FA", fontWeight: 500 }}>{lead.nombre}</span>
+                          <span style={{ fontSize: 11, color: "#6A8AAE", marginLeft: 6 }}>
+                            {lead.tipo} · {lead.zona} · USD {lead.presup?.toLocaleString()}
+                          </span>
+                        </div>
+                        {waLink && (
+                          <a href={waLink} target="_blank" rel="noreferrer"
+                            style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6,
+                              background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.3)",
+                              color: "#25D366", textDecoration: "none", fontWeight: 600, flexShrink: 0 }}>
+                            WA
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Selector categoría */}
           <div>
@@ -315,7 +386,7 @@ function PropCard({ p, updateProperty, deleteProperty }) {
   );
 }
 
-function Seccion({ titulo, color, props, updateProperty, deleteProperty, defaultOpen = true }) {
+function Seccion({ titulo, color, props, leads, updateProperty, deleteProperty, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
   if (props.length === 0) return null;
   return (
@@ -333,7 +404,7 @@ function Seccion({ titulo, color, props, updateProperty, deleteProperty, default
       {open && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))", gap: 12 }}>
           {props.map(p => (
-            <PropCard key={p.id} p={p} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+            <PropCard key={p.id} p={p} leads={leads} updateProperty={updateProperty} deleteProperty={deleteProperty} />
           ))}
         </div>
       )}
@@ -341,7 +412,7 @@ function Seccion({ titulo, color, props, updateProperty, deleteProperty, default
   );
 }
 
-export default function Propiedades({ properties, updateProperty, deleteProperty }) {
+export default function Propiedades({ properties, leads = [], updateProperty, deleteProperty }) {
   const [ft, setFt] = useState("Todos");
   const [q,  setQ]  = useState("");
 
@@ -385,11 +456,11 @@ export default function Propiedades({ properties, updateProperty, deleteProperty
       </div>
 
       <Seccion titulo="🔥 Retasadas — precio reducido" color="#FF6B35" props={retasadas} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-      <Seccion titulo="Destacadas" color="#E8A830" props={destacadas} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-      <Seccion titulo="Honorarios 3%" color="#2E9E6A" props={hon3} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-      <Seccion titulo="Honorarios 6%" color="#3EAA72" props={hon6} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-      <Seccion titulo="Compartidas por colegas" color="#9B6DC8" props={colegas} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-      <Seccion titulo="Sin categoría" color="#4A6A90" props={resto} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+      <Seccion titulo="Destacadas" color="#E8A830" props={destacadas} leads={leads} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+      <Seccion titulo="Honorarios 3%" color="#2E9E6A" props={hon3} leads={leads} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+      <Seccion titulo="Honorarios 6%" color="#3EAA72" props={hon6} leads={leads} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+      <Seccion titulo="Compartidas por colegas" color="#9B6DC8" props={colegas} leads={leads} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+      <Seccion titulo="Sin categoría" color="#4A6A90" props={resto} leads={leads} updateProperty={updateProperty} deleteProperty={deleteProperty} />
 
       {filtered.length === 0 && (
         <div style={{ textAlign: "center", padding: "40px", color: "#8AAECC" }}>Sin propiedades</div>
