@@ -2,7 +2,7 @@
 // ALBA CRM — CRM LEADS (diseño card, filtros scoring/agente/perfil)
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useMemo } from "react";
-import { B, AG, ETAPAS, ECOL, scoreLead, matchLeadProps, genMsgWhatsApp } from "../data/constants.js";
+import { B, AG, genMsgBusqueda, ETAPAS, ECOL, scoreLead, matchLeadProps, genMsgWhatsApp } from "../data/constants.js";
  
 const TIPOS_OP   = ["Compra","Alquiler","Inversión","Alquiler / Compra"];
 const TIPOS_PROP = ["Depto","Casa","PH","Casa / PH","Dúplex","Local","Terreno","Otro"];
