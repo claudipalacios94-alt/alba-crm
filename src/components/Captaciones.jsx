@@ -31,10 +31,10 @@ function parsearTextoLocal(texto) {
     /duplex|d[úu]plex/.test(t)        ? "Dúplex" :
     /\blocal\b|comercial/.test(t)     ? "Local" :
     /terreno|lote/.test(t)            ? "Terreno" :
-    /\bcasa\b|chalet/.test(t)         ? "Casa" : null;
+    /\bcasa\b|chalet|vivienda/.test(t) ? "Casa" : null;
 
-  const precioMatch = texto.match(/(?:usd?|u\$s?|dólares?)\s*[\$]?\s*([\d.,]+)/i)
-    || texto.match(/([\d]{2,3}[.,][\d]{3})\s*(?:usd?|dólares?|u\$)/i);
+  const precioMatch = texto.match(/(?:usd?|u\$d?|u\$s?|dólares?)\s*[\$]?\s*([\d.,]+)/i)
+    || texto.match(/([\d]{2,3}[.,][\d]{3})\s*(?:usd?|u\$d?|dólares?|u\$)/i);
   const precioRaw = precioMatch ? precioMatch[1].replace(/\./g,"").replace(",","") : null;
   const precio = precioRaw ? parseInt(precioRaw) : null;
 
