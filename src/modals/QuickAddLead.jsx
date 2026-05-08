@@ -37,7 +37,7 @@ export default function QuickAddLead({ onClose, onAdd }) {
   const [f, setF] = useState({
     nombre:"", tel:"", origen:"Instagram", etapa:"Nuevo Contacto",
     op:"Compra", tipo:"", presup:"", formaPago:"",
-    zonas:"", ambientes:"", cochera:"", balcon:"",
+    zonas:"", ambientes:"", cochera:"", balcon:"", patio:"", m2min:"",
     nota:"", proxAccion:"", prob:"", urgencia:"",
     agCapto:"", agSeg:"", notaImp:"",
   });
@@ -62,10 +62,15 @@ export default function QuickAddLead({ onClose, onAdd }) {
       zona:   f.zonas.trim(),
       tel:    f.tel.trim(),
       origen: f.origen,
-      nota:   [f.nota, f.cochera && "Cochera: "+f.cochera, f.balcon && "Balcón: "+f.balcon].filter(Boolean).join(" · "),
+      nota:   [f.nota, f.cochera && "Cochera: "+f.cochera, f.balcon && "Balcón: "+f.balcon, f.patio && "Patio: "+f.patio].filter(Boolean).join(" · "),
       proxAccion: f.proxAccion.trim() || "Calificar y contactar",
       prob:   f.prob ? Number(f.prob) : null,
       notaImp: f.notaImp.trim(),
+      cochera: f.cochera.toLowerCase().includes("s") ? "si" : f.cochera.toLowerCase().includes("n") ? "no" : "",
+      balcon:  f.balcon.toLowerCase().includes("s")  ? "si" : f.balcon.toLowerCase().includes("n")  ? "no" : "",
+      patio:   f.patio.toLowerCase().includes("s")   ? "si" : f.patio.toLowerCase().includes("n")   ? "no" : "",
+      ambientes: f.ambientes || null,
+      m2min:   f.m2min ? Number(f.m2min) : null,
       dias:   0,
     });
   }
@@ -138,8 +143,14 @@ export default function QuickAddLead({ onClose, onAdd }) {
         <Field label="Cochera" half>
           <input style={inp} value={f.cochera} onChange={set("cochera")} placeholder="Sí / No / Indistinto" />
         </Field>
-        <Field label="Balcón / Patio" half>
+        <Field label="Balcón" half>
           <input style={inp} value={f.balcon} onChange={set("balcon")} placeholder="Sí / No / Indistinto" />
+        </Field>
+        <Field label="Patio" half>
+          <input style={inp} value={f.patio} onChange={set("patio")} placeholder="Sí / No / Indistinto" />
+        </Field>
+        <Field label="M² mínimos" half>
+          <input type="number" style={inp} value={f.m2min} onChange={set("m2min")} placeholder="ej: 50" />
         </Field>
       </div>
 
