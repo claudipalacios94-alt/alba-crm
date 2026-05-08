@@ -134,7 +134,7 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
     setEditData({
       tipo: p.tipo || "", zona: p.zona || "", dir: p.dir || "",
       precio: p.precio || "", m2tot: p.m2tot || "", m2cub: p.m2cub || "",
-      caracts: p.caracts || "", info: p.info || "", ag: p.ag || "", precio_original: p.precio_original || p.precio || "",
+      caracts: p.caracts || "", info: p.info || "", ag: p.ag || "", precio_original: p.precio_original || p.precio || "", descripcion: p.descripcion || "", fotos: p.fotos || "",
       estado: p.estado || "Buen Estado",
     });
     setEditing(true);
@@ -158,7 +158,7 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
         m2tot:  editData.m2tot  ? Number(editData.m2tot)  : null,
         m2cub:  editData.m2cub  ? Number(editData.m2cub)  : null,
         caracts: editData.caracts, info: editData.info,
-        ag: editData.ag, estado: editData.estado, lat, lng,
+        ag: editData.ag, estado: editData.estado, lat, lng, descripcion: editData.descripcion || null, fotos: editData.fotos || null,
       });
       setEditing(false);
     } catch(e) { console.error(e); }
@@ -295,7 +295,20 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
             <div style={{ fontSize: 12 }}><span style={{ color: "#5A7A9A" }}>Cartera: </span><span style={{ color: B.text }}>{p.dias}d</span></div>
           </div>
           {p.caracts && <div style={{ fontSize: 12, color: "#8AAECC" }}>{p.caracts}</div>}
+          {p.descripcion && <div style={{ fontSize: 12, color: "#8AAECC", lineHeight: 1.6, fontStyle: "italic" }}>{p.descripcion}</div>}
           {p.info    && <div style={{ fontSize: 12, color: "#6A8AAE", fontStyle: "italic" }}>{p.info}</div>}
+          {p.fotos && (
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+              {p.fotos.split("\n").filter(Boolean).map((url, i) => (
+                <a key={i} href={url.trim()} target="_blank" rel="noreferrer"
+                  style={{ display:"block", width:64, height:64, borderRadius:6, overflow:"hidden",
+                    border:`1px solid ${B.border}`, flexShrink:0 }}>
+                  <img src={url.trim()} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}
+                    onError={e => { e.target.style.display="none"; }} />
+                </a>
+              ))}
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <a href={"https://www.openstreetmap.org/search?query=" + encodeURIComponent((p.dir || "") + ", Mar del Plata, Argentina")}
@@ -451,6 +464,18 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
           <div>
             <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>CARACTERÍSTICAS</label>
             <input value={editData.caracts} onChange={e => setEditData(d => ({...d, caracts: e.target.value}))} style={inp} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>DESCRIPCIÓN DE MARKETING</label>
+            <textarea value={editData.descripcion} onChange={e => setEditData(d => ({...d, descripcion: e.target.value}))}
+              rows={3} placeholder="Texto para flyer, portales, WA..."
+              style={{ ...inp, resize:"vertical", lineHeight:1.5 }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>FOTOS (una URL por línea)</label>
+            <textarea value={editData.fotos} onChange={e => setEditData(d => ({...d, fotos: e.target.value}))}
+              rows={3} placeholder={"https://...\nhttps://..."}
+              style={{ ...inp, resize:"vertical", lineHeight:1.6, fontFamily:"monospace", fontSize:11 }} />
           </div>
           <div>
             <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>INFO INTERNA</label>
