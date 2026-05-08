@@ -32,6 +32,8 @@ async function analizarConIA(texto) {
         max_tokens: 1000,
         system: `Sos un asistente de inmobiliaria en Mar del Plata, Argentina. Analizás texto libre (mensajes de WhatsApp, descripciones de portales, notas) y extraés información de propiedades en venta o alquiler.
 
+IMPORTANTE: Si la propiedad está fuera de Mar del Plata, indicalo en el campo "fuera_de_mdp": true.
+
 Respondé SOLO con JSON válido, sin texto adicional, sin backticks:
 {
   "nombre_propietario": string o null,
@@ -45,7 +47,9 @@ Respondé SOLO con JSON válido, sin texto adicional, sin backticks:
   "ambientes": number o null,
   "caracts": string o null,
   "operacion": "venta"|"alquiler" o null,
-  "campos_faltantes": array de strings con los campos importantes que no pudiste detectar
+  "campos_faltantes": array de strings con los campos importantes que no pudiste detectar,
+  "fuera_de_mdp": boolean,
+  "ciudad_detectada": string o null
 }
 
 campos_faltantes debe incluir solo los que son realmente importantes para una captación: tipo, zona, precio. No incluyas campos opcionales como m2 o ambientes.`,
@@ -269,6 +273,12 @@ export default function Captaciones({ supabase }) {
         {campos && (
           <div style={{ background: B.card, border: `1px solid ${B.accentL}40`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: B.accentL, letterSpacing: "0.8px" }}>DATOS DETECTADOS</div>
+            {campos.fuera_de_mdp && (
+              <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(232,100,80,0.15)",
+                border: "1px solid rgba(232,100,80,0.4)", fontSize: 12, color: "#E86450" }}>
+                ⚠ Esta propiedad parece ser de <strong>{campos.ciudad_detectada || "otra ciudad"}</strong>, no de Mar del Plata. ¿Querés guardarla igual?
+              </div>
+            )}
 
             {/* Campos extraídos */}
             {["tipo","zona","direccion","precio","nombre_propietario","telefono","m2tot","caracts","operacion"].map(k => {
