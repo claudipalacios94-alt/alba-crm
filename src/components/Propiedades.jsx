@@ -49,7 +49,7 @@ function PropCard({ p, updateProperty, deleteProperty }) {
   const [localCat,   setLocalCat]   = useState(p.categoria || "normal");
 
   const scColor = p.sc?.includes("Urgente") ? B.hot : p.sc?.includes("tenci") ? B.warm : B.ok;
-  const cat = catInfolocalCat;
+  const cat = catInfo(localCat);
 
   async function changeCategoria(key) {
     setSavingCat(true);
