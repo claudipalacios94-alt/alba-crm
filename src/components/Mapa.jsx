@@ -56,9 +56,14 @@ export default function Mapa({ properties, updateProperty }) {
   const [geocoding,  setGeocoding]  = useState(false);
   const [geoStatus,  setGeoStatus]  = useState({ done: 0, total: 0, failed: [] });
   const [coords,     setCoords]     = useState({}); // id → {lat, lng}
+  const [q,          setQ]          = useState("");
 
   const tipos = ["Todos", ...new Set(properties.map(p => p.tipo).filter(Boolean))];
-  const lista = filtro === "Todos" ? properties : properties.filter(p => p.tipo === filtro);
+  const lista = properties.filter(p => {
+    if (filtro !== "Todos" && p.tipo !== filtro) return false;
+    if (q && !((p.dir || "") + (p.zona || "") + (p.tipo || "")).toLowerCase().includes(q.toLowerCase())) return false;
+    return true;
+  });
 
   // Combinar coords guardadas en Supabase con las geocodificadas en sesión
   const withCoords = (p) => {
@@ -177,6 +182,31 @@ export default function Mapa({ properties, updateProperty }) {
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          {/* Buscador */}
+          <input
+            value={q}
+            onChange={e => {
+              setQ(e.target.value);
+              // Si hay un solo resultado con coords, hacer zoom
+              if (e.target.value.length > 2) {
+                const matches = properties.filter(p =>
+                  ((p.dir || "") + (p.zona || "") + (p.tipo || "")).toLowerCase().includes(e.target.value.toLowerCase())
+                );
+                if (matches.length === 1) {
+                  const pw = withCoords(matches[0]);
+                  if (pw.lat && leafRef.current) {
+                    leafRef.current.setView([pw.lat, pw.lng], 16);
+                    setSel(pw);
+                  }
+                }
+              } else if (e.target.value === "") {
+                setSel(null);
+              }
+            }}
+            placeholder="Buscar dirección, zona..."
+            style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid " + B.border,
+              background: B.card, color: B.text, fontSize: 12, outline: "none", width: 200 }}
+          />
           {geocoding && (
             <div style={{ fontSize: 11, color: B.accentL, background: B.accentL + "15",
               border: "1px solid " + B.accentL + "40", borderRadius: 8, padding: "5px 12px" }}>
