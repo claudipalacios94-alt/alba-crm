@@ -220,6 +220,12 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
             </div>
           </div>
 
+          <div>
+            <label style={{ fontSize:10, color:"#4A8ABE", display:"block", marginBottom:2 }}>🔗 LINK (portal o ficha)</label>
+            <input value={form.url} onChange={e=>setForm(f=>({...f,url:e.target.value}))}
+              placeholder="https://zonaprop.com.ar/..." style={{...inp, borderColor:form.url?"#4A8ABE":B.border}} />
+          </div>
+
           <div style={{ display:"flex", gap:7, marginTop:4 }}>
             <button onClick={guardarEdicion} disabled={saving}
               style={{ flex:1, padding:"8px", borderRadius:7, cursor:"pointer",
