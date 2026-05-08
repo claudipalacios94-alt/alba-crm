@@ -193,47 +193,56 @@ export function genMsgBusqueda(lead) {
   const stars = Math.round((lead.prob || 0) / 20);
 
   const encabezado = stars >= 5
-    ? "🔴 PEDIDO URGENTE — CLIENTE LISTO PARA CERRAR"
+    ? "🔴 PEDIDO URGENTE — CIERRE INMINENTE"
     : stars >= 4
-    ? "🟠 PEDIDO ACTIVO — MUY INTERESADO"
+    ? "🟠 PEDIDO ACTIVO — CLIENTE MUY INTERESADO"
     : stars >= 3
     ? "🟡 BÚSQUEDA EN CURSO"
     : "📋 PEDIDO DE BÚSQUEDA";
 
-  const tipo = lead.tipo || "propiedad";
-  const zona = lead.zona || "Mar del Plata";
-  const presup = lead.presup ? `USD ${Number(lead.presup).toLocaleString()}` : "a consultar";
+  const tipo  = lead.tipo  || "Propiedad";
+  const zona  = lead.zona  || "Mar del Plata";
+  const presup = lead.presup ? `USD ${Number(lead.presup).toLocaleString()}` : null;
 
-  const credito  = (lead.credito  === "si" || (lead.nota||"").toLowerCase().includes("crédito") || (lead.nota||"").toLowerCase().includes("credito"));
+  const credito  = lead.credito === "si" || (lead.nota||"").toLowerCase().includes("crédit") || (lead.nota||"").toLowerCase().includes("credit");
   const cochera  = lead.cochera === "si";
   const balcon   = lead.balcon  === "si";
   const inversor = lead.op === "Inversor";
+  const ambientes = lead.ambientes ? `${lead.ambientes} amb.` : null;
+  const m2min = lead.m2min ? `mín. ${lead.m2min}m²` : null;
+
+  const specs = [
+    tipo,
+    ambientes,
+    m2min,
+    zona,
+    presup ? `*${presup}*` : null,
+  ].filter(Boolean).join(" · ");
 
   const condiciones = [
     credito  && "✅ Crédito aprobado",
     cochera  && "🚗 Con cochera",
     balcon   && "🏙 Con balcón",
-    inversor && "📈 Perfil inversor",
+    inversor && "📈 Inversor",
+    stars >= 5 && "⚡ Firma inmediata",
+    stars >= 4 && !inversor && "📅 Visita coordinada",
   ].filter(Boolean);
 
-  const urgenciaExtra = stars >= 5
-    ? "\nEl cliente tiene todo en orden para firmar. No demores en escribirme."
+  const urgencia = stars >= 5
+    ? "Cliente con decisión tomada."
     : stars >= 4
-    ? "\nCliente en etapa avanzada, ya coordinamos visita. Prioridad alta."
+    ? "Cliente avanzado, no especular con precio."
     : "";
-
-  const firma = `\n_Alba Inversiones Inmobiliarias_\nREG 3832 · Mar del Plata`;
 
   return [
     `*${encabezado}*`,
     "",
-    `Busco *${tipo}* en *${zona}*`,
-    `Presupuesto: *${presup}*`,
+    specs,
     condiciones.length > 0 ? condiciones.join("  ·  ") : null,
-    urgenciaExtra || null,
+    urgencia || null,
     "",
-    "Si tenés algo que pueda encajar, escribime por privado.",
-    firma,
+    "Contacto directo por privado.",
+    "_Alba Inversiones · REG 3832_",
   ].filter(l => l !== null).join("\n").trim();
 }
 
