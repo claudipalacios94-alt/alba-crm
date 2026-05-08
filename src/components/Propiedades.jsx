@@ -40,6 +40,7 @@ async function geocodeAddress(dir) {
 }
 
 function matchingInverso(prop, leads) {
+  if (!leads || !Array.isArray(leads)) return [];
   const leadsActivos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
   return leadsActivos.filter(lead => {
     const zona  = (lead.zona  || "").toLowerCase();
