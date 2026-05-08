@@ -188,3 +188,43 @@ export function genMsgWhatsApp(lead, prop) {
     (prop.caracts ? `✅ ${prop.caracts}\n` : "") +
     `\n¿Te parece si coordinamos para verla? 🙂`;
 }
+
+export function genMsgBusqueda(lead) {
+  const stars = Math.round((lead.prob || 0) / 20);
+
+  const urgencia = stars >= 5
+    ? "🔴 *URGENTE — cliente con decisión tomada*"
+    : stars >= 4
+    ? "🟠 *MUY INTERESADO — visita coordinada*"
+    : stars >= 3
+    ? "🟡 *EN BÚSQUEDA ACTIVA*"
+    : "🔵 *CONSULTA — explorando opciones*";
+
+  const tipos = [].concat(lead.tipo || []).join(" / ") || "Propiedad";
+  const zona  = lead.zona  || "Mar del Plata";
+  const presup = lead.presup ? `USD ${Number(lead.presup).toLocaleString()}` : "a consultar";
+
+  const extras = [
+    lead.cochera  === "si"  && "Cochera: ✅",
+    lead.cochera  === "no"  && "Cochera: ❌",
+    lead.balcon   === "si"  && "Balcón: ✅",
+    lead.credito  === "si"  && "Crédito aprobado ✅",
+    lead.op === "Inversor"  && "Inversor 📈",
+  ].filter(Boolean).join(" · ");
+
+  const starsStr = "⭐".repeat(Math.max(stars, 1));
+
+  return (
+`${urgencia}
+${starsStr}
+
+🏠 *${tipos}* en *${zona}*
+💰 Presupuesto: *${presup}*${extras ? "\n✅ " + extras : ""}
+${lead.nota ? "\n📝 " + lead.nota : ""}
+
+Si tenés algo que pueda encajar, escribime por acá 👇
+
+📲 *Alba Inversiones Inmobiliarias* · REG 3832`
+  ).trim();
+}
+
