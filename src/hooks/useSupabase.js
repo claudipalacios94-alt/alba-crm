@@ -84,7 +84,19 @@ export function useSupabase() {
   useEffect(() => {
     const leadsChannel = supabase.channel("leads-changes")
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "leads" }, (payload) => {
-        setLeads(prev => prev.map(l => l.id === payload.new.id ? { ...l, ...normalizeLead(payload.new) } : l));
+        const l = payload.new;
+        const normalized = {
+          ...l,
+          dias: (() => {
+            const ref = l.last_contact_at || l.created_at;
+            if (!ref) return l.dias || 0;
+            return Math.floor((Date.now() - new Date(ref).getTime()) / (1000 * 60 * 60 * 24));
+          })(),
+          proxAccion: l.proxaccion || l.proxAccion || "",
+          notaImp:    l.nota_imp   || l.notaImp    || "",
+          agCapto:    l.ag_capto   || l.agCapto    || "",
+        };
+        setLeads(prev => prev.map(lead => lead.id === normalized.id ? { ...lead, ...normalized } : lead));
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "leads" }, () => loadAll())
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "leads" }, (payload) => {
