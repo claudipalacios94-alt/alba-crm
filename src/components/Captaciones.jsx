@@ -55,6 +55,7 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
     nota:               item.nota || "",
     ag:                 item.ag || "",
     inmobiliaria:       item.inmobiliaria || "",
+    url:                item.url || "",
   });
 
   const agObj = AG[item.ag];
@@ -73,6 +74,7 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
       nota:               form.nota || null,
       ag:                 form.ag || null,
       inmobiliaria:       form.inmobiliaria || null,
+      url:                form.url || null,
     };
     const { error } = await supabase.from("captaciones").update(updates).eq("id", item.id);
     if (!error) { onUpdate(item.id, updates); setEditing(false); }
@@ -365,6 +367,7 @@ export default function Captaciones({ supabase }) {
       m2tot:              merged.m2tot ? Number(merged.m2tot) : null,
       operacion:          merged.operacion || "venta",
       nota:               nota.trim() || null,
+      url:                input.trim().startsWith('http') ? input.trim().split(' ')[0] : null,
       ag:                 ag || null,
       lat, lng,
       convertida: false,
