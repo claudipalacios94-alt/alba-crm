@@ -24,41 +24,14 @@ async function nominatim(dir) {
 
 async function analizarConIA(texto) {
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetch("/api/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        system: `Sos un asistente de inmobiliaria en Mar del Plata, Argentina. Analizás texto libre (mensajes de WhatsApp, descripciones de portales, notas) y extraés información de propiedades en venta o alquiler.
-
-IMPORTANTE: Si la propiedad está fuera de Mar del Plata, indicalo en el campo "fuera_de_mdp": true.
-
-Respondé SOLO con JSON válido, sin texto adicional, sin backticks:
-{
-  "nombre_propietario": string o null,
-  "telefono": string o null,
-  "tipo": "Departamento"|"Casa"|"PH"|"Dúplex"|"Local"|"Terreno"|"Otro" o null,
-  "zona": string o null,
-  "direccion": string o null,
-  "precio": number o null,
-  "m2tot": number o null,
-  "m2cub": number o null,
-  "ambientes": number o null,
-  "caracts": string o null,
-  "operacion": "venta"|"alquiler" o null,
-  "campos_faltantes": array de strings con los campos importantes que no pudiste detectar,
-  "fuera_de_mdp": boolean,
-  "ciudad_detectada": string o null
-}
-
-campos_faltantes debe incluir solo los que son realmente importantes para una captación: tipo, zona, precio. No incluyas campos opcionales como m2 o ambientes.`,
-        messages: [{ role: "user", content: texto }]
-      })
+      body: JSON.stringify({ texto }),
     });
-    const data = await res.json();
-    const content = data.content?.[0]?.text || "{}";
-    return JSON.parse(content.replace(/```json|```/g, "").trim());
+    if (!res.ok) return null;
+    const text = await res.text();
+    return JSON.parse(text.replace(/```json|```/g, "").trim());
   } catch(e) {
     console.error("IA error:", e);
     return null;
