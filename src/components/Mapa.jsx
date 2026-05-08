@@ -114,6 +114,7 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
   const [sel,         setSel]         = useState(null);
   const [notaRapida,  setNotaRapida]  = useState("");
   const [guardandoNota, setGuardandoNota] = useState(false);
+  const [mostrados,    setMostrados]    = useState(new Set()); // 'leadId-propId'
   const [capas,       setCapas]       = useState({ propiedades: true, captaciones: true });
   const [filtroTipo,  setFiltroTipo]  = useState("Todos");
 
@@ -168,6 +169,25 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
   }
 
   useEffect(() => { if (properties.length > 0) geocodificarTodas(); }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from("matches_mostrados").select("lead_id,prop_id")
+      .then(({ data }) => {
+        if (data) setMostrados(new Set(data.map(r => `${r.lead_id}-${r.prop_id}`)));
+      });
+  }, []);
+
+  async function toggleMostrado(leadId, propId) {
+    const key = `${leadId}-${propId}`;
+    if (mostrados.has(key)) {
+      await supabase.from("matches_mostrados").delete().match({ lead_id: leadId, prop_id: propId });
+      setMostrados(prev => { const s = new Set(prev); s.delete(key); return s; });
+    } else {
+      await supabase.from("matches_mostrados").insert([{ lead_id: leadId, prop_id: propId }]);
+      setMostrados(prev => new Set([...prev, key]));
+    }
+  }
 
   async function guardarNota() {
     if (!sel || !notaRapida.trim() || !updateProperty) return;
@@ -434,6 +454,42 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
                   </button>
                 </div>
 
+                {/* Matches de leads para esta propiedad */}
+                {(() => {
+                  const matches = matchLeadsParaProp(sel, leads);
+                  if (matches.length === 0) return null;
+                  return (
+                    <div style={{ marginTop:8, background:"rgba(46,158,106,0.06)", border:"1px solid rgba(46,158,106,0.2)", borderRadius:8, padding:"8px 10px", maxHeight:140, overflowY:"auto" }}>
+                      <div style={{ fontSize:10, color:"#2E9E6A", fontWeight:600, marginBottom:5, textTransform:"uppercase", letterSpacing:"0.5px" }}>
+                        {matches.length} lead{matches.length>1?"s":""} interesado{matches.length>1?"s":""}
+                      </div>
+                      {matches.map(l => {
+                        const yaMostrado = mostrados.has(`${l.id}-${sel.id}`);
+                        const wa = l.tel ? `https://wa.me/${l.tel.replace(/\D/g,"")}` : null;
+                        return (
+                          <div key={l.id} style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4, opacity: yaMostrado ? 0.45 : 1 }}>
+                            <button onClick={() => toggleMostrado(l.id, sel.id)}
+                              style={{ width:14, height:14, borderRadius:"50%", border:"1.5px solid",
+                                borderColor: yaMostrado ? "#2E9E6A" : "#4A6A90",
+                                background: yaMostrado ? "#2E9E6A" : "transparent",
+                                cursor:"pointer", flexShrink:0, fontSize:8, color:"white",
+                                display:"flex", alignItems:"center", justifyContent:"center" }}>
+                              {yaMostrado ? "✓" : ""}
+                            </button>
+                            <span style={{ flex:1, fontSize:11, color:"#E8F0FA", textDecoration: yaMostrado?"line-through":"none" }}>
+                              {l.nombre} <span style={{ color:"#6A8AAE", fontSize:10 }}>USD {(l.presup||0).toLocaleString()}</span>
+                            </span>
+                            {wa && <a href={wa} target="_blank" rel="noreferrer"
+                              style={{ fontSize:10, padding:"2px 6px", borderRadius:4,
+                                background:"rgba(37,211,102,0.1)", border:"1px solid rgba(37,211,102,0.25)",
+                                color:"#25D366", textDecoration:"none" }}>WA</a>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
                 {/* Acciones */}
                 <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                   <a href={ARBA_URL} target="_blank" rel="noreferrer"
@@ -456,7 +512,16 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
                 <div style={{ fontSize: 12, color: "#8AAECC", marginBottom: 4 }}>{sel.zona}{sel.direccion ? " · " + sel.direccion : ""}</div>
                 {sel.precio && <div style={{ fontSize: 15, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif", marginBottom: 4 }}>USD {Number(sel.precio).toLocaleString()}</div>}
                 {sel.tipo && <div style={{ fontSize: 11, color: "#8AAECC", marginBottom: 4 }}>{sel.tipo}{sel.operacion ? " · " + sel.operacion : ""}</div>}
-                {sel.nota && <div style={{ fontSize: 11, color: "#6A8AAE", fontStyle: "italic", marginBottom: 8 }}>{sel.nota}</div>}
+                {sel.nota && <div style={{ fontSize: 11, color: "#6A8AAE", fontStyle: "italic", marginBottom: 6 }}>{sel.nota}</div>}
+                {sel.url && (
+                  <a href={sel.url} target="_blank" rel="noreferrer"
+                    style={{ display:"block", fontSize:11, color:"#4A8ABE", marginBottom:8,
+                      overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
+                      padding:"4px 10px", borderRadius:6, background:"rgba(74,138,190,0.1)",
+                      border:"1px solid rgba(74,138,190,0.3)", textDecoration:"none" }}>
+                    🔗 Ver ficha / portal
+                  </a>
+                )}
                 {/* Matching con leads */}
                 {(() => {
                   const matches = matchLeadsParaProp(sel, leads);
@@ -466,17 +531,29 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
                     </div>
                   );
                   return (
-                    <div style={{ background: "rgba(46,158,106,0.08)", border: "1px solid rgba(46,158,106,0.25)", borderRadius: 8, padding: "8px 10px" }}>
-                      <div style={{ fontSize: 11, color: "#2E9E6A", fontWeight: 600, marginBottom: 5 }}>
+                    <div style={{ background: "rgba(46,158,106,0.08)", border: "1px solid rgba(46,158,106,0.25)", borderRadius: 8, padding: "8px 10px", maxHeight: 180, overflowY: "auto" }}>
+                      <div style={{ fontSize: 11, color: "#2E9E6A", fontWeight: 600, marginBottom: 6 }}>
                         {matches.length} lead{matches.length > 1 ? "s" : ""} interesado{matches.length > 1 ? "s" : ""}
                       </div>
-                      {matches.slice(0, 3).map(l => {
+                      {matches.map(l => {
                         const wa = l.tel ? `https://wa.me/${l.tel.replace(/\D/g,"")}` : null;
+                        const yaMostrado = mostrados.has(`${l.id}-${sel.id}`);
                         return (
-                          <div key={l.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
-                            <div style={{ fontSize: 12, color: "#E8F0FA" }}>
+                          <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5,
+                            opacity: yaMostrado ? 0.45 : 1 }}>
+                            <button onClick={() => toggleMostrado(l.id, sel.id)}
+                              title={yaMostrado ? "Marcar como no mostrado" : "Marcar como mostrado"}
+                              style={{ width:16, height:16, borderRadius:"50%", border:"1.5px solid",
+                                borderColor: yaMostrado ? "#2E9E6A" : "#4A6A90",
+                                background: yaMostrado ? "#2E9E6A" : "transparent",
+                                cursor:"pointer", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
+                                fontSize:9, color:"white" }}>
+                              {yaMostrado ? "✓" : ""}
+                            </button>
+                            <div style={{ flex:1, fontSize: 12, color: "#E8F0FA",
+                              textDecoration: yaMostrado ? "line-through" : "none" }}>
                               {l.nombre}
-                              <span style={{ fontSize: 10, color: "#6A8AAE", marginLeft: 6 }}>USD {(l.presup||0).toLocaleString()}</span>
+                              <span style={{ fontSize: 10, color: "#6A8AAE", marginLeft: 5 }}>USD {(l.presup||0).toLocaleString()}</span>
                             </div>
                             {wa && <a href={wa} target="_blank" rel="noreferrer"
                               style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5,
@@ -485,7 +562,6 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
                           </div>
                         );
                       })}
-                      {matches.length > 3 && <div style={{ fontSize: 10, color: "#6A8AAE", marginTop: 3 }}>+{matches.length - 3} más</div>}
                     </div>
                   );
                 })()}
