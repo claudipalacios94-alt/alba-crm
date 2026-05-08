@@ -62,7 +62,7 @@ function PropCard({ p, updateProperty, deleteProperty }) {
     setEditData({
       tipo: p.tipo || "", zona: p.zona || "", dir: p.dir || "",
       precio: p.precio || "", m2tot: p.m2tot || "", m2cub: p.m2cub || "",
-      caracts: p.caracts || "", info: p.info || "", ag: p.ag || "",
+      caracts: p.caracts || "", info: p.info || "", ag: p.ag || "", precio_original: p.precio_original || p.precio || "",
       estado: p.estado || "Buen Estado",
     });
     setEditing(true);
@@ -76,9 +76,13 @@ function PropCard({ p, updateProperty, deleteProperty }) {
         const coords = await geocodeAddress(editData.dir);
         if (coords) { lat = coords.lat; lng = coords.lng; }
       }
+      const nuevoP = editData.precio ? Number(editData.precio) : null;
+      const origP = p.precio_original || p.precio;
+      const esRetaso = nuevoP && origP && nuevoP < origP;
       await updateProperty(p.id, {
         tipo: editData.tipo, zona: editData.zona, dir: editData.dir,
-        precio: editData.precio ? Number(editData.precio) : null,
+        precio: nuevoP,
+        precio_original: esRetaso ? origP : (nuevoP > origP ? nuevoP : origP),
         m2tot:  editData.m2tot  ? Number(editData.m2tot)  : null,
         m2cub:  editData.m2cub  ? Number(editData.m2cub)  : null,
         caracts: editData.caracts, info: editData.info,
@@ -121,8 +125,16 @@ function PropCard({ p, updateProperty, deleteProperty }) {
             <div style={{ fontSize: 11, color: "#6A8AAE" }}>{p.dir} {p.lat ? "📍" : ""}</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif" }}>
-              {p.precio ? "USD " + Number(p.precio).toLocaleString() : "A consultar"}
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:2 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif" }}>
+                {p.precio ? "USD " + Number(p.precio).toLocaleString() : "A consultar"}
+              </div>
+              {p.precio_original && p.precio && p.precio < p.precio_original && (
+                <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                  <span style={{ fontSize:10, color:"#8AAECC", textDecoration:"line-through" }}>USD {Number(p.precio_original).toLocaleString()}</span>
+                  <span style={{ fontSize:10, padding:"1px 6px", borderRadius:8, background:"rgba(232,168,48,0.2)", color:"#E8A830", fontWeight:700, border:"1px solid rgba(232,168,48,0.4)" }}>RETASADO</span>
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
               <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4,
