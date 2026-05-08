@@ -328,7 +328,23 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
             {docs.length === 0 && !uploading && (
               <div style={{ fontSize:11, color:"#4A6A90", fontStyle:"italic" }}>Sin documentos</div>
             )}
-            <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+            <div
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => {
+                e.preventDefault();
+                const file = e.dataTransfer.files[0];
+                if (!file) return;
+                const fakeEvent = { target: { files: [file], value: "" } };
+                uploadDoc(fakeEvent);
+              }}
+              style={{ display:"flex", flexDirection:"column", gap:5, minHeight: docs.length === 0 ? 44 : "auto",
+                border: "1.5px dashed " + B.border, borderRadius:8, padding: docs.length === 0 ? "10px" : "4px",
+                transition:"border-color .15s" }}
+              onDragEnter={e => e.currentTarget.style.borderColor = B.accentL}
+              onDragLeave={e => e.currentTarget.style.borderColor = B.border}>
+              {docs.length === 0 && !uploading && (
+                <div style={{ fontSize:11, color:"#4A6A90", textAlign:"center" }}>Arrastrá archivos acá o usá + Subir</div>
+              )}
               {docs.map(doc => (
                 <div key={doc.name} style={{ display:"flex", alignItems:"center", gap:8,
                   background:B.bg, borderRadius:7, padding:"7px 10px", border:"1px solid "+B.border }}>
