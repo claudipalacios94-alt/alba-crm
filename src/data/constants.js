@@ -198,21 +198,18 @@ export function genMsgBusqueda(lead) {
     ? "🟠 PEDIDO ACTIVO — MUY INTERESADO"
     : stars >= 3
     ? "🟡 BÚSQUEDA EN CURSO"
-    : "📋 PEDIDO DE BÚSQUEDA";
+    : "🔵 PEDIDO DE BÚSQUEDA";
 
-  const tipo   = lead.tipo  || "Propiedad";
-  const zona   = lead.zona  || "Mar del Plata";
-  const presup = lead.presup ? `USD ${Number(lead.presup).toLocaleString()}` : null;
+  const partes = [lead.tipo || "Propiedad"];
+  if (lead.ambientes) partes.push(`${lead.ambientes} amb`);
+  if (lead.zona) partes.push(lead.zona);
+  const linea1 = partes.join(", ");
 
-  const partes = [tipo];
-  if (lead.ambientes) partes.push(`${lead.ambientes} amb.`);
-  partes.push(zona);
-  if (presup) partes.push(`*${presup}*`);
-  const lineaPrincipal = partes.join(" · ");
+  const linea2 = lead.presup ? `USD ${Number(lead.presup).toLocaleString()}` : null;
 
   const detalles = [
     lead.credito === "si"  && "✅ Crédito aprobado",
-    lead.cochera === "si"  && "🚗 Cochera (excluyente)",
+    lead.cochera === "si"  && "🚗 Cochera",
     lead.cochera === "no"  && "❌ Sin cochera",
     lead.balcon  === "si"  && "🏙 Balcón",
     lead.patio   === "si"  && "🌿 Patio",
@@ -222,8 +219,8 @@ export function genMsgBusqueda(lead) {
   ].filter(Boolean);
 
   return [
-    `*${encabezado}*`,
-    lineaPrincipal,
+    encabezado,
+    linea2 ? `${linea1} · ${linea2}` : linea1,
     detalles.length > 0 ? detalles.join(" · ") : null,
     "Alba Inversiones · REG 3832",
   ].filter(l => l !== null).join("\n").trim();
