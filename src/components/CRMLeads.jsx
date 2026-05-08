@@ -385,17 +385,23 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                         </button>
                         <button onClick={() => {
                           const msg = genMsgBusqueda(lead);
-                          navigator.clipboard.writeText(msg).then(() => {
-                            const preview = document.createElement("div");
-                            preview.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
-                            preview.innerHTML = `<div style="background:#0F1E35;border:1px solid #2A5BA8;border-radius:14px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.8)">
-                              <div style="font-size:12px;color:#8AAECC;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">✅ Copiado al portapapeles</div>
-                              <div style="font-size:13px;color:#E8F0FA;line-height:1.7;white-space:pre-wrap;background:rgba(255,255,255,0.04);border-radius:8px;padding:14px;border:1px solid rgba(255,255,255,0.08)">${msg.replace(/</g,"&lt;").replace(/\*/g,"<strong>").replace(/\*/g,"</strong>")}</div>
-                              <button onclick="this.closest('div[style*=fixed]').remove()" style="margin-top:14px;width:100%;padding:10px;border-radius:8px;background:#2A5BA8;border:none;color:white;font-size:13px;font-weight:600;cursor:pointer">Cerrar</button>
-                            </div>`;
-                            document.body.appendChild(preview);
-                            preview.onclick = e => { if(e.target === preview) preview.remove(); };
-                          });
+                          // Modal editable
+                          const modal = document.createElement("div");
+                          modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
+                          modal.innerHTML = `<div style="background:#0F1E35;border:1px solid #2A5BA830;border-radius:14px;padding:22px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.85)">
+                            <div style="font-size:11px;color:#8AAECC;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">📋 MENSAJE BÚSQUEDA — editá antes de copiar</div>
+                            <textarea id="busqueda-txt" style="width:100%;height:200px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;color:#E8F0FA;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:inherit;box-sizing:border-box">${msg}</textarea>
+                            <div style="display:flex;gap:8px;margin-top:12px">
+                              <button id="busqueda-copy" style="flex:1;padding:10px;border-radius:8px;background:#E8A830;border:none;color:#0F1E35;font-size:13px;font-weight:700;cursor:pointer">Copiar y cerrar</button>
+                              <button onclick="this.closest('div[style*=fixed]').remove()" style="padding:10px 16px;border-radius:8px;background:transparent;border:1px solid #2A4060;color:#8AAECC;font-size:13px;cursor:pointer">Cancelar</button>
+                            </div>
+                          </div>`;
+                          document.body.appendChild(modal);
+                          modal.onclick = e => { if(e.target === modal) modal.remove(); };
+                          modal.querySelector("#busqueda-copy").onclick = () => {
+                            const txt = modal.querySelector("#busqueda-txt").value;
+                            navigator.clipboard.writeText(txt).then(() => modal.remove());
+                          };
                         }}
                           style={{ padding:"5px 12px", borderRadius:6, background:"rgba(232,168,48,0.12)",
                             border:"1px solid rgba(232,168,48,0.3)", color:"#E8A830", fontSize:12, cursor:"pointer", fontWeight:600 }}>
