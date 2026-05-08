@@ -387,6 +387,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                           const msg = lead.msg_busqueda || genMsgBusqueda(lead);
                           const modal = document.createElement("div");
                           modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
+                          const turno = new Date().getHours() < 14 ? "manana" : "tarde";
                           modal.innerHTML = `<div style="background:#0F1E35;border:1px solid #2A5BA830;border-radius:14px;padding:22px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.85)">
                             <div style="font-size:11px;color:#8AAECC;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">📋 MENSAJE BÚSQUEDA — editá y se guarda para la próxima</div>
                             <textarea id="busqueda-txt" style="width:100%;height:200px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;color:#E8F0FA;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:inherit;box-sizing:border-box">${msg}</textarea>
@@ -400,8 +401,11 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                           modal.onclick = e => { if(e.target === modal) modal.remove(); };
                           modal.querySelector("#busqueda-copy").onclick = () => {
                             const txt = modal.querySelector("#busqueda-txt").value;
+                            const hoy = new Date().toISOString().slice(0,10);
+                            const updates = { msg_busqueda: txt };
+                            updates[`enviado_${turno}`] = hoy;
                             navigator.clipboard.writeText(txt).then(() => {
-                              updateLead(lead.id, { msg_busqueda: txt });
+                              updateLead(lead.id, updates);
                               modal.remove();
                             });
                           };
@@ -413,6 +417,32 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                             border:"1px solid rgba(232,168,48,0.3)", color:"#E8A830", fontSize:12, cursor:"pointer", fontWeight:600 }}>
                           📋 Búsqueda WA
                         </button>
+                        {/* Ticks mañana / tarde */}
+                        {(() => {
+                          const hoy = new Date().toISOString().slice(0,10);
+                          const okM = lead.enviado_manana === hoy;
+                          const okT = lead.enviado_tarde  === hoy;
+                          return (
+                            <div style={{ display:"flex", gap:4, alignItems:"center" }}>
+                              <button onClick={() => updateLead(lead.id, { enviado_manana: okM ? null : hoy })}
+                                title={okM ? "Mañana: enviado ✓" : "Mañana: no enviado"}
+                                style={{ padding:"4px 8px", borderRadius:6, cursor:"pointer", fontSize:11, fontWeight:700,
+                                  background: okM ? "rgba(46,158,106,0.2)"  : "transparent",
+                                  border: `1px solid ${okM ? "#2E9E6A" : B.border}`,
+                                  color: okM ? "#2E9E6A" : "#4A6A90" }}>
+                                {okM ? "☀✓" : "☀"}
+                              </button>
+                              <button onClick={() => updateLead(lead.id, { enviado_tarde: okT ? null : hoy })}
+                                title={okT ? "Tarde: enviado ✓" : "Tarde: no enviado"}
+                                style={{ padding:"4px 8px", borderRadius:6, cursor:"pointer", fontSize:11, fontWeight:700,
+                                  background: okT ? "rgba(46,158,106,0.2)"  : "transparent",
+                                  border: `1px solid ${okT ? "#2E9E6A" : B.border}`,
+                                  color: okT ? "#2E9E6A" : "#4A6A90" }}>
+                                {okT ? "🌙✓" : "🌙"}
+                              </button>
+                            </div>
+                          );
+                        })()}
                         <button onClick={() => setConfirmDelete(lead)}
                           style={{ padding:"5px 12px", borderRadius:6, background:`${B.hot}12`,
                             border:`1px solid ${B.hot}30`, color:B.hot, fontSize:12, cursor:"pointer", fontWeight:600, marginLeft:"auto" }}>
