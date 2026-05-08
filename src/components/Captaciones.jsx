@@ -33,13 +33,15 @@ function parsearTextoLocal(texto) {
     /terreno|lote/.test(t)            ? "Terreno" :
     /\bcasa\b|chalet|vivienda/.test(t) ? "Casa" : null;
 
-  const precioMatch = texto.match(/(?:usd?|u\$d?|u\$s?|dólares?)\s*[\$]?\s*([\d.,]+)/i)
+  const precioMatch = texto.match(/(?:usd?|u\$d?|u\$s?|dólares?)\s{0,5}([\d.,]+)/i)
     || texto.match(/([\d]{2,3}[.,][\d]{3})\s*(?:usd?|u\$d?|dólares?|u\$)/i);
   const precioRaw = precioMatch ? precioMatch[1].replace(/\./g,"").replace(",","") : null;
   const precio = precioRaw ? parseInt(precioRaw) : null;
 
-  const ambMatch = texto.match(/(\d)\s*amb(?:ientes?)?/i) || texto.match(/monoambiente/i);
-  const ambientes = ambMatch ? (ambMatch[0].toLowerCase().includes("mono") ? "1" : ambMatch[1]) : null;
+  const ambMatch = texto.match(/(\d)\s*amb(?:ientes?)?/i)
+    || texto.match(/ambientes\s*:\s*\n?\s*(\d)/i)
+    || texto.match(/(\d)\s*amb\b/i);
+  const ambientes = ambMatch ? ambMatch[1] : null;
 
   const m2Match = texto.match(/(\d{2,4})\s*m[²2]/i);
   const m2tot = m2Match ? parseInt(m2Match[1]) : null;
