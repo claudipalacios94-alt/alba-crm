@@ -25,33 +25,113 @@ async function nominatim(dir) {
 
 function parsearTextoLocal(texto) {
   const t = texto.toLowerCase();
+
+  // ── Tipo de inmueble ───────────────────────────────────────
   const tipo =
-    /departamento|depto|dpto/.test(t) ? "Departamento" :
-    /\bph\b|planta alta/.test(t)      ? "PH" :
-    /duplex|d[úu]plex/.test(t)        ? "Dúplex" :
-    /\blocal\b|comercial/.test(t)     ? "Local" :
-    /terreno|lote/.test(t)            ? "Terreno" :
-    /\bcasa\b|chalet|vivienda/.test(t) ? "Casa" : null;
-  const precioMatch = texto.match(/(?:usd?|u\$d?|u\$s?|dólares?)\s{0,5}([\d.,]+)/i)
-    || texto.match(/([\d]{2,3}[.,][\d]{3})\s*(?:usd?|u\$d?|dólares?)/i);
-  const precio = precioMatch ? parseInt(precioMatch[1].replace(/\./g,"").replace(",","")) : null;
-  const ambMatch = texto.match(/(\d)\s*amb(?:ientes?)?/i);
+    /tipo de inmueble:\s*departamento|departamento|depto|dpto/i.test(texto) ? "Departamento" :
+    /tipo de inmueble:\s*ph|\bph\b|planta alta/i.test(texto)                ? "PH" :
+    /tipo de inmueble:\s*d[úu]plex|duplex|d[úu]plex/i.test(texto)          ? "Dúplex" :
+    /tipo de inmueble:\s*local|\blocal\b|comercial/i.test(texto)            ? "Local" :
+    /tipo de inmueble:\s*terreno|terreno|lote/i.test(texto)                 ? "Terreno" :
+    /tipo de inmueble:\s*casa|\bcasa\b|chalet|vivienda/i.test(texto)        ? "Casa" : null;
+
+  // ── Operación ──────────────────────────────────────────────
+  const operacion =
+    /tipo operaci[oó]n:\s*alquiler|alquil/i.test(texto) ? "alquiler" : "venta";
+
+  // ── Precio — múltiples formatos ────────────────────────────
+  // "U$D  141,900" / "USD 85.000" / "$ 141900"
+  const precioMatch =
+    texto.match(/u\$d\s*([\d]{1,3}(?:[.,][\d]{3})*)/i) ||
+    texto.match(/usd?\s*([\d]{1,3}(?:[.,][\d]{3})*)/i) ||
+    texto.match(/u\$s?\s*([\d]{1,3}(?:[.,][\d]{3})*)/i) ||
+    texto.match(/([\d]{2,3}[.,][\d]{3})\s*(?:usd?|u\$)/i);
+  const precioRaw = precioMatch ? precioMatch[1].replace(/\./g,"").replace(",","") : null;
+  const precio = precioRaw ? parseInt(precioRaw) : null;
+
+  // ── Ambientes ──────────────────────────────────────────────
+  const ambMatch =
+    texto.match(/ambientes:\s*\n?\s*(\d)/i) ||
+    texto.match(/(\d)\s*amb(?:ientes?)?/i);
   const ambientes = ambMatch ? parseInt(ambMatch[1]) : null;
-  const m2Match = texto.match(/(\d{2,4})\s*m[²2]/i);
-  const m2tot = m2Match ? parseInt(m2Match[1]) : null;
-  const telMatch = texto.match(/(?:\+?54\s*9?\s*)?(?:223|2235)[\s\-]?(\d[\d\s\-]{6,10}\d)/);
-  const telefono = telMatch ? telMatch[0].replace(/[\s\-]/g,"") : null;
-  const BARRIOS = ["la perla","chauvin","centro","güemes","punta mogotes","alfar",
+
+  // ── Dormitorios ────────────────────────────────────────────
+  const dormMatch = texto.match(/dormitorios:\s*\n?\s*(\d)/i);
+  const dormitorios = dormMatch ? parseInt(dormMatch[1]) : null;
+
+  // ── Superficie ─────────────────────────────────────────────
+  // "Sup. cubierta:\n70.00 m²" / "70 m²"
+  const m2cubMatch = texto.match(/sup(?:\.|erficie)?\s*cubierta:\s*\n?\s*([\d.,]+)\s*m/i);
+  const m2Match    = texto.match(/superficie\s+total:\s*([\d.,]+)\s*m/i)
+    || texto.match(/([\d]{2,4})[.,]?\d*\s*m[²2]/i);
+  const m2cub = m2cubMatch ? parseFloat(m2cubMatch[1]) : null;
+  const m2tot = m2Match ? parseFloat(m2Match[1].replace(",",".")) : m2cub;
+
+  // ── Dirección ──────────────────────────────────────────────
+  // "Dirección: corrientes 2244" / "corrientes 2244"
+  let direccion = null;
+  const dirMatch =
+    texto.match(/direcci[oó]n:\s*([^\n\r]+)/i) ||
+    texto.match(/([A-ZÁÉÍÓÚÑ][a-záéíóúñA-ZÁÉÍÓÚÑ\s\.]{3,25})\s+(\d{3,5})\b/);
+  if (dirMatch) {
+    direccion = dirMatch[1]
+      ? dirMatch[1].trim().replace(/\s+/g," ")
+      : null;
+    if (dirMatch[2]) direccion = (dirMatch[1]||"").trim() + " " + dirMatch[2];
+    // Capitalizar
+    if (direccion) direccion = direccion.split(" ")
+      .map(w => w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(" ");
+  }
+
+  // ── Zona/barrio ────────────────────────────────────────────
+  const BARRIOS = [
+    "la perla","chauvin","centro","güemes","punta mogotes","alfar",
     "bosque grande","san carlos","los pinares","playa grande","divino rostro",
     "constitución","pompeya","santa rosa","floresta","libertad","san jorge",
-    "las heras","camet","villa primera","santa monica","luro","caisamar","estrada",
-    "chapadmalal","batán","sierra de los padres","peralta ramos"];
-  const zona = BARRIOS.find(b => t.includes(b)) || null;
-  const cochera = /con cochera/i.test(texto) ? "si" : /sin cochera/i.test(texto) ? "no" : null;
-  return { tipo, precio, ambientes, m2tot, zona, telefono, cochera,
-    operacion: /alquil/.test(t) ? "alquiler" : "venta",
+    "las heras","camet","villa primera","santa monica","luro","caisamar",
+    "estrada","chapadmalal","batán","sierra de los padres","peralta ramos",
+    "villa del parque","nueva pompey","félix u. camet","bernardino rivadavia",
+  ];
+  // Intentar "Barrio: CENTRO" primero
+  const barrioMatch = texto.match(/barrio:\s*([^\n\r]+)/i);
+  let zona = null;
+  if (barrioMatch) {
+    zona = barrioMatch[1].trim().toLowerCase();
+    // Normalizar a nombre conocido
+    zona = BARRIOS.find(b => zona.includes(b)) || zona;
+    zona = zona.charAt(0).toUpperCase() + zona.slice(1);
+  } else {
+    const found = BARRIOS.find(b => t.includes(b));
+    zona = found ? found.charAt(0).toUpperCase()+found.slice(1) : null;
+  }
+
+  // ── Cochera ────────────────────────────────────────────────
+  const cochera = /cochera/i.test(texto) && !/sin cochera/i.test(texto) ? "si"
+    : /sin cochera/i.test(texto) ? "no" : null;
+
+  // ── Teléfono ───────────────────────────────────────────────
+  const telMatch = texto.match(/(?:\+?54\s*9?\s*)?(?:223|2235|2236|2234|2238)[\s\-]?(\d[\d\s\-]{5,9}\d)/);
+  const telefono = telMatch ? telMatch[0].replace(/[\s\-]/g,"") : null;
+
+  // ── Características relevantes ─────────────────────────────
+  const caracts = [
+    ambientes && `${ambientes} amb`,
+    dormitorios && `${dormitorios} dorm`,
+    m2cub && `${m2cub}m² cub`,
+    /balc[oó]n/i.test(texto) && "balcón",
+    /pileta|piscina/i.test(texto) && "pileta",
+    /parrilla/i.test(texto) && "parrilla",
+    cochera === "si" && "cochera",
+    /amoblado|amueblado|con muebles/i.test(texto) && "amoblado",
+    /luminoso/i.test(texto) && "luminoso",
+  ].filter(Boolean).join(", ") || null;
+
+  return {
+    tipo, precio, ambientes, m2tot, m2cub, zona, telefono, cochera,
+    operacion, direccion, caracts, dormitorios,
     campos_faltantes: [!tipo&&"tipo",!zona&&"zona",!precio&&"precio"].filter(Boolean),
-    fuera_de_mdp: false };
+    fuera_de_mdp: false,
+  };
 }
 
 async function analizarConIA(texto) {
