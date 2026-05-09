@@ -91,12 +91,32 @@ function ModalPerdido({ lead, onConfirmar, onCancelar }) {
   );
 }
 
-export default function CRMLeads({ leads, updateLead, deleteLead, properties }) {
+export default function CRMLeads({ leads, updateLead, deleteLead, properties, supabase }) {
   const [fs,  setFs]  = useState("Todos");
   const [fa,  setFa]  = useState("Todos");
   const [fop, setFop] = useState("Todos");
   const [q,   setQ]   = useState("");
   const [mostrarPerdidos, setMostrarPerdidos] = useState(false);
+  const [mostrados,      setMostrados]      = useState(new Set());
+
+  React.useEffect(() => {
+    if (!supabase) return;
+    supabase.from("matches_mostrados").select("lead_id,prop_id")
+      .then(({ data }) => {
+        if (data) setMostrados(new Set(data.map(r => `${r.lead_id}-${r.prop_id}`)));
+      });
+  }, []);
+
+  async function toggleMostrado(leadId, propId) {
+    const key = `${leadId}-${propId}`;
+    if (mostrados.has(key)) {
+      await supabase.from("matches_mostrados").delete().match({ lead_id: leadId, prop_id: propId });
+      setMostrados(prev => { const s = new Set(prev); s.delete(key); return s; });
+    } else {
+      await supabase.from("matches_mostrados").insert([{ lead_id: leadId, prop_id: propId }]);
+      setMostrados(prev => new Set([...prev, key]));
+    }
+  }
   const [modalPerdido,   setModalPerdido]   = useState(null); // lead a marcar como perdido
   const [exp,     setExp]     = useState(null);
   const [editE,   setEditE]   = useState(null);
@@ -508,16 +528,28 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                               const wa = lead.tel
                                 ? `https://wa.me/${lead.tel.replace(/\D/g,"")}?text=${encodeURIComponent(msg)}`
                                 : null;
+                              const yaMostrado = mostrados.has(`${lead.id}-${prop.id}`);
                               return (
                                 <div key={prop.id} style={{ display:"flex", alignItems:"center", gap:8,
-                                  background:B.bg, borderRadius:7, padding:"7px 10px", marginBottom:5 }}>
-                                  <div style={{ flex:1, fontSize:11, color:B.muted }}>
-                                    <span style={{ color:B.text, fontWeight:600 }}>{prop.tipo}</span>
+                                  background:B.bg, borderRadius:7, padding:"7px 10px", marginBottom:5,
+                                  opacity: yaMostrado ? 0.45 : 1 }}>
+                                  <button onClick={() => toggleMostrado(lead.id, prop.id)}
+                                    title={yaMostrado ? "Quitar tachado" : "Marcar como mostrado"}
+                                    style={{ width:16, height:16, borderRadius:"50%", border:"1.5px solid",
+                                      borderColor: yaMostrado ? "#2E9E6A" : "#4A6A90",
+                                      background: yaMostrado ? "#2E9E6A" : "transparent",
+                                      cursor:"pointer", flexShrink:0, fontSize:9, color:"white",
+                                      display:"flex", alignItems:"center", justifyContent:"center" }}>
+                                    {yaMostrado ? "✓" : ""}
+                                  </button>
+                                  <div style={{ flex:1, fontSize:11, color:B.muted,
+                                    textDecoration: yaMostrado ? "line-through" : "none" }}>
+                                    <span style={{ color: yaMostrado ? "#6A8AAE" : B.text, fontWeight:600 }}>{prop.tipo}</span>
                                     {" · "}{prop.zona}
-                                    {" · "}<span style={{ color:B.accentL }}>USD {(prop.precio||0).toLocaleString()}</span>
+                                    {" · "}<span style={{ color: yaMostrado ? "#6A8AAE" : B.accentL }}>USD {(prop.precio||0).toLocaleString()}</span>
                                     {prop.dir && <span style={{ color:B.muted }}> · {prop.dir}</span>}
                                   </div>
-                                  {wa && (
+                                  {wa && !yaMostrado && (
                                     <a href={wa} target="_blank" rel="noreferrer"
                                       style={{ padding:"3px 9px", borderRadius:6, whiteSpace:"nowrap",
                                         background:"rgba(37,211,102,0.1)", border:"1px solid rgba(37,211,102,0.25)",
