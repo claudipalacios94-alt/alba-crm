@@ -270,7 +270,7 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
   const fmtFecha = iso => new Date(iso).toLocaleDateString("es-AR",{ day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" });
 
   return (
-    <div style={{ background:B.card, border:`1px solid ${open?borderColor:B.border}`, borderLeft:`3px solid ${borderColor}`, borderRadius:10, overflow:"hidden" }}>
+    <div style={{ background:B.card, border:`1px solid ${open?borderColor:B.border}`, borderLeft:`3px solid ${borderColor}`, borderRadius:10 }}>
       <div onClick={() => !editing && setOpen(o=>!o)} style={{ padding:"11px 13px", cursor:editing?"default":"pointer" }}>
         <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5, flexWrap:"wrap" }}>
           {item.tipo && <span style={{ fontSize:11, padding:"1px 7px", borderRadius:12, background:B.accentL+"18", color:B.accentL }}>{item.tipo}</span>}
