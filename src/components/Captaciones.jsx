@@ -288,10 +288,19 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
           {item.precio && <span style={{ fontSize:15, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif" }}>USD {Number(item.precio).toLocaleString()}</span>}
           {chips.map((c,i) => <span key={i} style={{ fontSize:10, padding:"1px 7px", borderRadius:10, background:"rgba(42,91,173,0.15)", color:"#8AAECC", border:"1px solid #1E3A5F" }}>{c}</span>)}
         </div>
+        {(item.nombre_propietario||item.telefono) && (
+          <div style={{ fontSize:11, color:"#6A8AAE", marginTop:3 }}>
+            {item.nombre_propietario && <span>👤 {item.nombre_propietario}</span>}
+            {item.telefono && <span style={{ marginLeft:8 }}>📞 {item.telefono}</span>}
+          </div>
+        )}
+        {!item.nombre_propietario && !item.telefono && (
+          <div style={{ fontSize:10, color:B.hot, marginTop:3 }}>⚠ Sin contacto — agregá nombre y teléfono</div>
+        )}
       </div>
 
       {open && !editing && (
-        <div style={{ borderTop:`1px solid ${B.border}`, padding:"11px 13px", background:"rgba(10,21,37,0.4)", display:"flex", flexDirection:"column", gap:8 }}>
+        <div onClick={e=>e.stopPropagation()} style={{ borderTop:`1px solid ${B.border}`, padding:"11px 13px", background:"rgba(10,21,37,0.4)", display:"flex", flexDirection:"column", gap:8 }}>
           {item.nombre_propietario && (
             <div style={{ fontSize:12, color:"#8AAECC" }}>
               👤 {item.nombre_propietario}
@@ -423,6 +432,12 @@ export default function Captaciones({ supabase }) {
 
   async function guardar() {
     if (guardando) return;
+    const tel = completos.telefono || campos?.telefono;
+    const nom = completos.nombre_propietario || campos?.nombre_propietario;
+    if (!tel && !nom) {
+      alert("Agregá al menos nombre o teléfono del propietario antes de guardar.");
+      return;
+    }
     setGuardando(true);
     const get = k => completos[k] !== undefined ? completos[k] : campos?.[k] ?? null;
     const dir = get("direccion"), zona = get("zona");
