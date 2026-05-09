@@ -224,6 +224,12 @@ function MapaCaptaciones({ items }) {
   );
 }
 
+
+const TC = {
+  colega:     { label:"🔴 Colega",     bg:"#CC2233", border:"dashed" },
+  honorarios: { label:"🟢 Honorarios", bg:"#2E9E6A", border:"solid" },
+  propia:     { label:"🟡 Propia",     bg:"#E8A830", border:"solid" },
+};
 function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
   const [open,    setOpen]    = useState(false);
   const [editing, setEditing] = useState(false);
@@ -236,6 +242,7 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
     operacion: item.operacion||"venta", nota: item.nota||"",
     ag: item.ag||"", inmobiliaria: item.inmobiliaria||"",
     url: item.url||"", nota_interna: item.nota_interna||"",
+    tipo_captacion: item.tipo_captacion||"",
   });
 
   const agObj = AG[item.ag];
@@ -243,13 +250,15 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
   const expirada = diasVida >= 21;
   const proxExpira = diasVida >= 18 && diasVida < 21;
   const esCompartida = !!item.inmobiliaria;
-  const borderColor = esCompartida ? "#9B6DC8" : B.accentL;
+  const tcObj = TC[item.tipo_captacion] || null;
+  const borderColor = tcObj ? tcObj.bg : B.accentL;
   const chips = [item.ambientes&&`${item.ambientes} amb`,item.m2tot&&`${item.m2tot}m²`,item.cochera==="si"&&"🚗 cochera",item.cochera==="no"&&"❌ s/cochera"].filter(Boolean);
 
   async function guardarEdicion() {
     setSaving(true);
     const updates = {
       tipo:form.tipo||null, zona:form.zona||null, direccion:form.direccion||null,
+      tipo_captacion:form.tipo_captacion||null,
       precio:form.precio?Number(form.precio):null, ambientes:form.ambientes?Number(form.ambientes):null,
       m2tot:form.m2tot?Number(form.m2tot):null, cochera:form.cochera||null,
       nombre_propietario:form.nombre_propietario||null, telefono:form.telefono||null,
@@ -277,6 +286,7 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
           {item.operacion && <span style={{ fontSize:11, padding:"1px 7px", borderRadius:12, background:"#4A6A9020", color:"#8AAECC" }}>{item.operacion}</span>}
           {agObj && <span style={{ fontSize:10, padding:"1px 5px", borderRadius:3, background:agObj.bg, color:agObj.c, fontWeight:600 }}>{agObj.n}</span>}
           {esCompartida && <span style={{ fontSize:10, padding:"1px 7px", borderRadius:12, background:"#9B6DC820", color:"#9B6DC8", border:"1px solid #9B6DC840", fontWeight:600 }}>🤝 {item.inmobiliaria}</span>}
+          {tcObj && <span style={{ fontSize:10, padding:"1px 7px", borderRadius:12, background:tcObj.bg+"22", color:tcObj.bg, border:`1px solid ${tcObj.bg}50`, fontWeight:700 }}>{tcObj.label}</span>}
           {item.lat && <span style={{ fontSize:10, color:"#2E9E6A" }}>📍</span>}
           {expirada && <span style={{ fontSize:10, padding:"2px 7px", borderRadius:8, background:"rgba(204,34,51,0.2)", color:"#CC2233", fontWeight:700 }}>🔴 Expirada</span>}
           {proxExpira && <span style={{ fontSize:10, padding:"2px 7px", borderRadius:8, background:"rgba(232,168,48,0.2)", color:"#E8A830", fontWeight:700 }}>⏰ {21-diasVida}d</span>}
@@ -329,6 +339,13 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
                 <option value="">Sin tipo</option>
                 {["Departamento","Casa","PH","Dúplex","Local","Terreno","Otro"].map(t=><option key={t}>{t}</option>)}
               </select></div>
+          <div style={{gridColumn:"1/-1"}}><label style={{ fontSize:10, color:"#E8A830", display:"block", marginBottom:2 }}>★ TIPO CAPTACIÓN (obligatorio)</label>
+              <select value={form.tipo_captacion} onChange={e=>setForm(f=>({...f,tipo_captacion:e.target.value}))} style={{...inp, borderColor:form.tipo_captacion?TC[form.tipo_captacion]?.bg:"#E8A830"}}>
+                <option value="">— Seleccioná —</option>
+                <option value="propia">🟡 Propia — tu cartera</option>
+                <option value="honorarios">🟢 Honorarios — pedís la llave</option>
+                <option value="colega">🔴 Colega — él tiene la llave</option>
+              </select></div>
             <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>OPERACIÓN</label>
               <select value={form.operacion} onChange={e=>setForm(f=>({...f,operacion:e.target.value}))} style={inp}>
                 <option value="venta">Venta</option><option value="alquiler">Alquiler</option>
@@ -380,6 +397,7 @@ export default function Captaciones({ supabase }) {
   const [input,       setInput]       = useState("");
   const [ag,          setAg]          = useState("");
   const [nota,        setNota]        = useState("");
+  const [tipoCap,     setTipoCap]     = useState("");
   const [analizando,  setAnalizando]  = useState(false);
   const [guardando,   setGuardando]   = useState(false);
   const [campos,      setCampos]      = useState(null);
@@ -434,6 +452,10 @@ export default function Captaciones({ supabase }) {
     if (guardando) return;
     const tel = completos.telefono || campos?.telefono;
     const nom = completos.nombre_propietario || campos?.nombre_propietario;
+    if (!tipoCap) {
+      alert("Seleccioná el tipo de captación (Propia, Honorarios o Colega).");
+      return;
+    }
     if (!tel && !nom) {
       alert("Agregá al menos nombre o teléfono del propietario antes de guardar.");
       return;
@@ -453,10 +475,11 @@ export default function Captaciones({ supabase }) {
       telefono:get("telefono"), caracts:get("caracts"),
       operacion:get("operacion")||"venta", nota:nota.trim()||null,
       ag:ag||null, lat, lng, convertida:false,
+      tipo_captacion:tipoCap||null,
     }]).select().single();
     if (!error && data) {
       setItems(p=>[data,...p]);
-      setInput(""); setNota(""); setCampos(null); setCompletos({});
+      setInput(""); setNota(""); setCampos(null); setCompletos({}); setTipoCap("");
     }
     setGuardando(false);
   }
@@ -527,6 +550,25 @@ export default function Captaciones({ supabase }) {
           <div>
             <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:3 }}>NOTA RÁPIDA</label>
             <input value={nota} onChange={e=>setNota(e.target.value)} style={inpS} placeholder="ej: paga honorarios" />
+          </div>
+        </div>
+        <div>
+          <label style={{ fontSize:11, color:"#E8A830", display:"block", marginBottom:3 }}>★ TIPO CAPTACIÓN — obligatorio</label>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
+            {[
+              { v:"propia",     label:"🟡 Propia",     desc:"Tu cartera" },
+              { v:"honorarios", label:"🟢 Honorarios",  desc:"Pedís la llave" },
+              { v:"colega",     label:"🔴 Colega",      desc:"Él tiene la llave" },
+            ].map(({ v, label, desc }) => (
+              <button key={v} onClick={()=>setTipoCap(v)}
+                style={{ padding:"8px 6px", borderRadius:8, cursor:"pointer", textAlign:"center",
+                  background: tipoCap===v ? TC[v].bg+"22" : "transparent",
+                  border: `2px solid ${tipoCap===v ? TC[v].bg : B.border}`,
+                  color: tipoCap===v ? TC[v].bg : "#8AAECC" }}>
+                <div style={{ fontSize:12, fontWeight:700 }}>{label}</div>
+                <div style={{ fontSize:10, opacity:0.7 }}>{desc}</div>
+              </button>
+            ))}
           </div>
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>

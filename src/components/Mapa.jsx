@@ -66,12 +66,20 @@ function makeAlbaPin(color, icono, retasado = false) {
   </div>`;
 }
 
-function makeCaptacionPin(tipo) {
+const TC_PIN = {
+  colega:     "#CC2233",
+  honorarios: "#2E9E6A",
+  propia:     "#E8A830",
+};
+
+function makeCaptacionPin(tipo, tipoCaptacion) {
   const icono = TIPO_ICONO[tipo] || "📌";
+  const color = TC_PIN[tipoCaptacion] || "#CC2233";
+  const border = tipoCaptacion === "colega" ? "dashed" : "solid";
   return `<div style="position:relative;display:inline-flex;flex-direction:column;align-items:center">
     <div style="
       background:white;
-      border:3px dashed #CC2233;
+      border:3px ${border} ${color};
       border-radius:50%;
       width:36px;height:36px;
       display:flex;align-items:center;justify-content:center;
@@ -80,10 +88,10 @@ function makeCaptacionPin(tipo) {
       position:relative;
     ">
       ${icono}
-      <div style="position:absolute;top:-5px;right:-5px;background:#CC2233;color:#0F1E35;font-size:8px;font-weight:800;padding:1px 4px;border-radius:4px;line-height:1.4">?</div>
+      <div style="position:absolute;top:-5px;right:-5px;background:${color};color:white;font-size:8px;font-weight:800;padding:1px 4px;border-radius:4px;line-height:1.4">${tipoCaptacion==="colega"?"C":tipoCaptacion==="honorarios"?"H":"★"}</div>
     </div>
-    <div style="width:2px;height:8px;background:#CC2233;margin-top:-1px"></div>
-    <div style="width:6px;height:6px;background:#CC2233;border-radius:50%;margin-top:-1px;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>
+    <div style="width:2px;height:8px;background:${color};margin-top:-1px"></div>
+    <div style="width:6px;height:6px;background:${color};border-radius:50%;margin-top:-1px;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>
   </div>`;
 }
 
@@ -246,7 +254,7 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
       captaciones.filter(c => c.lat && c.lng).forEach(cap => {
         const icon = L.divIcon({
           className: "",
-          html: makeCaptacionPin(cap.tipo),
+          html: makeCaptacionPin(cap.tipo, cap.tipo_captacion),
           iconAnchor: [16, 44],
           iconSize: [32, 44],
         });
@@ -335,8 +343,11 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
           </div>
         ))}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <div style={{ width: 7, height: 7, borderRadius: "50%", background: "transparent", border: "2px dashed #CC2233" }} />
-          <span style={{ fontSize: 11, color: "#8AAECC" }}>Captación</span>
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            <span style={{ fontSize:10, color:"#CC2233" }}>🔴 Colega</span>
+            <span style={{ fontSize:10, color:"#2E9E6A" }}>🟢 Honor.</span>
+            <span style={{ fontSize:10, color:"#E8A830" }}>🟡 Propia</span>
+          </div>
         </div>
       </div>
 
