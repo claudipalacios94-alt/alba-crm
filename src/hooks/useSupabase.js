@@ -53,7 +53,7 @@ export function useSupabase() {
         const ref = l.last_contact_at || l.created_at;
         if (!ref) return l.dias || 0;
         const diff = (Date.now() - new Date(ref).getTime()) / (1000 * 60 * 60 * 24);
-        return Math.floor(diff);
+        return Math.max(0, Math.floor(diff));
       };
 
       const normalizeLead = (l) => ({
