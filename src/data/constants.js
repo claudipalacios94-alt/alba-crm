@@ -204,6 +204,39 @@ export function genMsgBusqueda(lead) {
   if (lead.ambientes) partes.push(`${lead.ambientes} amb`);
   if (lead.zona) partes.push(lead.zona);
   const linea1 = partes.join(", ");
+  const linea2 = lead.presup ? `USD ${Number(lead.presup).toLocaleString()}` : null;
+
+  const detalles = [
+    lead.credito === "si"  && "✅ Crédito aprobado",
+    lead.cochera === "si"  && "🚗 Cochera",
+    lead.cochera === "no"  && "❌ Sin cochera",
+    lead.balcon  === "si"  && "🏙 Balcón",
+    lead.patio   === "si"  && "🌿 Patio",
+    lead.m2min             && `📐 Mín. ${lead.m2min}m²`,
+    lead.op === "Inversor" && "📈 Inversor",
+    stars >= 4             && "⚡ Prioridad alta",
+  ].filter(Boolean);
+
+  return [
+    encabezado,
+    linea2 ? `${linea1} · ${linea2}` : linea1,
+    detalles.length > 0 ? detalles.join(" · ") : null,
+    "Alba Inversiones · REG 3832",
+  ].filter(l => l !== null).join("\n").trim();
+}
+
+  const encabezado = stars >= 5
+    ? "🔴 PEDIDO URGENTE — CIERRE RÁPIDO"
+    : stars >= 4
+    ? "🟠 PEDIDO ACTIVO — MUY INTERESADO"
+    : stars >= 3
+    ? "🟡 BÚSQUEDA EN CURSO"
+    : "🔵 PEDIDO DE BÚSQUEDA";
+
+  const partes = [lead.tipo || "Propiedad"];
+  if (lead.ambientes) partes.push(`${lead.ambientes} amb`);
+  if (lead.zona) partes.push(lead.zona);
+  const linea1 = partes.join(", ");
 
   const linea2 = lead.presup ? `USD ${Number(lead.presup).toLocaleString()}` : null;
 
