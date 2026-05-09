@@ -314,6 +314,14 @@ export default function Captaciones({ supabase }) {
     setAnalizando(true); setCampos(null); setCompletos({});
     const result = await analizarConIA(input);
     setCampos(result || {});
+    if (result) {
+      const pre = {};
+      ["tipo","zona","direccion","precio","ambientes","m2tot","cochera",
+       "nombre_propietario","telefono","caracts","operacion"].forEach(k => {
+        if (result[k] !== null && result[k] !== undefined) pre[k] = result[k];
+      });
+      setCompletos(pre);
+    }
     setAnalizando(false);
   }
 
