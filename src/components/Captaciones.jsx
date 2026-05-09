@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════
-// ALBA CRM — MÓDULO CAPTACIÓN RÁPIDA
-// Texto libre → IA extrae campos → pide lo que falta → guarda
+// ALBA CRM — MÓDULO CAPTACIÓN RÁPIDA v3
+// Texto libre → IA extrae campos → cards editables + mapa live
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useEffect, useRef } from "react";
 import { B, AG } from "../data/constants.js";
@@ -16,7 +16,8 @@ async function nominatim(dir) {
     const d = await r.json();
     if (d.length > 0) {
       const lat = parseFloat(d[0].lat), lng = parseFloat(d[0].lon);
-      if (lat > -38.15 && lat < -37.85 && lng > -57.75 && lng < -57.40) return { lat, lng };
+      if (lat > -38.15 && lat < -37.85 && lng > -57.75 && lng < -57.40)
+        return { lat, lng };
     }
   } catch(e) {}
   return { lat: null, lng: null };
@@ -24,7 +25,6 @@ async function nominatim(dir) {
 
 function parsearTextoLocal(texto) {
   const t = texto.toLowerCase();
-
   const tipo =
     /departamento|depto|dpto/.test(t) ? "Departamento" :
     /\bph\b|planta alta/.test(t)      ? "PH" :
@@ -32,60 +32,26 @@ function parsearTextoLocal(texto) {
     /\blocal\b|comercial/.test(t)     ? "Local" :
     /terreno|lote/.test(t)            ? "Terreno" :
     /\bcasa\b|chalet|vivienda/.test(t) ? "Casa" : null;
-
   const precioMatch = texto.match(/(?:usd?|u\$d?|u\$s?|dólares?)\s{0,5}([\d.,]+)/i)
-    || texto.match(/([\d]{2,3}[.,][\d]{3})\s*(?:usd?|u\$d?|dólares?|u\$)/i);
-  const precioRaw = precioMatch ? precioMatch[1].replace(/\./g,"").replace(",","") : null;
-  const precio = precioRaw ? parseInt(precioRaw) : null;
-
-  const ambMatch = texto.match(/(\d)\s*amb(?:ientes?)?/i)
-    || texto.match(/ambientes\s*:\s*\n?\s*(\d)/i)
-    || texto.match(/(\d)\s*amb\b/i);
-  const ambientes = ambMatch ? ambMatch[1] : null;
-
+    || texto.match(/([\d]{2,3}[.,][\d]{3})\s*(?:usd?|u\$d?|dólares?)/i);
+  const precio = precioMatch ? parseInt(precioMatch[1].replace(/\./g,"").replace(",","")) : null;
+  const ambMatch = texto.match(/(\d)\s*amb(?:ientes?)?/i);
+  const ambientes = ambMatch ? parseInt(ambMatch[1]) : null;
   const m2Match = texto.match(/(\d{2,4})\s*m[²2]/i);
   const m2tot = m2Match ? parseInt(m2Match[1]) : null;
-
-  // Dirección — varios patrones
-  const dirPatterns = [
-    /direcci[oó]n\s*:\s*([A-ZÁÉÍÓÚÑA-Za-záéíóúñ\s\.]+\s+\d{3,5})/i,
-    /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑA-Za-záéíóúñ\s\.]{3,30})\s+(?:n[°º]?\s*)?(\d{3,5})/,
-  ];
-  let direccion = null;
-  for (const pat of dirPatterns) {
-    const m = texto.match(pat);
-    if (m) {
-      direccion = m[1] ? m[1].trim() + (m[2] ? " " + m[2] : "") : m[0].replace(/direcci[oó]n\s*:\s*/i,"").trim();
-      break;
-    }
-  }
-  // Normalizar capitalización
-  if (direccion) direccion = direccion.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
-
+  const telMatch = texto.match(/(?:\+?54\s*9?\s*)?(?:223|2235)[\s\-]?(\d[\d\s\-]{6,10}\d)/);
+  const telefono = telMatch ? telMatch[0].replace(/[\s\-]/g,"") : null;
   const BARRIOS = ["la perla","chauvin","centro","güemes","punta mogotes","alfar",
     "bosque grande","san carlos","los pinares","playa grande","divino rostro",
     "constitución","pompeya","santa rosa","floresta","libertad","san jorge",
-    "las heras","camet","villa primera","mar del plata","santa monica","luro",
-    "caisamar","estrada","chapadmalal","batán","sierra de los padres","peralta ramos",
-    "jardín de peralta","nueva pompey","bernardino rivadavia","félix u. camet"];
+    "las heras","camet","villa primera","santa monica","luro","caisamar","estrada",
+    "chapadmalal","batán","sierra de los padres","peralta ramos"];
   const zona = BARRIOS.find(b => t.includes(b)) || null;
-
-  const telMatch = texto.match(/(?:\+?54\s*9?\s*)?(?:223|2235)[\s\-]?(\d[\d\s\-]{6,10}\d)/);
-  const telefono = telMatch ? telMatch[0].replace(/[\s\-]/g,"") : null;
-
-  const cochera = /con cochera|cochera:\s*s[ií]/i.test(texto) ? "si"
-    : /sin cochera|cochera:\s*no/i.test(texto) ? "no" : null;
-
-  const campos_faltantes = [
-    !tipo      && "tipo",
-    !zona      && "zona",
-    !precio    && "precio",
-    !direccion && "direccion",
-  ].filter(Boolean);
-
-  return { tipo, precio, ambientes, m2tot, direccion, zona, telefono,
-    cochera, operacion: /alquil/.test(t) ? "alquiler" : "venta",
-    campos_faltantes, fuera_de_mdp: false };
+  const cochera = /con cochera/i.test(texto) ? "si" : /sin cochera/i.test(texto) ? "no" : null;
+  return { tipo, precio, ambientes, m2tot, zona, telefono, cochera,
+    operacion: /alquil/.test(t) ? "alquiler" : "venta",
+    campos_faltantes: [!tipo&&"tipo",!zona&&"zona",!precio&&"precio"].filter(Boolean),
+    fuera_de_mdp: false };
 }
 
 async function analizarConIA(texto) {
@@ -100,223 +66,214 @@ async function analizarConIA(texto) {
       return JSON.parse(text.replace(/```json|```/g, "").trim());
     }
   } catch(e) {}
-  // Fallback local — sin créditos
   return parsearTextoLocal(texto);
 }
 
+function MapaCaptaciones({ items }) {
+  const mapRef   = useRef(null);
+  const leafRef  = useRef(null);
+  const marksRef = useRef([]);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (window.L) { setReady(true); return; }
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    document.head.appendChild(link);
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    script.onload = () => setReady(true);
+    document.head.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !mapRef.current || leafRef.current) return;
+    const map = window.L.map(mapRef.current, { center: [-38.002, -57.555], zoom: 13 });
+    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap", maxZoom: 19,
+    }).addTo(map);
+    leafRef.current = map;
+    setTimeout(() => map.invalidateSize(), 200);
+  }, [ready]);
+
+  useEffect(() => {
+    if (!ready || !leafRef.current) return;
+    const map = leafRef.current;
+    marksRef.current.forEach(m => map.removeLayer(m));
+    marksRef.current = [];
+    const conCoords = items.filter(i => i.lat && i.lng);
+    conCoords.forEach(item => {
+      const agObj = AG[item.ag];
+      const color = agObj ? agObj.bg : "#E8A830";
+      const icon = window.L.divIcon({
+        className: "",
+        html: `<div style="background:#0F1E35;border:2.5px solid ${color};border-radius:10px 10px 10px 2px;padding:5px 9px;font-size:11px;font-weight:700;color:${color};white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.55);transform:translateY(-100%)">${item.tipo||"Prop"} ${item.precio?"USD "+(item.precio/1000).toFixed(0)+"k":""}</div>`,
+        iconAnchor: [0, 0],
+      });
+      const marker = window.L.marker([item.lat, item.lng], { icon }).addTo(map)
+        .bindPopup(`<div style="font-family:sans-serif;font-size:12px;min-width:160px"><strong>${item.tipo||"Propiedad"}</strong><br/>${item.zona||""} ${item.direccion?"· "+item.direccion:""}<br/>${item.precio?"USD "+Number(item.precio).toLocaleString():"Sin precio"}<br/>${item.ambientes?item.ambientes+" amb · ":""}${item.m2tot?item.m2tot+"m²":""}</div>`);
+      marksRef.current.push(marker);
+    });
+    if (conCoords.length > 0) {
+      const bounds = window.L.latLngBounds(conCoords.map(i => [i.lat, i.lng]));
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    }
+    setTimeout(() => map.invalidateSize(), 100);
+  }, [ready, items]);
+
+  const conCoords = items.filter(i => i.lat && i.lng);
+  return (
+    <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, overflow:"hidden" }}>
+      <div style={{ padding:"10px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <span style={{ fontSize:12, fontWeight:700, color:B.accentL }}>📍 Mapa de captaciones</span>
+        <span style={{ fontSize:11, color:"#4A6A90" }}>{conCoords.length} con ubicación</span>
+      </div>
+      {conCoords.length === 0 ? (
+        <div style={{ padding:"24px", textAlign:"center", color:"#4A6A90", fontSize:12 }}>Las captaciones con dirección aparecerán aquí</div>
+      ) : (
+        <div ref={mapRef} style={{ height:300 }} />
+      )}
+      <style>{`.leaflet-container{background:${B.bg}!important}.leaflet-tile{filter:brightness(0.85) saturate(0.7) hue-rotate(200deg)}.leaflet-control-zoom a{background:${B.card}!important;color:${B.accentL}!important;border-color:${B.border}!important}.leaflet-control-attribution{background:rgba(7,14,28,0.8)!important;color:#4A6A90!important;font-size:9px}.leaflet-popup-content-wrapper{background:#0F1E35;border:1px solid #1E3A5F;color:#C8D8E8;border-radius:8px}.leaflet-popup-tip{background:#0F1E35}`}</style>
+    </div>
+  );
+}
 
 function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
   const [open,    setOpen]    = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving,  setSaving]  = useState(false);
   const [form,    setForm]    = useState({
-    tipo:               item.tipo || "",
-    zona:               item.zona || "",
-    direccion:          item.direccion || "",
-    precio:             item.precio || "",
-    nombre_propietario: item.nombre_propietario || "",
-    telefono:           item.telefono || "",
-    caracts:            item.caracts || "",
-    operacion:          item.operacion || "venta",
-    nota:               item.nota || "",
-    ag:                 item.ag || "",
-    inmobiliaria:       item.inmobiliaria || "",
-    url:                item.url || "",
-    nota_interna:       item.nota_interna || "",
+    tipo: item.tipo||"", zona: item.zona||"", direccion: item.direccion||"",
+    precio: item.precio||"", ambientes: item.ambientes||"", m2tot: item.m2tot||"",
+    cochera: item.cochera||"", nombre_propietario: item.nombre_propietario||"",
+    telefono: item.telefono||"", caracts: item.caracts||"",
+    operacion: item.operacion||"venta", nota: item.nota||"",
+    ag: item.ag||"", inmobiliaria: item.inmobiliaria||"",
+    url: item.url||"", nota_interna: item.nota_interna||"",
   });
 
   const agObj = AG[item.ag];
+  const diasVida = Math.floor((new Date() - new Date(item.created_at)) / 86400000);
+  const expirada = diasVida >= 21;
+  const proxExpira = diasVida >= 18 && diasVida < 21;
+  const esCompartida = !!item.inmobiliaria;
+  const borderColor = esCompartida ? "#9B6DC8" : B.accentL;
+  const chips = [item.ambientes&&`${item.ambientes} amb`,item.m2tot&&`${item.m2tot}m²`,item.cochera==="si"&&"🚗 cochera",item.cochera==="no"&&"❌ s/cochera"].filter(Boolean);
 
   async function guardarEdicion() {
     setSaving(true);
     const updates = {
-      tipo:               form.tipo || null,
-      zona:               form.zona || null,
-      direccion:          form.direccion || null,
-      precio:             form.precio ? Number(form.precio) : null,
-      nombre_propietario: form.nombre_propietario || null,
-      telefono:           form.telefono || null,
-      caracts:            form.caracts || null,
-      operacion:          form.operacion || "venta",
-      nota:               form.nota || null,
-      ag:                 form.ag || null,
-      inmobiliaria:       form.inmobiliaria || null,
-      url:                form.url || null,
-      nota_interna:       form.nota_interna || null,
+      tipo:form.tipo||null, zona:form.zona||null, direccion:form.direccion||null,
+      precio:form.precio?Number(form.precio):null, ambientes:form.ambientes?Number(form.ambientes):null,
+      m2tot:form.m2tot?Number(form.m2tot):null, cochera:form.cochera||null,
+      nombre_propietario:form.nombre_propietario||null, telefono:form.telefono||null,
+      caracts:form.caracts||null, operacion:form.operacion||"venta", nota:form.nota||null,
+      ag:form.ag||null, inmobiliaria:form.inmobiliaria||null, url:form.url||null,
+      nota_interna:form.nota_interna||null,
     };
+    if (form.direccion !== item.direccion) {
+      const c = await nominatim(form.direccion || form.zona);
+      if (c.lat) { updates.lat = c.lat; updates.lng = c.lng; }
+    }
     const { error } = await supabase.from("captaciones").update(updates).eq("id", item.id);
     if (!error) { onUpdate(item.id, updates); setEditing(false); }
     setSaving(false);
   }
 
-  function fmtFecha(iso) {
-    return new Date(iso).toLocaleDateString("es-AR", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" });
-  }
-
-  const inp = {
-    width:"100%", background:B.bg, border:"1px solid "+B.border, borderRadius:6,
-    padding:"6px 9px", color:B.text, fontSize:12, outline:"none", boxSizing:"border-box",
-  };
-
-  const esCompartida = !!item.inmobiliaria;
-  const diasVida = Math.floor((new Date() - new Date(item.created_at)) / 86400000);
-  const expirada = diasVida >= 21;
-  const proxExpira = diasVida >= 18 && diasVida < 21;
-  const borderColor = esCompartida ? "#9B6DC8" : B.accentL;
+  const inp = { width:"100%", background:B.bg, border:"1px solid "+B.border, borderRadius:6, padding:"6px 9px", color:B.text, fontSize:12, outline:"none", boxSizing:"border-box" };
+  const fmtFecha = iso => new Date(iso).toLocaleDateString("es-AR",{ day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" });
 
   return (
-    <div style={{ background:B.card, border:"1px solid "+(open ? borderColor : B.border),
-      borderLeft:"3px solid "+borderColor, borderRadius:10, overflow:"hidden" }}>
-
-      {/* Cabecera */}
-      <div onClick={() => !editing && setOpen(o => !o)}
-        style={{ padding:"11px 13px", cursor:editing?"default":"pointer" }}>
+    <div style={{ background:B.card, border:`1px solid ${open?borderColor:B.border}`, borderLeft:`3px solid ${borderColor}`, borderRadius:10, overflow:"hidden" }}>
+      <div onClick={() => !editing && setOpen(o=>!o)} style={{ padding:"11px 13px", cursor:editing?"default":"pointer" }}>
         <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5, flexWrap:"wrap" }}>
           {item.tipo && <span style={{ fontSize:11, padding:"1px 7px", borderRadius:12, background:B.accentL+"18", color:B.accentL }}>{item.tipo}</span>}
           {item.operacion && <span style={{ fontSize:11, padding:"1px 7px", borderRadius:12, background:"#4A6A9020", color:"#8AAECC" }}>{item.operacion}</span>}
           {agObj && <span style={{ fontSize:10, padding:"1px 5px", borderRadius:3, background:agObj.bg, color:agObj.c, fontWeight:600 }}>{agObj.n}</span>}
           {esCompartida && <span style={{ fontSize:10, padding:"1px 7px", borderRadius:12, background:"#9B6DC820", color:"#9B6DC8", border:"1px solid #9B6DC840", fontWeight:600 }}>🤝 {item.inmobiliaria}</span>}
+          {item.lat && <span style={{ fontSize:10, color:"#2E9E6A" }}>📍</span>}
+          {expirada && <span style={{ fontSize:10, padding:"2px 7px", borderRadius:8, background:"rgba(204,34,51,0.2)", color:"#CC2233", fontWeight:700 }}>🔴 Expirada</span>}
+          {proxExpira && <span style={{ fontSize:10, padding:"2px 7px", borderRadius:8, background:"rgba(232,168,48,0.2)", color:"#E8A830", fontWeight:700 }}>⏰ {21-diasVida}d</span>}
           <span style={{ fontSize:11, color:"#4A6A90", marginLeft:"auto" }}>{fmtFecha(item.created_at)}</span>
-          {expirada && <span style={{ fontSize:10, padding:"2px 7px", borderRadius:8, background:"rgba(204,34,51,0.2)", color:"#CC2233", fontWeight:700, border:"1px solid rgba(204,34,51,0.4)" }}>🔴 Expirada — ¿conservar?</span>}
-          {proxExpira && <span style={{ fontSize:10, padding:"2px 7px", borderRadius:8, background:"rgba(232,168,48,0.2)", color:"#E8A830", fontWeight:700 }}>⏰ Expira en {21-diasVida}d</span>}
-          <span style={{ fontSize:12, color:B.accentL }}>{open ? "▲" : "▼"}</span>
+          <span style={{ fontSize:12, color:B.accentL }}>{open?"▲":"▼"}</span>
         </div>
-        {(item.zona || item.direccion) && (
-          <div style={{ fontSize:12, color:"#8AAECC", marginBottom:3 }}>
-            {item.zona}{item.zona && item.direccion ? " · " : ""}{item.direccion}
-            {item.lat && " 📍"}
-          </div>
-        )}
-        {item.precio && (
-          <div style={{ fontSize:14, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif" }}>
-            USD {Number(item.precio).toLocaleString()}
-          </div>
-        )}
+        {(item.zona||item.direccion) && <div style={{ fontSize:12, color:"#8AAECC", marginBottom:4 }}>{[item.zona,item.direccion].filter(Boolean).join(" · ")}</div>}
+        <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+          {item.precio && <span style={{ fontSize:15, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif" }}>USD {Number(item.precio).toLocaleString()}</span>}
+          {chips.map((c,i) => <span key={i} style={{ fontSize:10, padding:"1px 7px", borderRadius:10, background:"rgba(42,91,173,0.15)", color:"#8AAECC", border:"1px solid #1E3A5F" }}>{c}</span>)}
+        </div>
       </div>
 
-      {/* Panel expandido */}
       {open && !editing && (
-        <div style={{ borderTop:"1px solid "+B.border, padding:"11px 13px",
-          background:"rgba(10,21,37,0.4)", display:"flex", flexDirection:"column", gap:8 }}>
-          {item.nombre_propietario && <div style={{ fontSize:12, color:"#8AAECC" }}>👤 {item.nombre_propietario}{item.telefono ? " · "+item.telefono : ""}</div>}
-          {item.caracts && <div style={{ fontSize:12, color:"#8AAECC" }}>{item.caracts}</div>}
+        <div style={{ borderTop:`1px solid ${B.border}`, padding:"11px 13px", background:"rgba(10,21,37,0.4)", display:"flex", flexDirection:"column", gap:8 }}>
+          {item.nombre_propietario && (
+            <div style={{ fontSize:12, color:"#8AAECC" }}>
+              👤 {item.nombre_propietario}
+              {item.telefono && <a href={`https://wa.me/${item.telefono.replace(/\D/g,"")}`} target="_blank" style={{ marginLeft:8, color:"#2E9E6A", textDecoration:"none", fontSize:11 }}>💬 {item.telefono}</a>}
+            </div>
+          )}
+          {item.caracts && <div style={{ fontSize:12, color:"#8AAECC" }}>✅ {item.caracts}</div>}
           {item.nota && <div style={{ fontSize:11, color:"#6A8AAE", fontStyle:"italic" }}>"{item.nota}"</div>}
-              {item.nota_interna && <div style={{ fontSize:12, color:"#8AAECC", background:"rgba(42,91,173,0.08)", borderRadius:6, padding:"6px 9px", borderLeft:"2px solid "+B.accentL }}>📝 {item.nota_interna}</div>}
-          <div style={{ fontSize:11, color:"#4A6A90", lineHeight:1.5,
-            display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
-            {item.contenido}
-          </div>
+          {item.nota_interna && <div style={{ fontSize:12, color:"#8AAECC", background:"rgba(42,91,173,0.08)", borderRadius:6, padding:"6px 9px", borderLeft:`2px solid ${B.accentL}` }}>📝 {item.nota_interna}</div>}
+          {item.url && <a href={item.url} target="_blank" style={{ fontSize:11, color:B.accentL, textDecoration:"none" }}>🔗 Ver en portal</a>}
+          {item.contenido && <div style={{ fontSize:10, color:"#4A6A90", lineHeight:1.5, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{item.contenido}</div>}
           <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:4 }}>
-            <button onClick={() => setEditing(true)}
-              style={{ flex:1, padding:"6px", borderRadius:7, cursor:"pointer",
-                background:B.accent+"22", border:"1px solid "+B.accentL+"60", color:B.accentL, fontSize:12, fontWeight:600 }}>
-              Editar
-            </button>
-            <button onClick={() => onConvertir(item)}
-              style={{ flex:1, padding:"6px", borderRadius:7, cursor:"pointer",
-                background:"#2E9E6A18", border:"1px solid #2E9E6A40", color:"#2E9E6A", fontSize:12, fontWeight:600 }}>
-              ✓ Convertida
-            </button>
-            <button onClick={() => onEliminar(item)}
-              style={{ padding:"6px 12px", borderRadius:7, cursor:"pointer",
-                background:"transparent", border:"1px solid "+B.hot+"40", color:B.hot, fontSize:12 }}>
-              🗑
-            </button>
+            <button onClick={()=>setEditing(true)} style={{ flex:1, padding:"7px", borderRadius:7, cursor:"pointer", background:B.accent+"22", border:`1px solid ${B.accentL}60`, color:B.accentL, fontSize:12, fontWeight:600 }}>✏️ Editar</button>
+            <button onClick={()=>onConvertir(item)} style={{ flex:1, padding:"7px", borderRadius:7, cursor:"pointer", background:"#2E9E6A18", border:"1px solid #2E9E6A40", color:"#2E9E6A", fontSize:12, fontWeight:600 }}>✓ Convertida</button>
+            <button onClick={()=>onEliminar(item)} style={{ padding:"7px 12px", borderRadius:7, cursor:"pointer", background:"transparent", border:`1px solid ${B.hot}40`, color:B.hot, fontSize:12 }}>🗑</button>
           </div>
         </div>
       )}
 
-      {/* Edición inline */}
       {editing && (
-        <div style={{ borderTop:"1px solid "+B.accentL+"40", padding:"11px 13px",
-          background:"rgba(10,21,37,0.6)", display:"flex", flexDirection:"column", gap:7 }}>
+        <div style={{ borderTop:`1px solid ${B.accentL}40`, padding:"11px 13px", background:"rgba(10,21,37,0.6)", display:"flex", flexDirection:"column", gap:7 }}>
           <div style={{ fontSize:11, fontWeight:700, color:B.accentL, marginBottom:2 }}>Editando captación</div>
-
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-            <div>
-              <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO</label>
-              <select value={form.tipo} onChange={e => setForm(f=>({...f,tipo:e.target.value}))} style={inp}>
+            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO</label>
+              <select value={form.tipo} onChange={e=>setForm(f=>({...f,tipo:e.target.value}))} style={inp}>
                 <option value="">Sin tipo</option>
                 {["Departamento","Casa","PH","Dúplex","Local","Terreno","Otro"].map(t=><option key={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>OPERACIÓN</label>
-              <select value={form.operacion} onChange={e => setForm(f=>({...f,operacion:e.target.value}))} style={inp}>
-                <option value="venta">Venta</option>
-                <option value="alquiler">Alquiler</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>ZONA</label>
-            <input value={form.zona} onChange={e=>setForm(f=>({...f,zona:e.target.value}))} style={inp} />
-          </div>
-          <div>
-            <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>DIRECCIÓN</label>
-            <input value={form.direccion} onChange={e=>setForm(f=>({...f,direccion:e.target.value}))} style={inp} />
-          </div>
-          <div>
-            <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>PRECIO USD</label>
-            <input type="number" value={form.precio} onChange={e=>setForm(f=>({...f,precio:e.target.value}))} style={inp} />
+              </select></div>
+            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>OPERACIÓN</label>
+              <select value={form.operacion} onChange={e=>setForm(f=>({...f,operacion:e.target.value}))} style={inp}>
+                <option value="venta">Venta</option><option value="alquiler">Alquiler</option>
+              </select></div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-            <div>
-              <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>PROPIETARIO</label>
-              <input value={form.nombre_propietario} onChange={e=>setForm(f=>({...f,nombre_propietario:e.target.value}))} style={inp} />
-            </div>
-            <div>
-              <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>TELÉFONO</label>
-              <input value={form.telefono} onChange={e=>setForm(f=>({...f,telefono:e.target.value}))} style={inp} />
-            </div>
+            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>ZONA</label><input value={form.zona} onChange={e=>setForm(f=>({...f,zona:e.target.value}))} style={inp} /></div>
+            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>DIRECCIÓN</label><input value={form.direccion} onChange={e=>setForm(f=>({...f,direccion:e.target.value}))} style={inp} /></div>
           </div>
-          <div>
-            <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>CARACTERÍSTICAS</label>
-            <input value={form.caracts} onChange={e=>setForm(f=>({...f,caracts:e.target.value}))} style={inp} />
-          </div>
-          <div>
-            <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>NOTA</label>
-            <input value={form.nota} onChange={e=>setForm(f=>({...f,nota:e.target.value}))} style={inp} />
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
+            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>PRECIO USD</label><input type="number" value={form.precio} onChange={e=>setForm(f=>({...f,precio:e.target.value}))} style={inp} /></div>
+            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>AMBIENTES</label><input type="number" value={form.ambientes} onChange={e=>setForm(f=>({...f,ambientes:e.target.value}))} style={inp} /></div>
+            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>M²</label><input type="number" value={form.m2tot} onChange={e=>setForm(f=>({...f,m2tot:e.target.value}))} style={inp} /></div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-            <div>
-              <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>AGENTE</label>
+            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>COCHERA</label>
+              <select value={form.cochera} onChange={e=>setForm(f=>({...f,cochera:e.target.value}))} style={inp}>
+                <option value="">Sin datos</option><option value="si">Con cochera</option><option value="no">Sin cochera</option>
+              </select></div>
+            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>AGENTE</label>
               <select value={form.ag} onChange={e=>setForm(f=>({...f,ag:e.target.value}))} style={inp}>
                 <option value="">Sin agente</option>
                 {Object.entries(AG).map(([k,v])=><option key={k} value={k}>{v.n}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize:10, color:"#9B6DC8", display:"block", marginBottom:2 }}>🤝 INMOBILIARIA</label>
-              <input value={form.inmobiliaria} onChange={e=>setForm(f=>({...f,inmobiliaria:e.target.value}))}
-                placeholder="ej: RE/MAX, Baires..." style={{...inp, borderColor:form.inmobiliaria?"#9B6DC8":B.border}} />
-            </div>
+              </select></div>
           </div>
-
-          <div>
-            <label style={{ fontSize:10, color:"#4A8ABE", display:"block", marginBottom:2 }}>🔗 LINK (portal o ficha)</label>
-            <input value={form.url} onChange={e=>setForm(f=>({...f,url:e.target.value}))}
-              placeholder="https://zonaprop.com.ar/..." style={{...inp, borderColor:form.url?"#4A8ABE":B.border}} />
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
+            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>PROPIETARIO</label><input value={form.nombre_propietario} onChange={e=>setForm(f=>({...f,nombre_propietario:e.target.value}))} style={inp} /></div>
+            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>TELÉFONO</label><input value={form.telefono} onChange={e=>setForm(f=>({...f,telefono:e.target.value}))} style={inp} /></div>
           </div>
-          <div>
-            <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>📝 NOTA INTERNA</label>
-            <input value={form.nota_interna} onChange={e=>setForm(f=>({...f,nota_interna:e.target.value}))}
-              placeholder="ej: propietario disponible tardes, pide escritura rápida..." style={inp} />
+          <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>CARACTERÍSTICAS</label><input value={form.caracts} onChange={e=>setForm(f=>({...f,caracts:e.target.value}))} style={inp} /></div>
+          <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>NOTA</label><input value={form.nota} onChange={e=>setForm(f=>({...f,nota:e.target.value}))} style={inp} /></div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
+            <div><label style={{ fontSize:10, color:"#9B6DC8", display:"block", marginBottom:2 }}>🤝 INMOBILIARIA</label><input value={form.inmobiliaria} onChange={e=>setForm(f=>({...f,inmobiliaria:e.target.value}))} placeholder="ej: RE/MAX..." style={{...inp,borderColor:form.inmobiliaria?"#9B6DC8":B.border}} /></div>
+            <div><label style={{ fontSize:10, color:"#4A8ABE", display:"block", marginBottom:2 }}>🔗 LINK</label><input value={form.url} onChange={e=>setForm(f=>({...f,url:e.target.value}))} placeholder="https://..." style={{...inp,borderColor:form.url?"#4A8ABE":B.border}} /></div>
           </div>
-
+          <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>📝 NOTA INTERNA</label><input value={form.nota_interna} onChange={e=>setForm(f=>({...f,nota_interna:e.target.value}))} style={inp} /></div>
           <div style={{ display:"flex", gap:7, marginTop:4 }}>
-            <button onClick={guardarEdicion} disabled={saving}
-              style={{ flex:1, padding:"8px", borderRadius:7, cursor:"pointer",
-                background:saving?B.border:B.accent, border:"1px solid "+(saving?B.border:B.accentL),
-                color:saving?"#8AAECC":"#fff", fontSize:12, fontWeight:700 }}>
-              {saving?"Guardando...":"Guardar"}
-            </button>
-            <button onClick={()=>setEditing(false)}
-              style={{ padding:"8px 14px", borderRadius:7, cursor:"pointer",
-                background:"transparent", border:"1px solid "+B.border, color:"#8AAECC", fontSize:12 }}>
-              Cancelar
-            </button>
+            <button onClick={guardarEdicion} disabled={saving} style={{ flex:1, padding:"8px", borderRadius:7, cursor:saving?"default":"pointer", background:saving?B.border:B.accent, border:`1px solid ${saving?B.border:B.accentL}`, color:saving?"#8AAECC":"#fff", fontSize:12, fontWeight:700 }}>{saving?"Guardando...":"Guardar"}</button>
+            <button onClick={()=>setEditing(false)} style={{ padding:"8px 14px", borderRadius:7, cursor:"pointer", background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:12 }}>Cancelar</button>
           </div>
         </div>
       )}
@@ -325,177 +282,62 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
 }
 
 export default function Captaciones({ supabase }) {
-  const [items,      setItems]      = useState([]);
-  const [input,      setInput]      = useState("");
-  const [ag,         setAg]         = useState("");
-  const [nota,       setNota]       = useState("");
-  const [analizando, setAnalizando] = useState(false);
-  const [guardando,  setGuardando]  = useState(false);
-  const [campos,     setCampos]     = useState(null);   // resultado IA
-  const [pendientes, setPendientes] = useState([]);     // campos que faltan
-  const [completos,  setCompletos]  = useState({});     // valores manuales
-  const [confirmDel, setConfirmDel] = useState(null);
-  const [loaded,     setLoaded]     = useState(false);
-  const [mapLoaded,  setMapLoaded]  = useState(false);
-  const mapRef   = useRef(null);
-  const leafRef  = useRef(null);
-  const marksRef = useRef([]);
+  const [items,       setItems]       = useState([]);
+  const [input,       setInput]       = useState("");
+  const [ag,          setAg]          = useState("");
+  const [nota,        setNota]        = useState("");
+  const [analizando,  setAnalizando]  = useState(false);
+  const [guardando,   setGuardando]   = useState(false);
+  const [campos,      setCampos]      = useState(null);
+  const [completos,   setCompletos]   = useState({});
+  const [confirmDel,  setConfirmDel]  = useState(null);
+  const [loaded,      setLoaded]      = useState(false);
+  const [vistaActiva, setVistaActiva] = useState("cards");
 
-  // ── Cargar captaciones ──────────────────────────────────────
   useEffect(() => {
     async function load() {
-      const { data } = await supabase
-        .from("captaciones")
-        .select("*")
-        .eq("convertida", false)
-        .order("created_at", { ascending: false });
-
+      const { data } = await supabase.from("captaciones").select("*").eq("convertida", false).order("created_at", { ascending: false });
       const items = data || [];
       const hoy = new Date();
-
-      // Auto-eliminar las que llevan +24 días y ya fueron notificadas
-      const aEliminar = items.filter(i => {
-        const dias = Math.floor((hoy - new Date(i.created_at)) / 86400000);
-        return dias >= 24 && i.expiracion_notificada;
-      });
-      for (const i of aEliminar) {
-        await supabase.from("captaciones").delete().eq("id", i.id);
-      }
-
-      // Marcar como notificadas las que llevan +21 días
-      const aNotificar = items.filter(i => {
-        const dias = Math.floor((hoy - new Date(i.created_at)) / 86400000);
-        return dias >= 21 && !i.expiracion_notificada;
-      });
-      for (const i of aNotificar) {
-        await supabase.from("captaciones").update({ expiracion_notificada: true }).eq("id", i.id);
-        i.expiracion_notificada = true;
-      }
-
-      const restantes = items.filter(i => !aEliminar.find(e => e.id === i.id));
-      setItems(restantes);
+      const aEliminar = items.filter(i => Math.floor((hoy-new Date(i.created_at))/86400000)>=24 && i.expiracion_notificada);
+      for (const i of aEliminar) await supabase.from("captaciones").delete().eq("id", i.id);
+      const aNotificar = items.filter(i => Math.floor((hoy-new Date(i.created_at))/86400000)>=21 && !i.expiracion_notificada);
+      for (const i of aNotificar) await supabase.from("captaciones").update({ expiracion_notificada: true }).eq("id", i.id);
+      setItems(items.filter(i => !aEliminar.find(e => e.id===i.id)));
       setLoaded(true);
     }
     load();
   }, []);
 
-  // ── Leaflet ─────────────────────────────────────────────────
-  useEffect(() => {
-    if (window.L) { setMapLoaded(true); return; }
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-    document.head.appendChild(link);
-    const script = document.createElement("script");
-    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-    script.onload = () => setMapLoaded(true);
-    document.head.appendChild(script);
-  }, []);
-
-  useEffect(() => {
-    if (!mapLoaded || !mapRef.current || leafRef.current) return;
-    const map = window.L.map(mapRef.current, { center: [-38.002, -57.555], zoom: 13 });
-    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap", maxZoom: 19,
-    }).addTo(map);
-    leafRef.current = map;
-    setTimeout(() => map.invalidateSize(), 100);
-  }, [mapLoaded]);
-
-  useEffect(() => {
-    if (!mapLoaded || !leafRef.current) return;
-    const map = leafRef.current;
-    marksRef.current.forEach(m => map.removeLayer(m));
-    marksRef.current = [];
-    items.filter(i => i.lat && i.lng).forEach(item => {
-      const icon = window.L.divIcon({
-        className: "",
-        html: `<div style="background:#0F1E35;border:2.5px solid #E8A830;border-radius:10px 10px 10px 2px;padding:5px 9px;font-size:11px;font-weight:700;color:#E8A830;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.55);cursor:pointer;transform:translateY(-100%)">
-          📌 ${item.precio ? "USD " + (item.precio/1000).toFixed(0) + "k" : "Sin precio"}
-        </div>`,
-        iconAnchor: [0, 0],
-      });
-      marksRef.current.push(window.L.marker([item.lat, item.lng], { icon }).addTo(map));
-    });
-    const withCoords = items.filter(i => i.lat && i.lng);
-    if (withCoords.length > 0) {
-      const bounds = window.L.latLngBounds(withCoords.map(i => [i.lat, i.lng]));
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
-    }
-  }, [mapLoaded, items]);
-
-  // ── Analizar con IA ─────────────────────────────────────────
   async function analizar() {
     if (!input.trim() || analizando) return;
-    setAnalizando(true);
-    setCampos(null);
-    setPendientes([]);
-    setCompletos({});
-
+    setAnalizando(true); setCampos(null); setCompletos({});
     const result = await analizarConIA(input);
-    if (result) {
-      setCampos(result);
-      const faltantes = result.campos_faltantes || [];
-      if (!result.direccion && !faltantes.includes('direccion')) faltantes.push('direccion');
-      setPendientes(faltantes);
-    } else {
-      // Sin créditos IA → modo manual simple
-      setCampos({});
-      setPendientes(["tipo", "zona", "precio"]);
-    }
+    setCampos(result || {});
     setAnalizando(false);
   }
 
-  // ── Guardar ─────────────────────────────────────────────────
   async function guardar() {
     if (guardando) return;
     setGuardando(true);
-
-    const merged = { ...campos, ...completos };
-    // completos tiene los valores editados por el usuario (toman precedencia)
-    const tipo      = completos.tipo      || campos?.tipo      || null;
-    const zona      = completos.zona      || campos?.zona      || null;
-    const dir       = completos.direccion || campos?.direccion || null;
-    const precio    = completos.precio    || campos?.precio    || null;
-    const ambientes = completos.ambientes || campos?.ambientes || null;
-    const m2tot     = completos.m2tot     || campos?.m2tot     || null;
-    const cochera   = completos.cochera   || campos?.cochera   || null;
-    const nomProp   = completos.nombre_propietario || campos?.nombre_propietario || null;
-    const tel       = completos.telefono  || campos?.telefono  || null;
-    const operacion = completos.operacion || campos?.operacion || "venta";
+    const get = k => completos[k] !== undefined ? completos[k] : campos?.[k] ?? null;
+    const dir = get("direccion"), zona = get("zona");
     let lat = null, lng = null;
-    if (dir) {
-      const coords = await nominatim(dir);
-      lat = coords.lat; lng = coords.lng;
-    }
-    if (!lat && zona) {
-      const coords = await nominatim(zona + ', Mar del Plata');
-      lat = coords.lat; lng = coords.lng;
-    }
-
+    if (dir) { const c = await nominatim(dir); lat=c.lat; lng=c.lng; }
+    if (!lat && zona) { const c = await nominatim(zona); lat=c.lat; lng=c.lng; }
     const { data, error } = await supabase.from("captaciones").insert([{
-      contenido:          input.trim(),
-      tipo,
-      zona,
-      direccion:          dir,
-      precio:             precio ? Number(precio) : null,
-      nombre_propietario: nomProp,
-      telefono:           tel,
-      caracts:            merged.caracts || null,
-      m2tot:              m2tot ? Number(m2tot) : null,
-      ambientes:          ambientes || null,
-      cochera:            cochera || null,
-      operacion,
-      nota:               nota.trim() || null,
-      url:                input.trim().startsWith('http') ? input.trim().split(' ')[0] : null,
-      ag:                 ag || null,
-      lat, lng,
-      convertida: false,
+      contenido: input.trim(), tipo:get("tipo"), zona, direccion:dir,
+      precio:get("precio")?Number(get("precio")):null,
+      ambientes:get("ambientes")?Number(get("ambientes")):null,
+      m2tot:get("m2tot")?Number(get("m2tot")):null,
+      cochera:get("cochera"), nombre_propietario:get("nombre_propietario"),
+      telefono:get("telefono"), caracts:get("caracts"),
+      operacion:get("operacion")||"venta", nota:nota.trim()||null,
+      ag:ag||null, lat, lng, convertida:false,
     }]).select().single();
-
     if (!error && data) {
-      setItems(p => [data, ...p]);
-      setInput(""); setNota(""); setCampos(null); setPendientes([]); setCompletos({});
+      setItems(p=>[data,...p]);
+      setInput(""); setNota(""); setCampos(null); setCompletos({});
     }
     setGuardando(false);
   }
@@ -503,178 +345,203 @@ export default function Captaciones({ supabase }) {
   async function eliminar() {
     if (!confirmDel) return;
     await supabase.from("captaciones").delete().eq("id", confirmDel.id);
-    setItems(p => p.filter(i => i.id !== confirmDel.id));
+    setItems(p=>p.filter(i=>i.id!==confirmDel.id));
     setConfirmDel(null);
   }
 
   async function convertir(item) {
     await supabase.from("captaciones").update({ convertida: true }).eq("id", item.id);
-    setItems(p => p.filter(i => i.id !== item.id));
+    setItems(p=>p.filter(i=>i.id!==item.id));
   }
 
-  function fmtFecha(iso) {
-    return new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  }
+  const inpS = { width:"100%", background:B.card, border:`1px solid ${B.border}`, borderRadius:7, padding:"7px 10px", color:B.text, fontSize:12, outline:"none", boxSizing:"border-box" };
+  const conUbicacion = items.filter(i=>i.lat&&i.lng).length;
 
-  const inpS = {
-    width: "100%", background: B.card, border: `1px solid ${B.border}`,
-    borderRadius: 7, padding: "7px 10px", color: B.text, fontSize: 12,
-    outline: "none", boxSizing: "border-box",
-  };
-
-  const LABEL_MAP = {
-    tipo: "Tipo de propiedad", zona: "Zona/barrio", precio: "Precio USD",
-    direccion: "Dirección", nombre_propietario: "Nombre del propietario",
-    telefono: "Teléfono", m2tot: "Superficie m²", operacion: "Venta o alquiler",
-  };
+  const CAMPOS_DEF = [
+    { k:"tipo",      label:"Tipo",        type:"select", opts:["","Departamento","Casa","PH","Dúplex","Local","Terreno","Otro"] },
+    { k:"operacion", label:"Operación",   type:"select", opts:["venta","alquiler"] },
+    { k:"zona",      label:"Zona/barrio", type:"text",   placeholder:"ej: La Perla", full:true },
+    { k:"direccion", label:"Dirección",   type:"text",   placeholder:"ej: San Martín 1234", full:true },
+    { k:"precio",    label:"Precio USD",  type:"number", placeholder:"85000" },
+    { k:"ambientes", label:"Ambientes",   type:"number", placeholder:"2" },
+    { k:"m2tot",     label:"M²",          type:"number", placeholder:"50" },
+    { k:"cochera",   label:"Cochera",     type:"select", opts:["","si","no"] },
+    { k:"nombre_propietario", label:"Propietario", type:"text" },
+    { k:"telefono",  label:"Teléfono",    type:"text" },
+    { k:"caracts",   label:"Características", type:"text", placeholder:"ej: luminoso, balcón...", full:true },
+  ];
 
   return (
-    <div style={{ overflowY: "auto", maxWidth: 700 }}>
+    <div style={{ overflowY:"auto", maxWidth:700, display:"flex", flexDirection:"column", gap:14 }}>
 
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:8 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: B.text, margin: 0, fontFamily: "Georgia,serif" }}>Captación rápida</h1>
-          <p style={{ fontSize: 12, color: "#8AAECC", margin: "3px 0 0" }}>Pegá texto, link o WhatsApp — la IA extrae todo</p>
+          <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Captación rápida</h1>
+          <p style={{ fontSize:12, color:"#8AAECC", margin:"3px 0 0" }}>Pegá texto, link o WhatsApp — la IA extrae todo</p>
         </div>
+        <div style={{ display:"flex", gap:4, background:B.card, borderRadius:8, padding:3, border:`1px solid ${B.border}` }}>
+          {["cards","mapa"].map(v => (
+            <button key={v} onClick={()=>setVistaActiva(v)}
+              style={{ padding:"5px 14px", borderRadius:6, cursor:"pointer", fontSize:11, fontWeight:600,
+                background:vistaActiva===v?B.accent:"transparent",
+                color:vistaActiva===v?"#fff":"#8AAECC", border:"none" }}>
+              {v==="cards"?`📋 Cards (${items.length})`:`📍 Mapa (${conUbicacion})`}
+            </button>
+          ))}
+        </div>
+      </div>
 
-        {/* Textarea */}
-        <div style={{ background: B.card, border: `1px solid ${B.accentL}40`, borderRadius: 12, padding: 14 }}>
-          <textarea
-            value={input}
-            onChange={e => { setInput(e.target.value); setCampos(null); setPendientes([]); }}
-            placeholder="Pegá acá el texto de WhatsApp, descripción del portal, dirección y precio... lo que tengas"
-            rows={5}
-            style={{ ...inpS, resize: "none", lineHeight: 1.6, marginBottom: 10 }}
-          />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
-            <div>
-              <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 3 }}>AGENTE</label>
-              <select value={ag} onChange={e => setAg(e.target.value)} style={inpS}>
-                <option value="">Sin especificar</option>
-                {Object.entries(AG).map(([k, v]) => <option key={k} value={k}>{v.n}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 3 }}>NOTA</label>
-              <input value={nota} onChange={e => setNota(e.target.value)} style={inpS} placeholder="ej: paga honorarios" />
-            </div>
+      {/* Input */}
+      <div style={{ background:B.card, border:`1px solid ${B.accentL}40`, borderRadius:12, padding:14, display:"flex", flexDirection:"column", gap:10 }}>
+        <textarea value={input} onChange={e=>{ setInput(e.target.value); setCampos(null); setCompletos({}); }}
+          placeholder="Pegá acá el texto de WhatsApp, descripción del portal, dirección y precio... lo que tengas"
+          rows={5} style={{ ...inpS, resize:"none", lineHeight:1.6 }} />
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+          <div>
+            <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:3 }}>AGENTE</label>
+            <select value={ag} onChange={e=>setAg(e.target.value)} style={inpS}>
+              <option value="">Sin especificar</option>
+              {Object.entries(AG).map(([k,v])=><option key={k} value={k}>{v.n}</option>)}
+            </select>
           </div>
-          <button onClick={analizar} disabled={analizando || !input.trim()}
-            style={{ width: "100%", padding: 11, borderRadius: 9, cursor: input.trim() && !analizando ? "pointer" : "default",
-              background: input.trim() && !analizando ? B.accent : B.border,
-              border: `1px solid ${input.trim() && !analizando ? B.accentL : B.border}`,
-              color: input.trim() && !analizando ? "#fff" : "#8AAECC",
-              fontSize: 13, fontWeight: 700 }}>
-            {analizando ? "✨ Analizando..." : "✨ Analizar con IA"}
+          <div>
+            <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:3 }}>NOTA RÁPIDA</label>
+            <input value={nota} onChange={e=>setNota(e.target.value)} style={inpS} placeholder="ej: paga honorarios" />
+          </div>
+        </div>
+        <button onClick={analizar} disabled={analizando||!input.trim()}
+          style={{ width:"100%", padding:11, borderRadius:9, cursor:input.trim()&&!analizando?"pointer":"default",
+            background:input.trim()&&!analizando?B.accent:B.border,
+            border:`1px solid ${input.trim()&&!analizando?B.accentL:B.border}`,
+            color:input.trim()&&!analizando?"#fff":"#8AAECC", fontSize:13, fontWeight:700 }}>
+          {analizando?"✨ Analizando...":"✨ Analizar con IA"}
+        </button>
+      </div>
+
+      {/* Resultado IA */}
+      {campos && (
+        <div style={{ background:B.card, border:`1px solid ${B.accentL}40`, borderRadius:12, padding:14, display:"flex", flexDirection:"column", gap:8 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:B.accentL, letterSpacing:"0.8px" }}>DATOS DETECTADOS — editá lo que haga falta</div>
+          {campos.fuera_de_mdp && (
+            <div style={{ padding:"8px 12px", borderRadius:8, background:"rgba(232,100,80,0.15)", border:"1px solid rgba(232,100,80,0.4)", fontSize:12, color:"#E86450" }}>
+              ⚠ Parece ser de <strong>{campos.ciudad_detectada||"otra ciudad"}</strong>. ¿Guardás igual?
+            </div>
+          )}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+            {CAMPOS_DEF.filter(f=>!f.full&&(f.type==="select"||["precio","ambientes","m2tot"].includes(f.k)===false)).slice(0,2).map(({ k, label, type, opts }) => {
+              const val = completos[k]!==undefined?completos[k]:(campos[k]||"");
+              const detected = !!campos[k];
+              return (
+                <div key={k}>
+                  <label style={{ fontSize:10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}{label.toUpperCase()}</label>
+                  <select value={val} onChange={e=>setCompletos(p=>({...p,[k]:e.target.value}))} style={inpS}>
+                    {opts.map(o=><option key={o} value={o}>{o||"—"}</option>)}
+                  </select>
+                </div>
+              );
+            })}
+          </div>
+          {/* Zona y dirección — full width */}
+          {["zona","direccion"].map(k => {
+            const def = CAMPOS_DEF.find(f=>f.k===k);
+            const val = completos[k]!==undefined?completos[k]:(campos[k]||"");
+            const detected = !!campos[k];
+            return (
+              <div key={k}>
+                <label style={{ fontSize:10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}{def.label.toUpperCase()}</label>
+                <input value={val} onChange={e=>setCompletos(p=>({...p,[k]:e.target.value}))}
+                  placeholder={def.placeholder||""} style={{...inpS,borderColor:detected?"#2E9E6A40":inpS.border}} />
+              </div>
+            );
+          })}
+          {/* Precio, ambientes, m2 — 3 cols */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+            {["precio","ambientes","m2tot"].map(k => {
+              const def = CAMPOS_DEF.find(f=>f.k===k);
+              const val = completos[k]!==undefined?completos[k]:(campos[k]||"");
+              const detected = !!campos[k];
+              return (
+                <div key={k}>
+                  <label style={{ fontSize:10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}{def.label.toUpperCase()}</label>
+                  <input type="number" value={val} onChange={e=>setCompletos(p=>({...p,[k]:e.target.value}))}
+                    placeholder={def.placeholder||""} style={{...inpS,borderColor:detected?"#2E9E6A40":inpS.border}} />
+                </div>
+              );
+            })}
+          </div>
+          {/* Cochera select */}
+          <div>
+            <label style={{ fontSize:10, color:campos.cochera?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{campos.cochera?"✓ ":""}COCHERA</label>
+            <select value={completos.cochera!==undefined?completos.cochera:(campos.cochera||"")} onChange={e=>setCompletos(p=>({...p,cochera:e.target.value}))} style={inpS}>
+              <option value="">Sin datos</option><option value="si">Con cochera</option><option value="no">Sin cochera</option>
+            </select>
+          </div>
+          {/* Propietario y teléfono */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+            {["nombre_propietario","telefono"].map(k => {
+              const def = CAMPOS_DEF.find(f=>f.k===k);
+              const val = completos[k]!==undefined?completos[k]:(campos[k]||"");
+              const detected = !!campos[k];
+              return (
+                <div key={k}>
+                  <label style={{ fontSize:10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}{def.label.toUpperCase()}</label>
+                  <input value={val} onChange={e=>setCompletos(p=>({...p,[k]:e.target.value}))}
+                    style={{...inpS,borderColor:detected?"#2E9E6A40":inpS.border}} />
+                </div>
+              );
+            })}
+          </div>
+          {/* Caracts */}
+          {(() => {
+            const val = completos.caracts!==undefined?completos.caracts:(campos.caracts||"");
+            const detected = !!campos.caracts;
+            return (
+              <div>
+                <label style={{ fontSize:10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}CARACTERÍSTICAS</label>
+                <input value={val} onChange={e=>setCompletos(p=>({...p,caracts:e.target.value}))}
+                  placeholder="ej: luminoso, 1er piso, balcón..." style={{...inpS,borderColor:detected?"#2E9E6A40":inpS.border}} />
+              </div>
+            );
+          })()}
+          <button onClick={guardar} disabled={guardando}
+            style={{ width:"100%", padding:10, borderRadius:9, cursor:guardando?"default":"pointer",
+              background:guardando?B.border:"#2E9E6A", border:`1px solid ${guardando?B.border:"#2E9E6A"}`,
+              color:guardando?"#8AAECC":"#fff", fontSize:13, fontWeight:700, marginTop:4 }}>
+            {guardando?"Guardando...":"📌 Guardar captación"}
           </button>
         </div>
+      )}
 
-        {/* Resultado IA */}
-        {campos && (
-          <div style={{ background: B.card, border: `1px solid ${B.accentL}40`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: B.accentL, letterSpacing: "0.8px" }}>DATOS DETECTADOS</div>
-            {campos.fuera_de_mdp && (
-              <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(232,100,80,0.15)",
-                border: "1px solid rgba(232,100,80,0.4)", fontSize: 12, color: "#E86450" }}>
-                ⚠ Esta propiedad parece ser de <strong>{campos.ciudad_detectada || "otra ciudad"}</strong>, no de Mar del Plata. ¿Querés guardarla igual?
-              </div>
-            )}
-
-            {/* Todos los campos — editables, pre-rellenados con lo detectado */}
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              {[
-                { k:"tipo", label:"Tipo", type:"select", opts:["Departamento","Casa","PH","Dúplex","Local","Terreno","Otro"] },
-                { k:"zona", label:"Zona/barrio", type:"text", placeholder:"ej: La Perla" },
-                { k:"direccion", label:"Dirección", type:"text", placeholder:"ej: San Martín 1234" },
-                { k:"precio", label:"Precio USD", type:"number", placeholder:"ej: 85000" },
-                { k:"ambientes", label:"Ambientes", type:"text", placeholder:"ej: 2" },
-                { k:"m2tot", label:"Superficie m²", type:"number", placeholder:"ej: 50" },
-                { k:"cochera", label:"Cochera", type:"select", opts:["", "si", "no"] },
-                { k:"nombre_propietario", label:"Propietario", type:"text" },
-                { k:"telefono", label:"Teléfono", type:"text" },
-                { k:"operacion", label:"Operación", type:"select", opts:["venta","alquiler"] },
-              ].map(({ k, label, type, opts, placeholder }) => {
-                const detVal = campos[k];
-                const curVal = completos[k] !== undefined ? completos[k] : (detVal || "");
-                const detected = !!detVal && !pendientes.includes(k);
-                return (
-                  <div key={k}>
-                    <label style={{ fontSize:10, color: detected ? "#2E9E6A" : "#8AAECC", display:"block", marginBottom:2 }}>
-                      {detected ? "✓ " : ""}{label.toUpperCase()}
-                    </label>
-                    {type === "select" ? (
-                      <select value={curVal} onChange={e => setCompletos(p => ({...p, [k]: e.target.value}))} style={inpS}>
-                        {opts.map(o => <option key={o} value={o}>{o || "—"}</option>)}
-                      </select>
-                    ) : (
-                      <input type={type} value={curVal}
-                        onChange={e => setCompletos(p => ({...p, [k]: e.target.value}))}
-                        style={{ ...inpS, borderColor: detected ? "#2E9E6A40" : inpS.border }}
-                        placeholder={placeholder || ""} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <button onClick={guardar} disabled={guardando}
-              style={{ width: "100%", padding: 10, borderRadius: 9, cursor: guardando ? "default" : "pointer",
-                background: guardando ? B.border : "#2E9E6A",
-                border: `1px solid ${guardando ? B.border : "#2E9E6A"}`,
-                color: guardando ? "#8AAECC" : "#fff", fontSize: 13, fontWeight: 700, marginTop: 4 }}>
-              {guardando ? "Guardando..." : "📌 Guardar captación"}
-            </button>
-          </div>
-        )}
-
-        {/* Lista */}
-        <div style={{ fontSize: 11, color: "#8AAECC", fontWeight: 600, letterSpacing: "1px" }}>
-          {items.length} CAPTACIONES PENDIENTES
-        </div>
-
-        {!loaded && <div style={{ textAlign: "center", color: "#8AAECC", fontSize: 12 }}>Cargando...</div>}
-        {loaded && items.length === 0 && (
-          <div style={{ textAlign: "center", padding: "30px 0", color: "#8AAECC", fontSize: 12 }}>Sin captaciones pendientes</div>
-        )}
-
-        {items.map(item => (
-          <CaptacionCard key={item.id} item={item} supabase={supabase}
-            onConvertir={convertir} onEliminar={setConfirmDel}
-            onUpdate={(id, updates) => setItems(p => p.map(i => i.id === id ? {...i, ...updates} : i))} />
-        ))}
+      {/* Vista cards o mapa */}
+      {vistaActiva==="mapa" ? (
+        <MapaCaptaciones items={items} />
+      ) : (
+        <>
+          <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px" }}>{items.length} CAPTACIONES PENDIENTES</div>
+          {!loaded && <div style={{ textAlign:"center", color:"#8AAECC", fontSize:12 }}>Cargando...</div>}
+          {loaded && items.length===0 && <div style={{ textAlign:"center", padding:"30px 0", color:"#8AAECC", fontSize:12 }}>Sin captaciones pendientes</div>}
+          {items.map(item => (
+            <CaptacionCard key={item.id} item={item} supabase={supabase}
+              onConvertir={convertir} onEliminar={setConfirmDel}
+              onUpdate={(id,upd)=>setItems(p=>p.map(i=>i.id===id?{...i,...upd}:i))} />
+          ))}
+        </>
+      )}
 
       {/* Modal eliminar */}
       {confirmDel && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
-          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}
-          onClick={() => setConfirmDel(null)}>
-          <div style={{ background: B.sidebar, border: `1px solid ${B.hot}50`, borderRadius: 14,
-            padding: "28px 32px", maxWidth: 360, width: "90%" }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: B.text, marginBottom: 6 }}>¿Eliminar captación?</div>
-            <div style={{ fontSize: 12, color: "#8AAECC", marginBottom: 20 }}>Esta acción no se puede deshacer.</div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setConfirmDel(null)}
-                style={{ flex: 1, padding: 10, borderRadius: 8, cursor: "pointer",
-                  background: "transparent", border: `1px solid ${B.border}`, color: "#8AAECC", fontSize: 12 }}>
-                Cancelar
-              </button>
-              <button onClick={eliminar}
-                style={{ flex: 1, padding: 10, borderRadius: 8, cursor: "pointer",
-                  background: B.hot, border: "none", color: "#fff", fontSize: 12, fontWeight: 700 }}>
-                Eliminar
-              </button>
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999 }} onClick={()=>setConfirmDel(null)}>
+          <div style={{ background:B.sidebar, border:`1px solid ${B.hot}50`, borderRadius:14, padding:"28px 32px", maxWidth:360, width:"90%" }} onClick={e=>e.stopPropagation()}>
+            <div style={{ fontSize:14, fontWeight:700, color:B.text, marginBottom:6 }}>¿Eliminar captación?</div>
+            <div style={{ fontSize:12, color:"#8AAECC", marginBottom:20 }}>Esta acción no se puede deshacer.</div>
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={()=>setConfirmDel(null)} style={{ flex:1, padding:10, borderRadius:8, cursor:"pointer", background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:12 }}>Cancelar</button>
+              <button onClick={eliminar} style={{ flex:1, padding:10, borderRadius:8, cursor:"pointer", background:B.hot, border:"none", color:"#fff", fontSize:12, fontWeight:700 }}>Eliminar</button>
             </div>
           </div>
         </div>
       )}
-
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg) } }
-        .leaflet-container { background: ${B.bg} !important; }
-        .leaflet-tile { filter: brightness(0.85) saturate(0.7) hue-rotate(200deg); }
-        .leaflet-control-zoom a { background: ${B.card} !important; color: ${B.accentL} !important; border-color: ${B.border} !important; }
-        .leaflet-control-attribution { background: rgba(7,14,28,0.8) !important; color: #4A6A90 !important; font-size: 9px; }
-      `}</style>
     </div>
   );
 }
