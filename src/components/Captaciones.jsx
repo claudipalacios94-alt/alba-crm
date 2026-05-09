@@ -432,7 +432,6 @@ export default function Captaciones({ supabase }) {
     const { data, error } = await supabase.from("captaciones").insert([{
       contenido: input.trim(), tipo:get("tipo"), zona, direccion:dir,
       precio:get("precio")?Number(get("precio")):null,
-      ambientes:get("ambientes")?Number(get("ambientes")):null,
       m2tot:get("m2tot")?Number(get("m2tot")):null,
       cochera:get("cochera"), nombre_propietario:get("nombre_propietario"),
       telefono:get("telefono"), caracts:get("caracts"),
