@@ -143,9 +143,14 @@ async function analizarConIA(texto) {
     });
     if (res.ok) {
       const text = await res.text();
-      return JSON.parse(text.replace(/```json|```/g, "").trim());
+      const trimmed = text.replace(/```json|```/g, "").trim();
+      if (trimmed && trimmed !== "{}") {
+        const parsed = JSON.parse(trimmed);
+        if (parsed.tipo || parsed.precio || parsed.zona) return parsed;
+      }
     }
   } catch(e) {}
+  // Sin creditos IA o respuesta vacia — usar parser local
   return parsearTextoLocal(texto);
 }
 
