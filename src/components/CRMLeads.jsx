@@ -159,6 +159,8 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
       nombre: lead.nombre || "", tel: lead.tel || "", zona: lead.zona || "",
       presup: lead.presup || "", tipo: lead.tipo || "", op: lead.op || "",
       origen: lead.origen || "", proxAccion: lead.proxAccion || "", nota: lead.nota || "",
+      cochera: lead.cochera || "", patio: lead.patio || "", credito: lead.credito || "",
+      balcon: lead.balcon || "", ambientes: lead.ambientes || "", m2min: lead.m2min || "",
     });
   }
  
@@ -170,6 +172,12 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
         presup: editData.presup ? Number(editData.presup) : null,
         tipo: editData.tipo, op: editData.op, origen: editData.origen,
         proxaccion: editData.proxAccion, nota: editData.nota,
+        cochera: editData.cochera || null,
+        patio:   editData.patio   || null,
+        credito: editData.credito || null,
+        balcon:  editData.balcon  || null,
+        ambientes: editData.ambientes || null,
+        m2min: editData.m2min ? Number(editData.m2min) : null,
       });
       setEditing(null);
     } catch(e) { console.error(e); }
@@ -349,6 +357,49 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                         <textarea value={editData.nota} onChange={e=>setEditData(d=>({...d,nota:e.target.value}))}
                           rows={3} style={{ ...inp, resize:"none" }} />
                       </div>
+                      {/* Características */}
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
+                        <div>
+                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>COCHERA</label>
+                          <select value={editData.cochera||""} onChange={e=>setEditData(d=>({...d,cochera:e.target.value}))} style={inp}>
+                            <option value="">Indistinto</option>
+                            <option value="si">Sí</option>
+                            <option value="no">No</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>PATIO</label>
+                          <select value={editData.patio||""} onChange={e=>setEditData(d=>({...d,patio:e.target.value}))} style={inp}>
+                            <option value="">Indistinto</option>
+                            <option value="si">Sí</option>
+                            <option value="no">No</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>CRÉDITO</label>
+                          <select value={editData.credito||""} onChange={e=>setEditData(d=>({...d,credito:e.target.value}))} style={inp}>
+                            <option value="">Sin info</option>
+                            <option value="si">Aprobado</option>
+                            <option value="no">No tiene</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>AMBIENTES</label>
+                          <input value={editData.ambientes||""} onChange={e=>setEditData(d=>({...d,ambientes:e.target.value}))} style={inp} placeholder="ej: 2" />
+                        </div>
+                        <div>
+                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>M² MÍN.</label>
+                          <input type="number" value={editData.m2min||""} onChange={e=>setEditData(d=>({...d,m2min:e.target.value}))} style={inp} placeholder="ej: 50" />
+                        </div>
+                        <div>
+                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>BALCÓN</label>
+                          <select value={editData.balcon||""} onChange={e=>setEditData(d=>({...d,balcon:e.target.value}))} style={inp}>
+                            <option value="">Indistinto</option>
+                            <option value="si">Sí</option>
+                            <option value="no">No</option>
+                          </select>
+                        </div>
+                      </div>
                       <div style={{ display:"flex", gap:8 }}>
                         <button onClick={() => saveEdit(lead.id)} disabled={saving}
                           style={{ flex:1, padding:"8px", borderRadius:7, cursor:"pointer",
@@ -393,6 +444,32 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties }) 
                         ))}
                       </div>
  
+                      {/* Características del lead — badges visuales */}
+                      {(() => {
+                        const tags = [
+                          lead.credito === "si"  && { label:"✅ Crédito aprobado", color:"#2E9E6A" },
+                          lead.cochera === "si"  && { label:"🚗 Con cochera",       color:"#4A8ABE" },
+                          lead.cochera === "no"  && { label:"❌ Sin cochera",        color:"#8AAECC" },
+                          lead.patio   === "si"  && { label:"🌿 Con patio",          color:"#4A8ABE" },
+                          lead.balcon  === "si"  && { label:"🏙 Con balcón",         color:"#4A8ABE" },
+                          lead.ambientes         && { label:`${lead.ambientes} amb.`, color:"#8AAECC" },
+                          lead.m2min             && { label:`Mín. ${lead.m2min}m²`,  color:"#8AAECC" },
+                          lead.op === "Inversor" && { label:"📈 Inversor",           color:"#E8A830" },
+                        ].filter(Boolean);
+                        if (!tags.length) return null;
+                        return (
+                          <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:10 }}>
+                            {tags.map((tag, i) => (
+                              <span key={i} style={{ fontSize:11, padding:"3px 9px", borderRadius:10,
+                                background: tag.color + "18", color: tag.color,
+                                border:`1px solid ${tag.color}40`, fontWeight:500 }}>
+                                {tag.label}
+                              </span>
+                            ))}
+                          </div>
+                        );
+                      })()}
+
                       {/* Nota */}
                       {lead.nota && (
                         <div style={{ fontSize:11, color:B.dim, background:B.bg, borderRadius:6,
