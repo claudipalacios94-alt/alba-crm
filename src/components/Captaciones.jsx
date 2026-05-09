@@ -394,10 +394,7 @@ export default function Captaciones({ supabase }) {
     load();
   }, []);
 
-  async function analizar() {
-    if (!input.trim() || analizando) return;
-    setAnalizando(true); setCampos(null); setCompletos({});
-    const result = await analizarConIA(input);
+  function prerellenar(result) {
     setCampos(result || {});
     if (result) {
       const pre = {};
@@ -407,7 +404,21 @@ export default function Captaciones({ supabase }) {
       });
       setCompletos(pre);
     }
+  }
+
+  async function analizar() {
+    if (!input.trim() || analizando) return;
+    setAnalizando(true); setCampos(null); setCompletos({});
+    const result = await analizarConIA(input);
+    prerellenar(result);
     setAnalizando(false);
+  }
+
+  function analizarLocal() {
+    if (!input.trim()) return;
+    setCampos(null); setCompletos({});
+    const result = parsearTextoLocal(input);
+    prerellenar(result);
   }
 
   async function guardar() {
@@ -503,13 +514,22 @@ export default function Captaciones({ supabase }) {
             <input value={nota} onChange={e=>setNota(e.target.value)} style={inpS} placeholder="ej: paga honorarios" />
           </div>
         </div>
-        <button onClick={analizar} disabled={analizando||!input.trim()}
-          style={{ width:"100%", padding:11, borderRadius:9, cursor:input.trim()&&!analizando?"pointer":"default",
-            background:input.trim()&&!analizando?B.accent:B.border,
-            border:`1px solid ${input.trim()&&!analizando?B.accentL:B.border}`,
-            color:input.trim()&&!analizando?"#fff":"#8AAECC", fontSize:13, fontWeight:700 }}>
-          {analizando?"✨ Analizando...":"✨ Analizar con IA"}
-        </button>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+          <button onClick={analizarLocal} disabled={!input.trim()}
+            style={{ padding:11, borderRadius:9, cursor:input.trim()?"pointer":"default",
+              background:input.trim()?"#1E3A5F":B.border,
+              border:`1px solid ${input.trim()?B.accentL:B.border}`,
+              color:input.trim()?B.accentL:"#8AAECC", fontSize:13, fontWeight:700 }}>
+            📋 Analizar
+          </button>
+          <button onClick={analizar} disabled={analizando||!input.trim()}
+            style={{ padding:11, borderRadius:9, cursor:input.trim()&&!analizando?"pointer":"default",
+              background:input.trim()&&!analizando?B.accent:B.border,
+              border:`1px solid ${input.trim()&&!analizando?B.accentL:B.border}`,
+              color:input.trim()&&!analizando?"#fff":"#8AAECC", fontSize:13, fontWeight:700 }}>
+            {analizando?"✨ Analizando...":"✨ Analizar con IA"}
+          </button>
+        </div>
       </div>
 
       {/* Resultado IA */}
