@@ -139,28 +139,93 @@ function InsightPanel({ leads, properties }) {
   );
 }
  
-function LeadCard({ lead }) {
-  const [open, setOpen] = React.useState(false);
+const PREGUNTAS = [
+  { key:'q_proposito',         label:'¿Vivienda o inversión?',         placeholder:'ej: vivienda propia' },
+  { key:'q_zona_presup',       label:'¿Zona y presupuesto?',           placeholder:'ej: La Perla, USD 90k' },
+  { key:'q_financiacion',      label:'¿Efectivo, crédito o permuta?',  placeholder:'ej: efectivo' },
+  { key:'q_credito_aprobado',  label:'¿Crédito aprobado?',             placeholder:'ej: sí, banco Nación' },
+  { key:'q_visitas_previas',   label:'¿Ya visitó propiedades?',        placeholder:'ej: 3 en La Perla' },
+  { key:'q_tiene_para_vender', label:'¿Tiene algo para vender antes?', placeholder:'ej: depto en Centro' },
+];
+
+function LeadCard({ lead, updateLead }) {
+  const [open,      setOpen]      = React.useState(false);
+  const [editQ,     setEditQ]     = React.useState(null);
+  const [valQ,      setValQ]      = React.useState('');
+  const [savingQ,   setSavingQ]   = React.useState(false);
   const ag = AG[lead.ag];
   const waLink = lead.tel ? 'https://wa.me/' + lead.tel.replace(/\D/g, '') : null;
   const urgColor = lead.etapa === 'Negociación' ? B.ok : lead.dias <= 2 ? B.hot : lead.dias <= 5 ? B.warm : B.accentL;
   const razon = lead.etapa === 'Negociación' ? 'En negociación' : lead.dias === 0 ? 'Nuevo hoy' : lead.dias <= 2 ? lead.dias+'d — Caliente' : lead.dias <= 5 ? lead.dias+'d — Tibio' : lead.dias+'d sin contacto';
+
+  const respondidas = PREGUNTAS.filter(p => lead[p.key]).length;
+  const pct = Math.round((respondidas / PREGUNTAS.length) * 100);
+  const calColor = respondidas <= 1 ? B.hot : respondidas <= 3 ? B.warm : B.ok;
+
+  async function guardarPregunta(key) {
+    setSavingQ(true);
+    if (updateLead) await updateLead(lead.id, { [key]: valQ });
+    lead[key] = valQ;
+    setEditQ(null);
+    setSavingQ(false);
+  }
+
   return (
     <div style={{ background:B.card, border:'1px solid ' + urgColor + '40', borderLeft:'3px solid ' + urgColor, borderRadius:10, overflow:'hidden' }}>
       <div onClick={() => setOpen(o => !o)} style={{ padding:'12px 14px', cursor:'pointer' }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
           <span style={{ fontSize:14, fontWeight:700, color:'#E8F0FA' }}>{lead.nombre}</span>
           {ag && <span style={{ fontSize:11, padding:'2px 7px', borderRadius:4, background:ag.bg||'rgba(42,91,173,0.25)', color:ag.c, fontWeight:700, border:'1px solid '+ag.c+'40' }}>{ag.n}</span>}
+          {/* Calificación rápida visible siempre */}
+          <span style={{ fontSize:10, padding:'2px 8px', borderRadius:10, background:calColor+'22', color:calColor, border:'1px solid '+calColor+'40', fontWeight:700 }}>
+            {respondidas}/{PREGUNTAS.length} calificado
+          </span>
           <span style={{ fontSize:11, color:urgColor, fontWeight:700, marginLeft:'auto' }}>{razon} {open ? '▲' : '▼'}</span>
         </div>
-        <div style={{ fontSize:12, color:'#8AAECC' }}>{lead.zona} · {lead.tipo} · {lead.presup ? 'USD ' + lead.presup.toLocaleString() : '—'}</div>
-        {!open && lead.nota && <div style={{ fontSize:12, color:'#6A8AAE', marginTop:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontStyle:'italic' }}>{lead.nota}</div>}
+        <div style={{ fontSize:12, color:'#8AAECC', marginBottom:4 }}>{lead.zona} · {lead.tipo} · {lead.presup ? 'USD ' + lead.presup.toLocaleString() : '—'}</div>
+        {/* Barra de calificación */}
+        <div style={{ height:3, background:B.border, borderRadius:2, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:pct+'%', background:calColor, borderRadius:2, transition:'width 0.3s' }} />
+        </div>
       </div>
       {open && (
         <div style={{ borderTop:'1px solid ' + urgColor + '30', padding:'12px 14px', background:'rgba(10,21,37,0.5)', display:'flex', flexDirection:'column', gap:10 }}>
           {lead.nota && <div style={{ fontSize:13, color:'#A8C8E8', lineHeight:1.6, fontStyle:'italic' }}>{lead.nota}</div>}
-          {lead.proxAccion && <div style={{ fontSize:12, color:'#8AAECC' }}><span style={{ color:'#5A8AAE', fontWeight:600, fontSize:11 }}>PROXIMA ACCION: </span>{lead.proxAccion}</div>}
+          {lead.proxAccion && <div style={{ fontSize:12, color:'#8AAECC' }}><span style={{ color:'#5A8AAE', fontWeight:600, fontSize:11 }}>PRÓXIMA ACCIÓN: </span>{lead.proxAccion}</div>}
           {lead.notaImp && <div style={{ fontSize:12, color:B.warm }}><span style={{ fontWeight:600 }}>⚠ </span>{lead.notaImp}</div>}
+
+          {/* Checklist calificación */}
+          <div style={{ background:'rgba(10,21,37,0.4)', borderRadius:8, padding:'10px 12px', border:'1px solid '+B.border }}>
+            <div style={{ fontSize:10, fontWeight:700, color:B.accentL, letterSpacing:'0.8px', marginBottom:8 }}>CALIFICACIÓN DEL LEAD</div>
+            {PREGUNTAS.map(p => (
+              <div key={p.key} style={{ marginBottom:6 }}>
+                {editQ === p.key ? (
+                  <div style={{ display:'flex', gap:6 }}>
+                    <input autoFocus value={valQ} onChange={e=>setValQ(e.target.value)}
+                      onKeyDown={e=>{ if(e.key==='Enter') guardarPregunta(p.key); if(e.key==='Escape') setEditQ(null); }}
+                      placeholder={p.placeholder}
+                      style={{ flex:1, background:B.bg, border:'1px solid '+B.accentL, borderRadius:5, padding:'4px 8px', color:B.text, fontSize:11, outline:'none' }} />
+                    <button onClick={()=>guardarPregunta(p.key)} disabled={savingQ}
+                      style={{ padding:'4px 10px', borderRadius:5, cursor:'pointer', background:B.accent, border:'none', color:'#fff', fontSize:11, fontWeight:700 }}>
+                      {savingQ?'...':'OK'}
+                    </button>
+                    <button onClick={()=>setEditQ(null)}
+                      style={{ padding:'4px 8px', borderRadius:5, cursor:'pointer', background:'transparent', border:'1px solid '+B.border, color:'#8AAECC', fontSize:11 }}>✕</button>
+                  </div>
+                ) : (
+                  <div onClick={()=>{ setEditQ(p.key); setValQ(lead[p.key]||''); }}
+                    style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'3px 6px', borderRadius:5, background: lead[p.key]?'rgba(46,158,106,0.08)':'rgba(204,34,51,0.06)' }}>
+                    <span style={{ fontSize:13, flexShrink:0 }}>{lead[p.key] ? '✅' : '⬜'}</span>
+                    <span style={{ fontSize:11, color:'#8AAECC', flex:1 }}>{p.label}</span>
+                    {lead[p.key]
+                      ? <span style={{ fontSize:11, color:'#A8C8E8', fontStyle:'italic' }}>{lead[p.key]}</span>
+                      : <span style={{ fontSize:10, color:B.hot }}>sin dato — tocá para completar</span>}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
           <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
             {lead.etapa && <span style={{ fontSize:11, padding:'3px 10px', borderRadius:10, background:urgColor+'22', color:urgColor, fontWeight:600, border:'1px solid '+urgColor+'40' }}>{lead.etapa}</span>}
             {lead.op && <span style={{ fontSize:11, color:'#8AAECC' }}>{lead.op}</span>}
@@ -364,7 +429,7 @@ export default function Briefing({ leads, properties, supabase }) {
         <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>🔥 Llamar hoy</div>
         <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
           {urgentes.length === 0 && <div style={{ textAlign:"center", padding:"20px 0", color:B.dim, fontSize:12 }}>Sin leads urgentes</div>}
-          {urgentes.map(l => <LeadCard key={l.id} lead={l} />)}
+          {urgentes.map(l => <LeadCard key={l.id} lead={l} updateLead={async (id, upd) => { await supabase.from('leads').update(upd).eq('id', id); }} />)}
         </div>
       </div>
 
