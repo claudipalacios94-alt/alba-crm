@@ -71,7 +71,7 @@ function makeCaptacionPin(tipo) {
   return `<div style="position:relative;display:inline-flex;flex-direction:column;align-items:center">
     <div style="
       background:white;
-      border:3px dashed #E8A830;
+      border:3px dashed #CC2233;
       border-radius:50%;
       width:36px;height:36px;
       display:flex;align-items:center;justify-content:center;
@@ -80,10 +80,10 @@ function makeCaptacionPin(tipo) {
       position:relative;
     ">
       ${icono}
-      <div style="position:absolute;top:-5px;right:-5px;background:#E8A830;color:#0F1E35;font-size:8px;font-weight:800;padding:1px 4px;border-radius:4px;line-height:1.4">?</div>
+      <div style="position:absolute;top:-5px;right:-5px;background:#CC2233;color:#0F1E35;font-size:8px;font-weight:800;padding:1px 4px;border-radius:4px;line-height:1.4">?</div>
     </div>
-    <div style="width:2px;height:8px;background:#E8A830;margin-top:-1px"></div>
-    <div style="width:6px;height:6px;background:#E8A830;border-radius:50%;margin-top:-1px;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>
+    <div style="width:2px;height:8px;background:#CC2233;margin-top:-1px"></div>
+    <div style="width:6px;height:6px;background:#CC2233;border-radius:50%;margin-top:-1px;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>
   </div>`;
 }
 
@@ -314,7 +314,7 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
         </button>
         <button onClick={() => setCapas(c => ({ ...c, captaciones: !c.captaciones }))}
           style={{ ...chip(capas.captaciones), display: "flex", alignItems: "center", gap: 5 }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: capas.captaciones ? "#E8A830" : "#4A6A90" }} />
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: capas.captaciones ? "#CC2233" : "#4A6A90" }} />
           Captaciones ({capConCoords})
         </button>
 
@@ -335,7 +335,7 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
           </div>
         ))}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <div style={{ width: 7, height: 7, borderRadius: "50%", background: "transparent", border: "2px dashed #E8A830" }} />
+          <div style={{ width: 7, height: 7, borderRadius: "50%", background: "transparent", border: "2px dashed #CC2233" }} />
           <span style={{ fontSize: 11, color: "#8AAECC" }}>Captación</span>
         </div>
       </div>
@@ -384,11 +384,11 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
             const isSel = sel?.id === cap.id && sel?._tipo === "captacion";
             return (
               <div key={cap.id} onClick={() => { setSel({ ...cap, _tipo: "captacion" }); leafRef.current?.setView([cap.lat, cap.lng], 16); }}
-                style={{ background: isSel ? "#E8A83018" : B.card,
-                  border: `1.5px solid ${isSel ? "#E8A830" : B.border}`,
-                  borderLeft: "3px solid #E8A830", borderRadius: 9, padding: "9px 11px",
+                style={{ background: isSel ? "#CC223318" : B.card,
+                  border: `1.5px solid ${isSel ? "#CC2233" : B.border}`,
+                  borderLeft: "3px solid #CC2233", borderRadius: 9, padding: "9px 11px",
                   cursor: "pointer", flexShrink: 0, borderStyle: "dashed" }}>
-                <div style={{ fontSize: 11, color: "#E8A830", fontWeight: 600 }}>📌 Captación</div>
+                <div style={{ fontSize: 11, color: "#CC2233", fontWeight: 600 }}>📌 Captación</div>
                 <div style={{ fontSize: 11, color: "#8AAECC" }}>{cap.zona || cap.direccion || "Sin dirección"}</div>
                 {cap.precio && <div style={{ fontSize: 13, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif", marginTop: 2 }}>USD {Number(cap.precio).toLocaleString()}</div>}
               </div>
@@ -400,12 +400,12 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
       {/* Popup */}
       {sel && (
         <div style={{ position: "absolute", bottom: 24, left: "50%", transform: "translateX(-50%)",
-          background: "#0B1628", border: `1px solid ${sel._tipo === "captacion" ? "#E8A830" : B.accentL}50`,
+          background: "#0B1628", border: `1px solid ${sel._tipo === "captacion" ? "#CC2233" : B.accentL}50`,
           borderRadius: 14, padding: "14px 20px", zIndex: 1000,
           display: "flex", alignItems: "center", gap: 16,
           boxShadow: "0 8px 40px rgba(0,0,0,0.7)", maxWidth: 500, width: "90%" }}>
           <div style={{ width: 3, alignSelf: "stretch",
-            background: sel._tipo === "captacion" ? "#E8A830" : CAT_COLOR[sel.categoria || "normal"],
+            background: sel._tipo === "captacion" ? "#CC2233" : CAT_COLOR[sel.categoria || "normal"],
             borderRadius: 2, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             {sel._tipo === "propiedad" ? (
