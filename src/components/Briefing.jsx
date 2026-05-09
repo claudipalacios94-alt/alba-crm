@@ -140,12 +140,10 @@ function InsightPanel({ leads, properties }) {
 }
  
 const PREGUNTAS = [
-  { key:'q_proposito',         label:'¿Vivienda o inversión?',         placeholder:'ej: vivienda propia' },
-  { key:'q_zona_presup',       label:'¿Zona y presupuesto?',           placeholder:'ej: La Perla, USD 90k' },
-  { key:'q_financiacion',      label:'¿Efectivo, crédito o permuta?',  placeholder:'ej: efectivo' },
-  { key:'q_credito_aprobado',  label:'¿Crédito aprobado?',             placeholder:'ej: sí, banco Nación' },
-  { key:'q_visitas_previas',   label:'¿Ya visitó propiedades?',        placeholder:'ej: 3 en La Perla' },
-  { key:'q_tiene_para_vender', label:'¿Tiene algo para vender antes?', placeholder:'ej: depto en Centro' },
+  { key:'q_visitas_previas',   label:'¿Cuánto tiempo llevás buscando?',         placeholder:'ej: 2 semanas, 6 meses...' },
+  { key:'q_freno',             label:'¿Qué te frenó en propiedades anteriores?', placeholder:'ej: precio, ubicación...' },
+  { key:'q_tiene_para_vender', label:'¿Tenés algo para vender o permutar?',     placeholder:'ej: depto en Centro' },
+  { key:'q_fecha_limite',      label:'¿Hay una fecha límite para decidir?',     placeholder:'ej: vence alquiler en agosto' },
 ];
 
 function LeadCard({ lead, updateLead }) {
