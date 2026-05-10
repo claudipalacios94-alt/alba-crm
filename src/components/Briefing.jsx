@@ -444,6 +444,88 @@ function ResumenCaptacionZonas({ supabase }) {
   );
 }
 
+function MicBtn({ onTranscript }) {
+  const [escuchando, setEscuchando] = React.useState(false);
+  const [nivel,      setNivel]      = React.useState([0,0,0,0,0]);
+  const reconRef  = React.useRef(null);
+  const animRef   = React.useRef(null);
+  const analyserRef = React.useRef(null);
+  const streamRef = React.useRef(null);
+
+  function animarOndas() {
+    if (analyserRef.current) {
+      const data = new Uint8Array(analyserRef.current.frequencyBinCount);
+      analyserRef.current.getByteFrequencyData(data);
+      const slice = Math.floor(data.length / 5);
+      setNivel([0,1,2,3,4].map(i => Math.min(1, data[i*slice] / 128)));
+    }
+    animRef.current = requestAnimationFrame(animarOndas);
+  }
+
+  async function toggleMic() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert("Usá Chrome para el micrófono."); return; }
+    if (escuchando) {
+      reconRef.current?.stop();
+      cancelAnimationFrame(animRef.current);
+      streamRef.current?.getTracks().forEach(t=>t.stop());
+      setEscuchando(false); setNivel([0,0,0,0,0]); return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+      streamRef.current = stream;
+      const ctx = new (window.AudioContext||window.webkitAudioContext)();
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      src.connect(analyser);
+      analyserRef.current = analyser;
+      animarOndas();
+    } catch(e) {}
+
+    const recon = new SR();
+    recon.lang = "es-AR"; recon.continuous = false; recon.interimResults = false;
+    recon.onresult = e => { onTranscript(e.results[0][0].transcript); };
+    recon.onend = () => {
+      cancelAnimationFrame(animRef.current);
+      streamRef.current?.getTracks().forEach(t=>t.stop());
+      setEscuchando(false); setNivel([0,0,0,0,0]);
+    };
+    recon.onerror = () => {
+      cancelAnimationFrame(animRef.current);
+      setEscuchando(false); setNivel([0,0,0,0,0]);
+    };
+    reconRef.current = recon;
+    recon.start();
+    setEscuchando(true);
+  }
+
+  const heights = [14,22,30,22,14];
+
+  return (
+    <button onClick={toggleMic}
+      style={{ position:"relative", width:44, height:36, borderRadius:8, cursor:"pointer", flexShrink:0,
+        background: escuchando ? "rgba(204,34,51,0.15)" : "rgba(42,91,173,0.12)",
+        border: `1px solid ${escuchando?"#CC2233":B.border}`,
+        display:"flex", alignItems:"center", justifyContent:"center", gap:2,
+        transition:"all 0.2s" }}>
+      {escuchando ? (
+        nivel.map((n, i) => (
+          <div key={i} style={{
+            width:3, borderRadius:2,
+            height: heights[i] * (0.3 + n * 0.7) + "px",
+            background:"#CC2233",
+            transition:"height 0.08s ease",
+            minHeight:3,
+          }} />
+        ))
+      ) : (
+        <span style={{ fontSize:16 }}>🎙</span>
+      )}
+    </button>
+  );
+}
+
 function BriefingIA({ leads, properties, supabase, onConsumo }) {
   const [mensajes,  setMensajes]  = React.useState([]);
   const [input,     setInput]     = React.useState("");
@@ -592,11 +674,12 @@ REGLAS: Respondés en español rioplatense, directo y conciso. Si Claudi mencion
 
       {/* Input */}
       {iniciado && (
-        <div style={{ padding:"10px 16px", borderTop:`1px solid ${B.border}`, display:"flex", gap:8 }}>
+        <div style={{ padding:"10px 16px", borderTop:`1px solid ${B.border}`, display:"flex", gap:8, alignItems:"center" }}>
           <input value={input} onChange={e=>setInput(e.target.value)}
             onKeyDown={e=>{ if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); enviar(input); } }}
-            placeholder="Escribí acá... (Enter para enviar)"
+            placeholder="Escribí o dictá..."
             style={inp} />
+          <MicBtn onTranscript={t=>setInput(p=>p?p+" "+t:t)} />
           <button onClick={()=>enviar(input)} disabled={loading || !input.trim()}
             style={{ padding:"8px 14px", borderRadius:8, cursor:loading||!input.trim()?"default":"pointer",
               background:loading||!input.trim()?B.border:B.accent,
