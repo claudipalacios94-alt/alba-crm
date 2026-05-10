@@ -375,7 +375,7 @@ function Grafo({ notas, onSelectNota, selectedId }) {
 }
 
 // ── Chat Asistente ────────────────────────────────────────────
-function AsistenteChat({ leads, properties, supabase, onNotaCreada }) {
+function AsistenteChat({ leads, properties, supabase, onNotaCreada, onConsumo }) {
   const [mensajes,  setMensajes]  = useState([]);
   const [input,     setInput]     = useState("");
   const [loading,   setLoading]   = useState(false);
@@ -635,7 +635,7 @@ function PanelNota({ nota, supabase, notas, onUpdate, onDelete, onLink }) {
 }
 
 // ── Módulo principal ──────────────────────────────────────────
-export default function Cuaderno({ leads, properties, supabase }) {
+export default function Cuaderno({ leads, properties, supabase, onConsumo }) {
   const [notas,       setNotas]       = useState([]);
   const [loaded,      setLoaded]      = useState(false);
   const [selectedNota,setSelectedNota]= useState(null);
@@ -777,7 +777,7 @@ export default function Cuaderno({ leads, properties, supabase }) {
                   onUpdate={updateNota} onDelete={deleteNota} />
               ) : (
                 <AsistenteChat leads={leads} properties={properties} supabase={supabase}
-                  onNotaCreada={data => crearNota(data)} />
+                  onNotaCreada={data => crearNota(data)} onConsumo={onConsumo} />
               )}
             </div>
           </>

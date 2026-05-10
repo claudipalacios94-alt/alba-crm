@@ -108,7 +108,8 @@ export default function App() {
 
 
   function agregarConsumo(inputTokens, outputTokens) {
-    const costo = (inputTokens / 1000 * 0.00025) + (outputTokens / 1000 * 0.00125);
+    const costoBase = (inputTokens / 1000 * 0.00025) + (outputTokens / 1000 * 0.00125);
+    const costo = costoBase * 1.05; // +5% margen de seguridad
     const nuevo = parseFloat((consumoIA + costo).toFixed(6));
     setConsumoIA(nuevo);
     localStorage.setItem("alba_consumo_ia", nuevo);
@@ -282,7 +283,7 @@ export default function App() {
       }}>
         {view === "briefing"    && <Briefing    leads={leads} properties={properties} supabase={supabase} />}
         {view === "buscador"    && <Buscador    leads={leads} saveSearchResult={saveSearchResult} getSearchResult={getSearchResult} />}
-        {view === "cuaderno"    && <Cuaderno    leads={leads} properties={properties} supabase={supabase} />}
+        {view === "cuaderno"    && <Cuaderno    leads={leads} properties={properties} supabase={supabase} onConsumo={agregarConsumo} />}
         {view === "kanban"      && <Kanban      leads={leads} updateLead={updateLead} />}
         {view === "crm"         && <CRMLeads    leads={leads} updateLead={updateLead} deleteLead={deleteLead} properties={properties} supabase={supabase} />}
         {view === "propiedades" && <Propiedades properties={properties} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />}
