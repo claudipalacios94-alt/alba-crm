@@ -211,7 +211,35 @@ function AsistenteChat({ leads, properties, supabase, onNotaCreada }) {
   const [mensajes,  setMensajes]  = useState([]);
   const [input,     setInput]     = useState("");
   const [loading,   setLoading]   = useState(false);
+  const [escuchando, setEscuchando] = useState(false);
+  const reconRef = useRef(null);
   const chatRef = useRef(null);
+
+  function toggleMic() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Tu navegador no soporta reconocimiento de voz. Usá Chrome.");
+      return;
+    }
+    if (escuchando) {
+      reconRef.current?.stop();
+      setEscuchando(false);
+      return;
+    }
+    const recon = new SpeechRecognition();
+    recon.lang = "es-AR";
+    recon.continuous = false;
+    recon.interimResults = false;
+    recon.onresult = e => {
+      const texto = e.results[0][0].transcript;
+      setInput(prev => prev ? prev + " " + texto : texto);
+    };
+    recon.onend = () => setEscuchando(false);
+    recon.onerror = () => setEscuchando(false);
+    reconRef.current = recon;
+    recon.start();
+    setEscuchando(true);
+  }
 
   useEffect(() => {
     if (!supabase) return;
@@ -333,8 +361,16 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
       <div style={{ padding:"10px 14px", borderTop:`1px solid ${B.border}`, display:"flex", gap:8 }}>
         <input value={input} onChange={e=>setInput(e.target.value)}
           onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); enviar(input); } }}
-          placeholder="Escribí... (Enter para enviar)"
+          placeholder="Escribí o dictá... (Enter para enviar)"
           style={inp} />
+        <button onClick={toggleMic}
+          style={{ padding:"8px 12px", borderRadius:8, cursor:"pointer",
+            background: escuchando ? "#CC2233" : "rgba(42,91,173,0.15)",
+            border:`1px solid ${escuchando?"#CC2233":B.border}`,
+            color: escuchando ? "#fff" : "#8AAECC", fontSize:14, transition:"all 0.2s" }}
+          title={escuchando ? "Parar" : "Dictar"}>
+          {escuchando ? "⏹" : "🎙"}
+        </button>
         <button onClick={()=>enviar(input)} disabled={loading||!input.trim()}
           style={{ padding:"8px 14px", borderRadius:8, cursor:loading||!input.trim()?"default":"pointer",
             background:loading||!input.trim()?B.border:B.accent, border:"none",
