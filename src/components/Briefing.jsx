@@ -240,71 +240,126 @@ function LeadCard({ lead, updateLead }) {
 
 
 function CalendarioSemanal({ supabase }) {
-  const [tareas, setTareas] = React.useState([]);
+  const [tareas,  setTareas]  = React.useState([]);
+  const [vistaM,  setVistaM]  = React.useState(false); // false=semana, true=mes
+  const [mesBase, setMesBase] = React.useState(new Date());
   const hoy = new Date(); hoy.setHours(0,0,0,0);
-  const lunes = new Date(hoy); lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
-  const semana = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(lunes); d.setDate(lunes.getDate() + i); return d;
-  });
-  const DIAS = ["Lu","Ma","Mi","Ju","Vi","Sa","Do"];
+  const DIAS    = ["Lu","Ma","Mi","Ju","Vi","Sa","Do"];
+  const MESES   = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   const PRIO_COLOR = { urgente:"#CC2233", importante:"#E8A830", normal:"#4A8ABE" };
+
+  const lunes = new Date(hoy); lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
+  const semana = Array.from({ length: 7 }, (_, i) => { const d = new Date(lunes); d.setDate(lunes.getDate() + i); return d; });
+
+  // Mes completo
+  const primerDiaMes = new Date(mesBase.getFullYear(), mesBase.getMonth(), 1);
+  const diasEnMes = new Date(mesBase.getFullYear(), mesBase.getMonth()+1, 0).getDate();
+  const offsetInicio = (primerDiaMes.getDay() + 6) % 7; // lunes=0
+  const celdas = Array.from({ length: offsetInicio + diasEnMes }, (_, i) => {
+    if (i < offsetInicio) return null;
+    return new Date(mesBase.getFullYear(), mesBase.getMonth(), i - offsetInicio + 1);
+  });
 
   React.useEffect(() => {
     if (!supabase) return;
-    const desde = lunes.toISOString().slice(0,10);
-    const hasta = new Date(lunes.getTime() + 6*86400000).toISOString().slice(0,10);
+    const desde = vistaM
+      ? new Date(mesBase.getFullYear(), mesBase.getMonth(), 1).toISOString().slice(0,10)
+      : lunes.toISOString().slice(0,10);
+    const hasta = vistaM
+      ? new Date(mesBase.getFullYear(), mesBase.getMonth()+1, 0).toISOString().slice(0,10)
+      : new Date(lunes.getTime() + 6*86400000).toISOString().slice(0,10);
     supabase.from("tareas").select("*").eq("completada", false)
       .gte("fecha", desde).lte("fecha", hasta)
       .then(({ data }) => setTareas(data || []));
-  }, []);
+  }, [vistaM, mesBase.getMonth()]);
 
-  const tareasDelDia = (d) => tareas.filter(t => t.fecha === d.toISOString().slice(0,10));
-  const totalSemana = tareas.length;
+  const tareasDelDia = (d) => d ? tareas.filter(t => t.fecha === d.toISOString().slice(0,10)) : [];
+
+  const DiaCell = ({ dia, mini }) => {
+    if (!dia) return <div />;
+    const isHoy = dia.toDateString() === hoy.toDateString();
+    const td = tareasDelDia(dia);
+    return (
+      <div>
+        <div style={{ textAlign:"center", marginBottom: mini ? 2 : 6 }}>
+          <div style={{ fontSize: mini ? 11 : 16, fontWeight: isHoy ? 700 : 400,
+            color: isHoy ? "#fff" : "#8AAECC",
+            background: isHoy ? B.accentL : "transparent",
+            borderRadius:"50%", width: mini ? 22 : 28, height: mini ? 22 : 28,
+            display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto" }}>
+            {dia.getDate()}
+          </div>
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", gap:2, minHeight: mini ? 20 : 40 }}>
+          {td.length === 0
+            ? <div style={{ height:2, borderRadius:2, background:B.border, opacity:0.2, margin:"3px 0" }} />
+            : td.slice(0, mini ? 2 : 99).map(t => (
+              <div key={t.id} title={t.titulo}
+                style={{ fontSize: mini ? 8 : 9, padding:"1px 3px", borderRadius:3,
+                  background:(PRIO_COLOR[t.prioridad]||"#4A8ABE")+"20",
+                  color:PRIO_COLOR[t.prioridad]||"#4A8ABE",
+                  border:"1px solid "+(PRIO_COLOR[t.prioridad]||"#4A8ABE")+"40",
+                  overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", lineHeight:1.4 }}>
+                {t.titulo}
+              </div>
+            ))}
+          {mini && td.length > 2 && <div style={{ fontSize:8, color:"#4A6A90" }}>+{td.length-2}</div>}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div>
+      {/* Header con toggle */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
-        <span style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", textTransform:"uppercase" }}>📅 Esta semana</span>
-        {totalSemana > 0 && <span style={{ fontSize:11, color:B.accentL, background:B.accentL+"18", padding:"1px 7px", borderRadius:8, fontWeight:600 }}>{totalSemana} tareas</span>}
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          {vistaM && (
+            <>
+              <button onClick={()=>setMesBase(new Date(mesBase.getFullYear(), mesBase.getMonth()-1, 1))}
+                style={{ background:"transparent", border:`1px solid ${B.border}`, borderRadius:5, color:"#8AAECC", cursor:"pointer", padding:"2px 8px", fontSize:12 }}>‹</button>
+              <span style={{ fontSize:12, fontWeight:600, color:B.text }}>{MESES[mesBase.getMonth()]} {mesBase.getFullYear()}</span>
+              <button onClick={()=>setMesBase(new Date(mesBase.getFullYear(), mesBase.getMonth()+1, 1))}
+                style={{ background:"transparent", border:`1px solid ${B.border}`, borderRadius:5, color:"#8AAECC", cursor:"pointer", padding:"2px 8px", fontSize:12 }}>›</button>
+            </>
+          )}
+          {!vistaM && <span style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px" }}>📅 ESTA SEMANA</span>}
+        </div>
+        <div style={{ display:"flex", gap:4, background:B.card, borderRadius:6, padding:2, border:`1px solid ${B.border}` }}>
+          {["Semana","Mes"].map((v,i) => (
+            <button key={v} onClick={()=>setVistaM(i===1)}
+              style={{ padding:"3px 10px", borderRadius:4, cursor:"pointer", fontSize:10, fontWeight:600, border:"none",
+                background: vistaM===(i===1) ? B.accent : "transparent",
+                color: vistaM===(i===1) ? "#fff" : "#8AAECC" }}>
+              {v}
+            </button>
+          ))}
+        </div>
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:6 }}>
-        {semana.map((dia, i) => {
-          const isHoy = dia.toDateString() === hoy.toDateString();
-          const td = tareasDelDia(dia);
-          return (
-            <div key={i}>
-              <div style={{ textAlign:"center", marginBottom:6 }}>
-                <div style={{ fontSize:10, color: isHoy ? B.accentL : "#6A8AAE", fontWeight: isHoy ? 700 : 400 }}>{DIAS[i]}</div>
-                <div style={{ fontSize:16, fontWeight: isHoy ? 700 : 400,
-                  color: isHoy ? "#fff" : "#8AAECC",
-                  background: isHoy ? B.accentL : "transparent",
-                  borderRadius:"50%", width:28, height:28,
-                  display:"flex", alignItems:"center", justifyContent:"center", margin:"2px auto" }}>
-                  {dia.getDate()}
-                </div>
-              </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:2, minHeight:40 }}>
-                {td.length === 0 ? (
-                  <div style={{ height:3, borderRadius:2, background:B.border, opacity:0.3, margin:"4px 0" }} />
-                ) : td.map(t => (
-                  <div key={t.id} title={t.titulo}
-                    style={{ fontSize:9, padding:"2px 4px", borderRadius:3,
-                      background: (PRIO_COLOR[t.prioridad]||"#4A8ABE") + "20",
-                      color: PRIO_COLOR[t.prioridad]||"#4A8ABE",
-                      border: "1px solid " + (PRIO_COLOR[t.prioridad]||"#4A8ABE") + "40",
-                      overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
-                      lineHeight:1.4 }}>
-                    {t.titulo}
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {totalSemana === 0 && (
+
+      {/* Vista semana */}
+      {!vistaM && (
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:6 }}>
+          {DIAS.map((d,i) => (
+            <div key={i} style={{ textAlign:"center", fontSize:10, color:"#6A8AAE", marginBottom:4 }}>{d}</div>
+          ))}
+          {semana.map((dia, i) => <DiaCell key={i} dia={dia} mini={false} />)}
+        </div>
+      )}
+
+      {/* Vista mes */}
+      {vistaM && (
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:4 }}>
+          {DIAS.map((d,i) => (
+            <div key={i} style={{ textAlign:"center", fontSize:9, color:"#6A8AAE", marginBottom:4 }}>{d}</div>
+          ))}
+          {celdas.map((dia, i) => <DiaCell key={i} dia={dia} mini={true} />)}
+        </div>
+      )}
+
+      {tareas.length === 0 && (
         <div style={{ textAlign:"center", fontSize:12, color:"#4A6A90", marginTop:8 }}>
-          Sin tareas esta semana
+          Sin tareas {vistaM ? "este mes" : "esta semana"}
         </div>
       )}
     </div>
