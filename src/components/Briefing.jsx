@@ -746,60 +746,103 @@ export default function Briefing({ leads, properties, supabase, onConsumo }) {
     color: filtroAg === a ? B.accentL : B.muted,
   });
  
+  const STATS = [
+    { label:"En negociación", value:enNegociacion, sub:"cierres potenciales", color:"#E8A830", icon:"◆" },
+    { label:"Calientes hoy",  value:nCalientes,    sub:"≤2 días sin contacto", color:"#CC2233", icon:"●" },
+    { label:"Leads nuevos",   value:leadsNuevosMes,sub:"este mes",            color:B.accentL,  icon:"↑" },
+    { label:"En cartera",     value:propsActivas,  sub:"propiedades activas", color:"#2E9E6A",  icon:"⬡" },
+    { label:"Pipeline total", value:activos.length,sub:`de ${leads.length} leads`, color:"#8AAECC", icon:"≡" },
+  ];
+
   return (
     <div style={{ width:"100%", maxWidth:"100%", minWidth:0, overflowX:"hidden" }}>
-      {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
+
+      {/* ── Header ─────────────────────────────────────────── */}
+      <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", marginBottom:24, paddingBottom:20, borderBottom:`1px solid ${B.border}` }}>
         <div>
-          <h1 style={{ fontSize:24, fontWeight:600, color:"#D0DDEE", margin:0, fontFamily:"Cormorant Garamond,Georgia,serif", letterSpacing:"0.5px" }}>{saludo} ✦</h1>
-          <div style={{ fontSize:11, color:"#8AAECC", marginTop:3 }}>{hoy.toLocaleDateString("es-AR", { weekday:"long", day:"numeric", month:"long", year:"numeric" })}</div>
+          <div style={{ fontSize:11, color:"#4A6A90", letterSpacing:"2px", textTransform:"uppercase", marginBottom:6, fontWeight:500 }}>
+            {hoy.toLocaleDateString("es-AR", { weekday:"long" }).toUpperCase()} · {hoy.toLocaleDateString("es-AR", { day:"numeric", month:"long", year:"numeric" })}
+          </div>
+          <h1 style={{ fontSize:28, fontWeight:400, color:"#E8F0FA", margin:0,
+            fontFamily:"Georgia, 'Times New Roman', serif", letterSpacing:"-0.5px", lineHeight:1.1 }}>
+            {saludo}, <span style={{ fontStyle:"italic", color:B.accentL }}>Claudi</span>
+          </h1>
         </div>
-        <div style={{ display:"flex", gap:5 }}>
-          {["Todos","C","A","F","L"].map(a => (
-            <button key={a} onClick={() => setFiltroAg(a)} style={chipAg(a)}>
-              {a === "Todos" ? "Todos" : AG[a]?.n || a}
-            </button>
-          ))}
+        <div style={{ display:"flex", gap:4, background:"rgba(10,21,37,0.6)", borderRadius:10, padding:4, border:`1px solid ${B.border}` }}>
+          {["Todos","C","A","F","L"].map(a => {
+            const ag = AG[a];
+            const active = filtroAg === a;
+            return (
+              <button key={a} onClick={() => setFiltroAg(a)}
+                style={{ padding:"5px 12px", borderRadius:7, fontSize:11, cursor:"pointer", border:"none", fontWeight:600, transition:"all 0.15s",
+                  background: active ? (ag?.bg || B.accent) : "transparent",
+                  color: active ? (ag?.c || "#fff") : "#4A6A90" }}>
+                {a === "Todos" ? "Todos" : ag?.n || a}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Gauges */}
-      <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:"16px 8px", marginBottom:14, display:"flex", justifyContent:"space-between", gap:4, overflowX:"auto" }}>
-        <Gauge value={enNegociacion} max={10} label="Negociación" sublabel="cierres potenciales" color="#E8A830" />
-        <Gauge value={nCalientes} max={Math.max(activos.length,1)} label="Calientes hoy" sublabel="≤2 días" color={B.hot} />
-        <Gauge value={leadsNuevosMes} max={30} label="Leads nuevos" sublabel="este mes" color={B.accentL} />
-        <Gauge value={propsActivas} max={Math.max(totalProps,1)} label="Propiedades" sublabel="en cartera" color="#2E9E6A" />
-        <Gauge value={activos.length} max={100} label="Leads activos" sublabel={"/" + leads.length + " totales"} color={B.accentL} />
+      {/* ── Stats row ──────────────────────────────────────── */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:8, marginBottom:20 }}>
+        {STATS.map((s,i) => (
+          <div key={i} style={{
+            background:`linear-gradient(135deg, rgba(15,30,53,0.8), rgba(10,21,37,0.9))`,
+            border:`1px solid ${B.border}`,
+            borderTop:`2px solid ${s.color}`,
+            borderRadius:10, padding:"14px 16px",
+            position:"relative", overflow:"hidden",
+          }}>
+            <div style={{ position:"absolute", top:10, right:12, fontSize:18, color:s.color, opacity:0.15, fontWeight:900 }}>{s.icon}</div>
+            <div style={{ fontSize:28, fontWeight:700, color:s.color, fontFamily:"Georgia,serif", lineHeight:1, marginBottom:4 }}>{s.value}</div>
+            <div style={{ fontSize:11, fontWeight:600, color:"#C8D8E8", marginBottom:2 }}>{s.label}</div>
+            <div style={{ fontSize:10, color:"#4A6A90" }}>{s.sub}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Briefing IA */}
+      {/* ── Asistente IA ───────────────────────────────────── */}
       <BriefingIA leads={leads} properties={properties} supabase={supabase} onConsumo={onConsumo} />
 
-      {/* Fila 1: Insights | Calendario */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
-        <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
+      {/* ── Insights + Calendario ──────────────────────────── */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:14 }}>
+        <div style={{ background:"rgba(10,21,37,0.6)", border:`1px solid ${B.border}`, borderRadius:12, padding:16 }}>
           <InsightPanel leads={filtrados} properties={properties} />
         </div>
-        <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
+        <div style={{ background:"rgba(10,21,37,0.6)", border:`1px solid ${B.border}`, borderRadius:12, padding:16 }}>
           <CalendarioSemanal supabase={supabase} />
         </div>
       </div>
 
-      {/* Fila 2: Tareas */}
+      {/* ── Tareas ─────────────────────────────────────────── */}
       <div style={{ marginBottom:14 }}>
         <Tareas supabase={supabase} />
       </div>
 
-      {/* Fila 3: Llamar hoy */}
-      <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16, marginBottom:14 }}>
-        <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>🔥 Llamar hoy</div>
+      {/* ── Llamar hoy ─────────────────────────────────────── */}
+      <div style={{ background:"rgba(10,21,37,0.6)", border:`1px solid ${B.border}`, borderRadius:12, padding:16, marginBottom:14 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
+          <div style={{ width:3, height:14, background:"#CC2233", borderRadius:2 }} />
+          <span style={{ fontSize:11, color:"#C8D8E8", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase" }}>Llamar hoy</span>
+          {urgentes.length > 0 && (
+            <span style={{ marginLeft:"auto", fontSize:10, padding:"2px 8px", borderRadius:10,
+              background:"rgba(204,34,51,0.15)", color:"#CC2233", border:"1px solid rgba(204,34,51,0.3)", fontWeight:700 }}>
+              {urgentes.length}
+            </span>
+          )}
+        </div>
         <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-          {urgentes.length === 0 && <div style={{ textAlign:"center", padding:"20px 0", color:B.dim, fontSize:12 }}>Sin leads urgentes</div>}
-          {urgentes.map(l => <LeadCard key={l.id} lead={l} updateLead={async (id, upd) => { await supabase.from('leads').update(upd).eq('id', id); }} />)}
+          {urgentes.length === 0 && (
+            <div style={{ textAlign:"center", padding:"24px 0", color:"#4A6A90", fontSize:12 }}>
+              Sin leads urgentes hoy ✓
+            </div>
+          )}
+          {urgentes.map(l => <LeadCard key={l.id} lead={l} updateLead={async (id, upd) => { await supabase.from("leads").update(upd).eq("id", id); }} />)}
         </div>
       </div>
 
-      {/* Fila 4: Captación de zonas — resumen */}
+      {/* ── Captación zonas ────────────────────────────────── */}
       <ResumenCaptacionZonas supabase={supabase} />
     </div>
   );
