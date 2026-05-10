@@ -366,6 +366,84 @@ function CalendarioSemanal({ supabase }) {
   );
 }
 
+function ResumenCaptacionZonas({ supabase }) {
+  const [semana, setSemana] = React.useState(null);
+  const [loaded, setLoaded] = React.useState(false);
+
+  const getLunes = () => {
+    const hoy = new Date();
+    const l = new Date(hoy);
+    l.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
+    return l.toISOString().slice(0,10);
+  };
+
+  const ACCIONES = [
+    { key:"contactos", dia:"Lunes",    icono:"📞", label:"5 propietarios en ZonaProp" },
+    { key:"recorrida", dia:"Miércoles",icono:"🚶", label:"Recorrida del barrio" },
+    { key:"contenido", dia:"Viernes",  icono:"📸", label:"Carrusel Instagram" },
+  ];
+
+  React.useEffect(() => {
+    if (!supabase) return;
+    supabase.from("captacion_zonas").select("*").eq("semana_inicio", getLunes()).single()
+      .then(({ data }) => { setSemana(data); setLoaded(true); });
+  }, []);
+
+  if (!loaded) return null;
+
+  return (
+    <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
+      <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:12 }}>🏘 CAPTACIÓN DE ZONAS — ESTA SEMANA</div>
+      {!semana ? (
+        <div style={{ textAlign:"center", padding:"12px 0", color:"#4A6A90", fontSize:12 }}>
+          Sin barrio activo esta semana —{" "}
+          <span style={{ color:B.accentL, cursor:"pointer" }}
+            onClick={()=>window.dispatchEvent(new CustomEvent("alba-nav", { detail:"zonas" }))}>
+            Ir a Captación zonas →
+          </span>
+        </div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div>
+              <span style={{ fontSize:16, fontWeight:700, color:B.text, fontFamily:"Georgia,serif" }}>{semana.barrio}</span>
+              <span style={{ fontSize:11, color:"#8AAECC", marginLeft:8 }}>barrio activo</span>
+            </div>
+            <div style={{ display:"flex", gap:12 }}>
+              <div style={{ textAlign:"center" }}>
+                <div style={{ fontSize:18, fontWeight:700, color:B.accentL }}>{semana.propietarios_contactados || 0}</div>
+                <div style={{ fontSize:9, color:"#8AAECC" }}>contactados</div>
+              </div>
+              <div style={{ textAlign:"center" }}>
+                <div style={{ fontSize:18, fontWeight:700, color:"#2E9E6A" }}>{semana.propiedades_captadas || 0}</div>
+                <div style={{ fontSize:9, color:"#8AAECC" }}>captadas</div>
+              </div>
+            </div>
+          </div>
+          <div style={{ display:"flex", gap:6 }}>
+            {ACCIONES.map(a => {
+              const done = (semana.acciones_completadas || {})[a.key];
+              return (
+                <div key={a.key} style={{ flex:1, padding:"6px 8px", borderRadius:7, textAlign:"center",
+                  background: done ? "rgba(46,158,106,0.1)" : "rgba(42,91,173,0.08)",
+                  border: `1px solid ${done ? "#2E9E6A40" : B.border}` }}>
+                  <div style={{ fontSize:14 }}>{done ? "✅" : a.icono}</div>
+                  <div style={{ fontSize:9, color: done ? "#2E9E6A" : "#8AAECC", marginTop:2 }}>{a.dia}</div>
+                </div>
+              );
+            })}
+          </div>
+          {semana.nota && (
+            <div style={{ fontSize:11, color:"#6A8AAE", fontStyle:"italic", borderLeft:`2px solid ${B.border}`, paddingLeft:8 }}>
+              {semana.nota}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Briefing({ leads, properties, supabase }) {
   const [filtroAg, setFiltroAg] = useState("Todos");
   const hoy = new Date();
@@ -470,43 +548,8 @@ export default function Briefing({ leads, properties, supabase }) {
         </div>
       </div>
 
-      {/* Fila 4: Matches del día */}
-      {matchesHoy.length > 0 && (
-        <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
-          <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:12, textTransform:"uppercase" }}>
-            📌 Matches del día — propiedades que encajan con tus leads
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {matchesHoy.map(({ lead, matches }) => (
-              <div key={lead.id} style={{ background:B.card, border:"1px solid " + B.border, borderRadius:10, padding:"12px 14px" }}>
-                <div style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:8 }}>
-                  {lead.nombre}
-                  <span style={{ fontSize:12, color:"#8AAECC", fontWeight:400, marginLeft:8 }}>
-                    busca {lead.tipo} en {lead.zona} · USD {(lead.presup||0).toLocaleString()}
-                  </span>
-                </div>
-                <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                  {matches.slice(0, 2).map(prop => {
-                    const msg = genMsgWhatsApp(lead, prop);
-                    const wa = lead.tel ? `https://wa.me/${lead.tel.replace(/\D/g,"")}?text=${encodeURIComponent(msg)}` : null;
-                    return (
-                      <div key={prop.id} style={{ display:"flex", alignItems:"center", gap:10, background:B.bg, borderRadius:7, padding:"8px 10px" }}>
-                        <div style={{ flex:1, fontSize:11, color:B.muted }}>
-                          <span style={{ color:B.text, fontWeight:600 }}>{prop.tipo}</span>
-                          {" · "}{prop.zona}
-                          {" · "}<span style={{ color:B.accentL, fontFamily:"Georgia,serif" }}>USD {(prop.precio||0).toLocaleString()}</span>
-                          {prop.dir && <span style={{ color:B.muted }}> · {prop.dir}</span>}
-                        </div>
-                        {wa && <a href={wa} target="_blank" rel="noreferrer" style={{ padding:"4px 10px", borderRadius:6, whiteSpace:"nowrap", background:"rgba(37,211,102,0.1)", border:"1px solid rgba(37,211,102,0.25)", color:"#25D366", fontSize:12, textDecoration:"none", fontWeight:600 }}>💬 WA listo</a>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Fila 4: Captación de zonas — resumen */}
+      <ResumenCaptacionZonas supabase={supabase} />
     </div>
   );
 }
