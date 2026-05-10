@@ -75,196 +75,302 @@ const TIPOS = {
   proyecto:  { label:"Proyecto",  color:"#CC2233", icono:"🎯" },
 };
 
-// ── Grafo visual con Canvas ───────────────────────────────────
+// ── Grafo Obsidian — canvas infinito con pan/zoom ────────────
 function Grafo({ notas, onSelectNota, selectedId }) {
   const canvasRef = useRef(null);
   const animRef   = useRef(null);
   const nodesRef  = useRef([]);
-  const dragRef   = useRef(null);
+  const camRef    = useRef({ x:0, y:0, zoom:1 });
+  const dragNodeRef = useRef(null);
+  const panRef    = useRef(null);
   const [hoverId, setHoverId] = useState(null);
 
-  // Inicializar posiciones con física simple
+  const NODE_R = 7;
+  const NODE_R_PROJ = 11;
+  const REPULSION = 6000;
+  const LINK_DIST = 180;
+  const DAMPING = 0.88;
+
+  // Init nodes
   useEffect(() => {
     if (!notas.length) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const W = canvas.width = canvas.offsetWidth;
-    const H = canvas.height = canvas.offsetHeight;
-    const cx = W / 2, cy = H / 2;
-
     nodesRef.current = notas.map((n, i) => {
-      const existing = nodesRef.current.find(nd => nd.id === n.id);
-      if (existing) return { ...existing, nota: n };
+      const ex = nodesRef.current.find(nd => nd.id === n.id);
+      if (ex) return { ...ex, nota:n };
       const angle = (i / notas.length) * Math.PI * 2;
-      const r = Math.min(W, H) * 0.3;
-      return {
-        id: n.id, nota: n,
-        x: cx + Math.cos(angle) * r * (0.5 + Math.random() * 0.5),
-        y: cy + Math.sin(angle) * r * (0.5 + Math.random() * 0.5),
-        vx: 0, vy: 0,
-        r: n.tipo === "proyecto" ? 36 : 28,
-      };
+      const dist  = 120 + Math.random() * 200;
+      return { id:n.id, nota:n, x:Math.cos(angle)*dist, y:Math.sin(angle)*dist, vx:0, vy:0 };
     });
-    draw();
-  }, [notas]);
+  }, [notas.length]);
+
+  // Screen → world coords
+  function toWorld(sx, sy) {
+    const cam = camRef.current;
+    const canvas = canvasRef.current;
+    if (!canvas) return {x:0,y:0};
+    return {
+      x: (sx - canvas.width/2  - cam.x) / cam.zoom,
+      y: (sy - canvas.height/2 - cam.y) / cam.zoom,
+    };
+  }
 
   function draw() {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx   = canvas.getContext("2d");
     const W = canvas.width, H = canvas.height;
+    const cam = camRef.current;
     ctx.clearRect(0, 0, W, H);
 
-    // Fondo sutil
-    ctx.fillStyle = "rgba(7,14,28,0)";
-    ctx.fillRect(0, 0, W, H);
+    // Grid infinita sutil
+    ctx.save();
+    const gridSize = 40 * cam.zoom;
+    const ox = (W/2 + cam.x) % gridSize;
+    const oy = (H/2 + cam.y) % gridSize;
+    ctx.strokeStyle = "rgba(42,91,173,0.06)";
+    ctx.lineWidth = 1;
+    for (let x = ox - gridSize; x < W + gridSize; x += gridSize) {
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    }
+    for (let y = oy - gridSize; y < H + gridSize; y += gridSize) {
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Transform al centro + cam
+    ctx.save();
+    ctx.translate(W/2 + cam.x, H/2 + cam.y);
+    ctx.scale(cam.zoom, cam.zoom);
 
     const nodes = nodesRef.current;
 
     // Links
     nodes.forEach(node => {
-      const links = node.nota.links || [];
-      links.forEach(linkId => {
-        const target = nodes.find(n => n.id === linkId);
-        if (!target) return;
+      (node.nota.links||[]).forEach(linkId => {
+        const t = nodes.find(n=>n.id===linkId);
+        if (!t) return;
         ctx.beginPath();
         ctx.moveTo(node.x, node.y);
-        ctx.lineTo(target.x, target.y);
-        ctx.strokeStyle = "rgba(42,91,173,0.3)";
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 4]);
+        ctx.lineTo(t.x, t.y);
+        ctx.strokeStyle = "rgba(58,139,196,0.18)";
+        ctx.lineWidth = 1 / cam.zoom;
         ctx.stroke();
-        ctx.setLineDash([]);
       });
     });
 
     // Nodos
     nodes.forEach(node => {
       const tipo = TIPOS[node.nota.tipo] || TIPOS.idea;
-      const isSelected = node.id === selectedId;
+      const isSel   = node.id === selectedId;
       const isHover = node.id === hoverId;
-      const r = node.r;
+      const r = node.nota.tipo === "proyecto" ? NODE_R_PROJ : NODE_R;
 
-      // Glow
-      if (isSelected || isHover) {
-        const grad = ctx.createRadialGradient(node.x, node.y, r * 0.5, node.x, node.y, r * 2);
-        grad.addColorStop(0, tipo.color + "40");
+      // Glow para seleccionado/hover
+      if (isSel || isHover) {
+        const grad = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, r * 4);
+        grad.addColorStop(0, tipo.color + (isSel?"60":"30"));
         grad.addColorStop(1, "transparent");
         ctx.beginPath();
-        ctx.arc(node.x, node.y, r * 2, 0, Math.PI * 2);
+        ctx.arc(node.x, node.y, r * 4, 0, Math.PI*2);
         ctx.fillStyle = grad;
         ctx.fill();
       }
 
-      // Círculo principal
+      // Círculo
       ctx.beginPath();
-      ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = isSelected ? tipo.color : "rgba(15,30,53,0.95)";
+      ctx.arc(node.x, node.y, isSel ? r*1.5 : r, 0, Math.PI*2);
+      ctx.fillStyle = isSel ? tipo.color : tipo.color + "CC";
       ctx.fill();
-      ctx.strokeStyle = tipo.color;
-      ctx.lineWidth = isSelected ? 3 : 2;
-      ctx.stroke();
 
-      // Icono
-      ctx.font = `${r * 0.7}px serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = isSelected ? "#fff" : tipo.color;
-      ctx.fillText(tipo.icono, node.x, node.y - 3);
+      // Anillo exterior si seleccionado
+      if (isSel) {
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, r*1.5 + 3, 0, Math.PI*2);
+        ctx.strokeStyle = tipo.color + "60";
+        ctx.lineWidth = 2 / cam.zoom;
+        ctx.stroke();
+      }
 
-      // Label
-      ctx.font = `600 10px -apple-system, sans-serif`;
-      ctx.fillStyle = isSelected ? tipo.color : "#8AAECC";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "top";
-      const label = node.nota.titulo.length > 14 ? node.nota.titulo.slice(0, 14) + "…" : node.nota.titulo;
-      ctx.fillText(label, node.x, node.y + r + 4);
+      // Label — solo si zoom >= 0.5
+      if (cam.zoom >= 0.4) {
+        const fontSize = Math.max(9, 11 / cam.zoom);
+        ctx.font = `${isSel?"600":"400"} ${fontSize}px -apple-system, sans-serif`;
+        ctx.fillStyle = isSel ? "#fff" : "#8AAECC";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        const label = node.nota.titulo.length > 18 ? node.nota.titulo.slice(0,18)+"…" : node.nota.titulo;
+        ctx.fillText(label, node.x, node.y + r + 4 / cam.zoom);
+      }
     });
+
+    ctx.restore();
   }
 
-  // Física simple
+  // Física
   function tick() {
     const nodes = nodesRef.current;
-    const canvas = canvasRef.current;
-    if (!canvas || !nodes.length) return;
-    const W = canvas.width, H = canvas.height;
+    if (!nodes.length) { animRef.current = requestAnimationFrame(tick); return; }
 
+    let moving = false;
     nodes.forEach(n => {
-      // Repulsión entre nodos
+      if (dragNodeRef.current?.id === n.id) return;
+      let fx = 0, fy = 0;
+
+      // Repulsión
       nodes.forEach(m => {
-        if (n.id === m.id) return;
+        if (m.id === n.id) return;
         const dx = n.x - m.x, dy = n.y - m.y;
-        const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-        const force = Math.min(2000 / (dist * dist), 5);
-        n.vx += (dx / dist) * force;
-        n.vy += (dy / dist) * force;
+        const d2 = dx*dx + dy*dy + 1;
+        const f  = REPULSION / d2;
+        fx += (dx / Math.sqrt(d2)) * f;
+        fy += (dy / Math.sqrt(d2)) * f;
       });
-      // Atracción al centro
-      n.vx += (W/2 - n.x) * 0.002;
-      n.vy += (H/2 - n.y) * 0.002;
-      // Fricción
-      n.vx *= 0.85; n.vy *= 0.85;
-      if (dragRef.current?.id !== n.id) {
-        n.x += n.vx; n.y += n.vy;
-      }
-      // Bounds
-      n.x = Math.max(n.r + 10, Math.min(W - n.r - 10, n.x));
-      n.y = Math.max(n.r + 10, Math.min(H - n.r - 30, n.y));
+
+      // Atracción por links
+      (n.nota.links||[]).forEach(lid => {
+        const t = nodes.find(nd=>nd.id===lid);
+        if (!t) return;
+        const dx = t.x - n.x, dy = t.y - n.y;
+        const d  = Math.sqrt(dx*dx+dy*dy) || 1;
+        const f  = (d - LINK_DIST) * 0.03;
+        fx += (dx/d)*f; fy += (dy/d)*f;
+      });
+
+      // Centro suave
+      fx -= n.x * 0.003; fy -= n.y * 0.003;
+
+      n.vx = (n.vx + fx) * DAMPING;
+      n.vy = (n.vy + fy) * DAMPING;
+      n.x += n.vx; n.y += n.vy;
+      if (Math.abs(n.vx) > 0.1 || Math.abs(n.vy) > 0.1) moving = true;
     });
+
     draw();
     animRef.current = requestAnimationFrame(tick);
   }
 
   useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const resize = () => {
+      canvas.width  = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      draw();
+    };
+    resize();
+    window.addEventListener("resize", resize);
     animRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animRef.current);
-  }, [notas, selectedId, hoverId]);
+    return () => { cancelAnimationFrame(animRef.current); window.removeEventListener("resize", resize); };
+  }, []);
 
-  function getNodeAt(x, y) {
+  useEffect(() => { draw(); }, [selectedId, hoverId, notas]);
+
+  // Hit test en coordenadas mundo
+  function getNodeAt(wx, wy) {
     return nodesRef.current.find(n => {
-      const dx = n.x - x, dy = n.y - y;
-      return Math.sqrt(dx*dx + dy*dy) <= n.r + 5;
+      const r = n.nota.tipo==="proyecto" ? NODE_R_PROJ*1.5 : NODE_R*1.5;
+      const dx = n.x-wx, dy = n.y-wy;
+      return Math.sqrt(dx*dx+dy*dy) <= r+4;
     });
   }
 
-  function onMouseMove(e) {
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left, y = e.clientY - rect.top;
-    if (dragRef.current) {
-      dragRef.current.x = x; dragRef.current.y = y;
-    } else {
-      const node = getNodeAt(x, y);
-      setHoverId(node?.id || null);
-      canvasRef.current.style.cursor = node ? "pointer" : "default";
-    }
+  function onWheel(e) {
+    e.preventDefault();
+    const cam = camRef.current;
+    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    cam.zoom = Math.max(0.15, Math.min(4, cam.zoom * factor));
   }
 
   function onMouseDown(e) {
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left, y = e.clientY - rect.top;
-    const node = getNodeAt(x, y);
-    if (node) dragRef.current = node;
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const w  = toWorld(sx, sy);
+    const node = getNodeAt(w.x, w.y);
+    if (node) {
+      dragNodeRef.current = { ...node, startX:node.x, startY:node.y, moved:false };
+    } else {
+      panRef.current = { sx, sy, cx:camRef.current.x, cy:camRef.current.y };
+    }
+  }
+
+  function onMouseMove(e) {
+    const rect = canvasRef.current.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+
+    if (dragNodeRef.current) {
+      const w = toWorld(sx, sy);
+      const node = nodesRef.current.find(n=>n.id===dragNodeRef.current.id);
+      if (node) { node.x=w.x; node.y=w.y; node.vx=0; node.vy=0; dragNodeRef.current.moved=true; }
+      canvasRef.current.style.cursor = "grabbing";
+      return;
+    }
+    if (panRef.current) {
+      const dx = sx - panRef.current.sx, dy = sy - panRef.current.sy;
+      camRef.current.x = panRef.current.cx + dx;
+      camRef.current.y = panRef.current.cy + dy;
+      canvasRef.current.style.cursor = "grabbing";
+      return;
+    }
+    const w = toWorld(sx, sy);
+    const node = getNodeAt(w.x, w.y);
+    setHoverId(node?.id||null);
+    canvasRef.current.style.cursor = node ? "pointer" : "grab";
   }
 
   function onMouseUp(e) {
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left, y = e.clientY - rect.top;
-    const node = getNodeAt(x, y);
-    if (node && !dragRef.current?.moved) onSelectNota(node.nota);
-    dragRef.current = null;
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const w  = toWorld(sx, sy);
+    if (dragNodeRef.current && !dragNodeRef.current.moved) {
+      const node = nodesRef.current.find(n=>n.id===dragNodeRef.current.id);
+      if (node) onSelectNota(node.nota);
+    }
+    dragNodeRef.current = null;
+    panRef.current = null;
+    const node = getNodeAt(w.x, w.y);
+    canvasRef.current.style.cursor = node ? "pointer" : "grab";
   }
 
-  useEffect(() => {
-    draw();
-  }, [selectedId]);
+  function resetView() {
+    camRef.current = { x:0, y:0, zoom:1 };
+  }
 
   return (
-    <canvas ref={canvasRef}
-      style={{ width:"100%", height:"100%", display:"block" }}
-      onMouseMove={onMouseMove}
-      onMouseDown={onMouseDown}
-      onMouseUp={onMouseUp}
-    />
+    <div style={{ position:"relative", width:"100%", height:"100%" }}>
+      <canvas ref={canvasRef}
+        style={{ width:"100%", height:"100%", display:"block", cursor:"grab" }}
+        onWheel={onWheel}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+      />
+      {/* Controles zoom */}
+      <div style={{ position:"absolute", bottom:14, left:14, display:"flex", flexDirection:"column", gap:4 }}>
+        {[
+          { label:"+", fn:()=>{ camRef.current.zoom = Math.min(4, camRef.current.zoom*1.2); } },
+          { label:"−", fn:()=>{ camRef.current.zoom = Math.max(0.15, camRef.current.zoom*0.8); } },
+          { label:"⌖", fn:resetView },
+        ].map(b => (
+          <button key={b.label} onClick={b.fn}
+            style={{ width:28, height:28, borderRadius:6, cursor:"pointer", fontSize:14, fontWeight:700,
+              background:B.card, border:`1px solid ${B.border}`, color:"#8AAECC",
+              display:"flex", alignItems:"center", justifyContent:"center" }}>
+            {b.label}
+          </button>
+        ))}
+      </div>
+      {/* Leyenda */}
+      <div style={{ position:"absolute", bottom:14, right:14, background:"rgba(7,14,28,0.85)",
+        border:`1px solid ${B.border}`, borderRadius:8, padding:"8px 12px",
+        display:"flex", flexDirection:"column", gap:4 }}>
+        {Object.entries(TIPOS).map(([k,v]) => (
+          <div key={k} style={{ display:"flex", alignItems:"center", gap:6 }}>
+            <div style={{ width:8, height:8, borderRadius:"50%", background:v.color, flexShrink:0 }} />
+            <span style={{ fontSize:10, color:"#8AAECC" }}>{v.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
