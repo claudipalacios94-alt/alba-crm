@@ -444,7 +444,77 @@ function ResumenCaptacionZonas({ supabase }) {
   );
 }
 
-export default function Briefing({ leads, properties, supabase }) {
+function BriefingIA({ leads, properties, onConsumo }) {
+  const [respuesta, setRespuesta] = React.useState("");
+  const [loading,   setLoading]   = React.useState(false);
+  const [cargado,   setCargado]   = React.useState(false);
+
+  async function consultarIA() {
+    setLoading(true);
+    const hoy = new Date().toLocaleDateString("es-AR", { weekday:"long", day:"numeric", month:"long" });
+    const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
+    const calientes = activos.filter(l => l.dias <= 3).slice(0, 8);
+    const negociacion = activos.filter(l => l.etapa === "Negociación");
+
+    const contexto = `Hoy es ${hoy}.
+Inmobiliaria Alba Inversiones, Mar del Plata.
+Leads en negociación (${negociacion.length}): ${negociacion.map(l => `${l.nombre} - ${l.zona} - USD ${l.presup||"?"}`).join(", ") || "ninguno"}
+Leads calientes (${calientes.length}): ${calientes.map(l => `${l.nombre} (${l.dias}d sin contacto, ${l.etapa}, ${l.zona}, USD ${l.presup||"?"})`).join(" | ")}
+Propiedades en cartera: ${(properties||[]).length}`;
+
+    try {
+      const res = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 400,
+          system: "Sos el asistente comercial de Alba Inversiones. Respondés en español rioplatense, de forma directa y concisa. Máximo 5 líneas. Sin listas largas. Decís exactamente qué hacer hoy.",
+          messages: [{ role:"user", content: contexto + "
+
+¿Qué hago primero hoy para avanzar en ventas?" }]
+        })
+      });
+      const data = await res.json();
+      const texto = data.content?.[0]?.text || "Sin respuesta";
+      setRespuesta(texto);
+      setCargado(true);
+      // Estimar consumo
+      if (onConsumo) onConsumo(500, 100);
+    } catch(e) {
+      setRespuesta("Error al conectar con IA. Verificá los créditos.");
+      setCargado(true);
+    }
+    setLoading(false);
+  }
+
+  return (
+    <div style={{ background:B.sidebar, border:`1px solid ${B.accentL}30`, borderRadius:14, padding:16, marginBottom:14 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+        <span style={{ fontSize:11, color:B.accentL, fontWeight:700, letterSpacing:"1px" }}>✨ BRIEFING IA — QUÉ HACER HOY</span>
+        <button onClick={consultarIA} disabled={loading}
+          style={{ padding:"4px 12px", borderRadius:6, cursor:loading?"default":"pointer",
+            background:loading?B.border:B.accent, border:`1px solid ${loading?B.border:B.accentL}`,
+            color:loading?"#8AAECC":"#fff", fontSize:11, fontWeight:600 }}>
+          {loading ? "Analizando..." : cargado ? "Actualizar" : "Analizar mi día"}
+        </button>
+      </div>
+      {!cargado && !loading && (
+        <div style={{ fontSize:12, color:"#4A6A90", fontStyle:"italic" }}>
+          Tocá "Analizar mi día" para que la IA te diga exactamente qué hacer hoy.
+        </div>
+      )}
+      {loading && (
+        <div style={{ fontSize:12, color:"#8AAECC", fontStyle:"italic" }}>Revisando tus leads...</div>
+      )}
+      {cargado && !loading && (
+        <div style={{ fontSize:13, color:"#C8D8E8", lineHeight:1.7, whiteSpace:"pre-wrap" }}>{respuesta}</div>
+      )}
+    </div>
+  );
+}
+
+export default function Briefing({ leads, properties, supabase, onConsumo }) {
   const [filtroAg, setFiltroAg] = useState("Todos");
   const hoy = new Date();
   const hora = hoy.getHours();
@@ -523,6 +593,9 @@ export default function Briefing({ leads, properties, supabase }) {
         <Gauge value={propsActivas} max={Math.max(totalProps,1)} label="Propiedades" sublabel="en cartera" color="#2E9E6A" />
         <Gauge value={activos.length} max={100} label="Leads activos" sublabel={"/" + leads.length + " totales"} color={B.accentL} />
       </div>
+
+      {/* Briefing IA */}
+      <BriefingIA leads={leads} properties={properties} onConsumo={onConsumo} />
 
       {/* Fila 1: Insights | Calendario */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
