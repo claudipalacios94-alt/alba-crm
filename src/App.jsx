@@ -20,6 +20,7 @@ import Buscador        from "./components/Buscador.jsx";
 import Mapa            from "./components/Mapa.jsx";
 import Flyer           from "./components/Flyer.jsx";
 import Captaciones     from "./components/Captaciones.jsx";
+import CaptacionZonas  from "./components/CaptacionZonas.jsx";
  
 // Modales
 import Modal           from "./modals/Modal.jsx";
@@ -39,9 +40,10 @@ const NAV = [
   { id:"mapa",        label:"Mapa" },
   { id:"flyer",       label:"Generador Flyer" },
   { id:"captaciones",  label:"Captación rápida", badge:"NEW" },
+  { id:"zonas",        label:"Captación zonas" },
 ];
  
-const FULL_HEIGHT = ["kanban", "asistente", "mapa", "flyer", "captaciones"];
+const FULL_HEIGHT = ["kanban", "asistente", "mapa", "flyer", "captaciones", "zonas"];
  
 export default function App() {
   const [view,  setView]  = useState("briefing");
@@ -223,6 +225,7 @@ export default function App() {
         {view === "mapa"        && <Mapa        properties={properties} leads={leads} updateProperty={updateProperty} supabase={supabase} />}
         {view === "flyer"       && <Flyer       properties={properties} />}
         {view === "captaciones" && <Captaciones  supabase={supabase} />}
+        {view === "zonas"       && <CaptacionZonas supabase={supabase} />}
       </div>
  
       {/* ── MODALES ─────────────────────────────────────────── */}
