@@ -41,7 +41,7 @@ const NAV = [
   { id:"zonas",        label:"Captación zonas" },
 ];
  
-const FULL_HEIGHT = ["kanban", "mapa", "flyer", "captaciones", "zonas"];
+const FULL_HEIGHT = ["kanban", "mapa", "flyer", "captaciones", "zonas", "cuaderno"];
  
 export default function App() {
   const [view,  setView]  = useState("briefing");
@@ -282,7 +282,7 @@ export default function App() {
       }}>
         {view === "briefing"    && <Briefing    leads={leads} properties={properties} supabase={supabase} />}
         {view === "buscador"    && <Buscador    leads={leads} saveSearchResult={saveSearchResult} getSearchResult={getSearchResult} />}
-        {view === "cuaderno"    && <Cuaderno    leads={leads} addInteraction={addInteraction} getInteractions={getInteractions} updateLead={updateLead} />}
+        {view === "cuaderno"    && <Cuaderno    leads={leads} properties={properties} supabase={supabase} />}
         {view === "kanban"      && <Kanban      leads={leads} updateLead={updateLead} />}
         {view === "crm"         && <CRMLeads    leads={leads} updateLead={updateLead} deleteLead={deleteLead} properties={properties} supabase={supabase} />}
         {view === "propiedades" && <Propiedades properties={properties} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />}
