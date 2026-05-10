@@ -470,9 +470,7 @@ Propiedades en cartera: ${(properties||[]).length}`;
           model: "claude-haiku-4-5-20251001",
           max_tokens: 400,
           system: "Sos el asistente comercial de Alba Inversiones. Respondés en español rioplatense, de forma directa y concisa. Máximo 5 líneas. Sin listas largas. Decís exactamente qué hacer hoy.",
-          messages: [{ role:"user", content: contexto + "
-
-¿Qué hago primero hoy para avanzar en ventas?" }]
+          messages: [{ role:"user", content: contexto + "\n\n¿Qué hago primero hoy para avanzar en ventas?" }]
         })
       });
       const data = await res.json();
