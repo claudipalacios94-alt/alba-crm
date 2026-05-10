@@ -45,6 +45,16 @@ const FULL_HEIGHT = ["kanban", "mapa", "flyer", "captaciones", "zonas"];
  
 export default function App() {
   const [view,  setView]  = useState("briefing");
+
+  // ── Créditos IA ───────────────────────────────────────────
+  const [saldoIA, setSaldoIA] = useState(() => {
+    try { const s = localStorage.getItem("alba_saldo_ia"); return s ? parseFloat(s) : null; } catch(e) { return null; }
+  });
+  const [consumoIA, setConsumoIA] = useState(() => {
+    try { const s = localStorage.getItem("alba_consumo_ia"); return s ? parseFloat(s) : 0; } catch(e) { return 0; }
+  });
+  const [editSaldo, setEditSaldo] = useState(false);
+  const [inputSaldo, setInputSaldo] = useState("");
   const [modal, setModal] = useState(null);
   const [user,  setUser]  = useState(undefined); // undefined=cargando, null=no auth, obj=autenticado
  
@@ -95,17 +105,7 @@ export default function App() {
     return <Login onLogin={signIn} />;
   }
  
-  // ── Créditos IA ───────────────────────────────────────────
-  const [saldoIA, setSaldoIA] = React.useState(() => {
-    const s = localStorage.getItem("alba_saldo_ia");
-    return s ? parseFloat(s) : null;
-  });
-  const [consumoIA, setConsumoIA] = React.useState(() => {
-    const s = localStorage.getItem("alba_consumo_ia");
-    return s ? parseFloat(s) : 0;
-  });
-  const [editSaldo, setEditSaldo] = React.useState(false);
-  const [inputSaldo, setInputSaldo] = React.useState("");
+
 
   function agregarConsumo(inputTokens, outputTokens) {
     const costo = (inputTokens / 1000 * 0.00025) + (outputTokens / 1000 * 0.00125);
