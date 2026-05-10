@@ -14,7 +14,6 @@ import Kanban          from "./components/Kanban.jsx";
 import CRMLeads        from "./components/CRMLeads.jsx";
 import Propiedades     from "./components/Propiedades.jsx";
 import Alquileres      from "./components/Alquileres.jsx";
-import Asistente       from "./components/Asistente.jsx";
 import Cuaderno        from "./components/Cuaderno.jsx";
 import Buscador        from "./components/Buscador.jsx";
 import Mapa            from "./components/Mapa.jsx";
@@ -30,7 +29,6 @@ import QuickAddProp    from "./modals/QuickAddProp.jsx";
 // ── Navegación ────────────────────────────────────────────────
 const NAV = [
   { id:"briefing",    label:"Briefing del día",  badge:"HOY" },
-  { id:"asistente",   label:"Asistente IA",       badge:"IA"  },
   { id:"buscador",    label:"Buscador",            badge:"NEW" },
   { id:"cuaderno",    label:"Cuaderno de campo" },
   { id:"kanban",      label:"Kanban" },
@@ -43,7 +41,7 @@ const NAV = [
   { id:"zonas",        label:"Captación zonas" },
 ];
  
-const FULL_HEIGHT = ["kanban", "asistente", "mapa", "flyer", "captaciones", "zonas"];
+const FULL_HEIGHT = ["kanban", "mapa", "flyer", "captaciones", "zonas"];
  
 export default function App() {
   const [view,  setView]  = useState("briefing");
@@ -97,6 +95,34 @@ export default function App() {
     return <Login onLogin={signIn} />;
   }
  
+  // ── Créditos IA ───────────────────────────────────────────
+  const [saldoIA, setSaldoIA] = React.useState(() => {
+    const s = localStorage.getItem("alba_saldo_ia");
+    return s ? parseFloat(s) : null;
+  });
+  const [consumoIA, setConsumoIA] = React.useState(() => {
+    const s = localStorage.getItem("alba_consumo_ia");
+    return s ? parseFloat(s) : 0;
+  });
+  const [editSaldo, setEditSaldo] = React.useState(false);
+  const [inputSaldo, setInputSaldo] = React.useState("");
+
+  function agregarConsumo(inputTokens, outputTokens) {
+    const costo = (inputTokens / 1000 * 0.00025) + (outputTokens / 1000 * 0.00125);
+    const nuevo = parseFloat((consumoIA + costo).toFixed(6));
+    setConsumoIA(nuevo);
+    localStorage.setItem("alba_consumo_ia", nuevo);
+  }
+
+  function guardarSaldo() {
+    const v = parseFloat(inputSaldo);
+    if (!isNaN(v) && v > 0) {
+      setSaldoIA(v);
+      localStorage.setItem("alba_saldo_ia", v);
+    }
+    setEditSaldo(false);
+  }
+
   // ── App principal ─────────────────────────────────────────
   return (
     <div style={{ display:"flex", height:"100vh", background:B.bg,
@@ -197,6 +223,46 @@ export default function App() {
               <div key={k} style={{ flex:1, height:3, borderRadius:2, background:v.c }} />
             ))}
           </div>
+
+          {/* Contador créditos IA */}
+          <div style={{ background:"rgba(42,91,173,0.08)", border:`1px solid ${B.border}`, borderRadius:8, padding:"7px 9px", marginBottom:8 }}>
+            <div style={{ fontSize:9, color:"#4A6A90", fontWeight:600, letterSpacing:"0.8px", marginBottom:4 }}>✨ CRÉDITOS IA</div>
+            {editSaldo ? (
+              <div style={{ display:"flex", gap:4 }}>
+                <input autoFocus value={inputSaldo} onChange={e=>setInputSaldo(e.target.value)}
+                  onKeyDown={e=>{ if(e.key==="Enter") guardarSaldo(); if(e.key==="Escape") setEditSaldo(false); }}
+                  placeholder="ej: 10.00" type="number" step="0.01"
+                  style={{ flex:1, background:B.bg, border:`1px solid ${B.accentL}`, borderRadius:5, padding:"3px 6px", color:B.text, fontSize:11, outline:"none" }} />
+                <button onClick={guardarSaldo} style={{ padding:"3px 7px", borderRadius:5, cursor:"pointer", background:B.accent, border:"none", color:"#fff", fontSize:10, fontWeight:700 }}>OK</button>
+              </div>
+            ) : saldoIA !== null ? (
+              <div>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+                  <span style={{ fontSize:10, color:"#8AAECC" }}>Consumido</span>
+                  <span style={{ fontSize:10, color:"#8AAECC" }}>Saldo</span>
+                </div>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
+                  <span style={{ fontSize:11, fontWeight:700, color:B.hot }}>${consumoIA.toFixed(4)}</span>
+                  <span style={{ fontSize:11, fontWeight:700, color:"#2E9E6A" }}>${Math.max(0, saldoIA - consumoIA).toFixed(4)}</span>
+                </div>
+                <div style={{ height:3, background:B.border, borderRadius:2, overflow:"hidden", marginBottom:5 }}>
+                  <div style={{ height:"100%", borderRadius:2, background: saldoIA > 0 ? `linear-gradient(90deg, #2E9E6A, ${B.hot})` : B.hot,
+                    width: Math.min(100, (consumoIA / saldoIA) * 100) + "%" }} />
+                </div>
+                <button onClick={()=>{ setInputSaldo(saldoIA); setEditSaldo(true); }}
+                  style={{ fontSize:9, color:"#4A6A90", background:"transparent", border:"none", cursor:"pointer", padding:0 }}>
+                  Ajustar saldo
+                </button>
+              </div>
+            ) : (
+              <button onClick={()=>setEditSaldo(true)}
+                style={{ width:"100%", padding:"4px", borderRadius:5, cursor:"pointer",
+                  background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:10 }}>
+                + Ingresar saldo
+              </button>
+            )}
+          </div>
+
           <button onClick={signOut}
             style={{ width:"100%", padding:"6px", borderRadius:6, cursor:"pointer",
               background:"transparent", border:`1px solid ${B.border}`,
@@ -215,7 +281,6 @@ export default function App() {
         scrollbarWidth:"thin", scrollbarColor:`${B.border} transparent`,
       }}>
         {view === "briefing"    && <Briefing    leads={leads} properties={properties} supabase={supabase} />}
-        {view === "asistente"   && <Asistente   leads={leads} properties={properties} />}
         {view === "buscador"    && <Buscador    leads={leads} saveSearchResult={saveSearchResult} getSearchResult={getSearchResult} />}
         {view === "cuaderno"    && <Cuaderno    leads={leads} addInteraction={addInteraction} getInteractions={getInteractions} updateLead={updateLead} />}
         {view === "kanban"      && <Kanban      leads={leads} updateLead={updateLead} />}
