@@ -787,28 +787,53 @@ export default function Cuaderno({ leads, properties, supabase }) {
 
         {/* Vista lista */}
         {vistaActiva === "lista" && (
-          <div style={{ flex:1, overflowY:"auto", padding:16, display:"flex", flexDirection:"column", gap:8 }}>
-            {Object.entries(TIPOS).map(([tipo, info]) => {
-              const grupo = notas.filter(n => n.tipo === tipo);
-              if (!grupo.length) return null;
-              return (
-                <div key={tipo}>
-                  <div style={{ fontSize:10, color:info.color, fontWeight:700, letterSpacing:"1px", marginBottom:6 }}>
-                    {info.icono} {info.label.toUpperCase()} — {grupo.length}
-                  </div>
-                  {grupo.map(n => (
-                    <div key={n.id} onClick={()=>{ setSelectedNota(n); setVistaActiva("grafo"); }}
-                      style={{ padding:"9px 12px", borderRadius:8, cursor:"pointer", marginBottom:4,
-                        background:B.card, border:`1px solid ${selectedNota?.id===n.id?info.color:B.border}`,
-                        borderLeft:`3px solid ${info.color}` }}>
-                      <div style={{ fontSize:12, fontWeight:600, color:B.text }}>{n.titulo}</div>
-                      {n.contenido && <div style={{ fontSize:11, color:"#6A8AAE", marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.contenido}</div>}
+          <div style={{ flex:1, display:"flex", overflow:"hidden" }}>
+            <div style={{ flex:1, overflowY:"auto", padding:16, display:"flex", flexDirection:"column", gap:6 }}>
+              {notas.length === 0 && <div style={{ textAlign:"center", color:"#4A6A90", fontSize:12, paddingTop:40 }}>Sin notas aún — creá una con el botón + Nota</div>}
+              {Object.entries(TIPOS).map(([tipo, info]) => {
+                const grupo = notas.filter(n => (n.tipo||"idea") === tipo);
+                if (!grupo.length) return null;
+                return (
+                  <div key={tipo} style={{ marginBottom:8 }}>
+                    <div style={{ fontSize:10, color:info.color, fontWeight:700, letterSpacing:"1px", marginBottom:6 }}>
+                      {info.icono} {info.label.toUpperCase()} — {grupo.length}
                     </div>
-                  ))}
+                    {grupo.map(n => {
+                      const t = TIPOS[n.tipo||"idea"] || TIPOS.idea;
+                      return (
+                        <div key={n.id} onClick={()=>{ setSelectedNota(n); }}
+                          style={{ padding:"9px 12px", borderRadius:8, cursor:"pointer", marginBottom:4,
+                            background: selectedNota?.id===n.id ? t.color+"15" : "rgba(15,30,53,0.5)",
+                            border:`1px solid ${selectedNota?.id===n.id?t.color:B.border}`,
+                            borderLeft:`3px solid ${t.color}` }}>
+                          <div style={{ fontSize:12, fontWeight:600, color:B.text }}>{n.titulo}</div>
+                          {n.contenido && <div style={{ fontSize:11, color:"#6A8AAE", marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.contenido}</div>}
+                          <div style={{ fontSize:10, color:"#4A6A90", marginTop:3 }}>
+                            {new Date(n.created_at).toLocaleDateString("es-AR",{ day:"numeric", month:"short" })}
+                            {(n.tags||[]).map(tag => <span key={tag} style={{ marginLeft:6, color:"#4A6A90" }}>#{tag}</span>)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+              {/* Notas sin tipo válido */}
+              {notas.filter(n => !TIPOS[n.tipo||"idea"]).map(n => (
+                <div key={n.id} onClick={()=>setSelectedNota(n)}
+                  style={{ padding:"9px 12px", borderRadius:8, cursor:"pointer", marginBottom:4,
+                    background:"rgba(15,30,53,0.5)", border:`1px solid ${B.border}`, borderLeft:`3px solid #4A6A90` }}>
+                  <div style={{ fontSize:12, fontWeight:600, color:B.text }}>{n.titulo}</div>
                 </div>
-              );
-            })}
-            {notas.length === 0 && <div style={{ textAlign:"center", color:"#4A6A90", fontSize:12, paddingTop:40 }}>Sin notas aún</div>}
+              ))}
+            </div>
+            {/* Panel detalle en lista */}
+            {selectedNota && (
+              <div style={{ width:300, borderLeft:`1px solid ${B.border}`, background:B.card, flexShrink:0 }}>
+                <PanelNota nota={selectedNota} supabase={supabase} notas={notas}
+                  onUpdate={updateNota} onDelete={deleteNota} />
+              </div>
+            )}
           </div>
         )}
       </div>
