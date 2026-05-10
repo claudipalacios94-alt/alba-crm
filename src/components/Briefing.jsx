@@ -444,23 +444,65 @@ function ResumenCaptacionZonas({ supabase }) {
   );
 }
 
-function BriefingIA({ leads, properties, onConsumo }) {
-  const [respuesta, setRespuesta] = React.useState("");
+function BriefingIA({ leads, properties, supabase, onConsumo }) {
+  const [mensajes,  setMensajes]  = React.useState([]);
+  const [input,     setInput]     = React.useState("");
   const [loading,   setLoading]   = React.useState(false);
-  const [cargado,   setCargado]   = React.useState(false);
+  const [iniciado,  setIniciado]  = React.useState(false);
+  const [accionPendiente, setAccionPendiente] = React.useState(null);
+  const chatRef = React.useRef(null);
 
-  async function consultarIA() {
-    setLoading(true);
+  // Contexto base del CRM
+  function buildContexto() {
     const hoy = new Date().toLocaleDateString("es-AR", { weekday:"long", day:"numeric", month:"long" });
     const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
-    const calientes = activos.filter(l => l.dias <= 3).slice(0, 8);
+    const calientes = activos.filter(l => l.dias <= 3).slice(0, 10);
     const negociacion = activos.filter(l => l.etapa === "Negociación");
-
-    const contexto = `Hoy es ${hoy}.
-Inmobiliaria Alba Inversiones, Mar del Plata.
+    return `Hoy es ${hoy}. Inmobiliaria Alba Inversiones, Mar del Plata. Sos el asistente de Claudi (dueña).
 Leads en negociación (${negociacion.length}): ${negociacion.map(l => `${l.nombre} - ${l.zona} - USD ${l.presup||"?"}`).join(", ") || "ninguno"}
-Leads calientes (${calientes.length}): ${calientes.map(l => `${l.nombre} (${l.dias}d sin contacto, ${l.etapa}, ${l.zona}, USD ${l.presup||"?"})`).join(" | ")}
-Propiedades en cartera: ${(properties||[]).length}`;
+Leads calientes (${calientes.length}): ${calientes.map(l => `${l.nombre} (${l.dias}d, ${l.etapa}, ${l.zona}, USD ${l.presup||"?"}${l.nota?" - "+l.nota.slice(0,60):""})`).join(" | ")}
+Propiedades en cartera: ${(properties||[]).length}
+REGLAS: Respondés en español rioplatense, directo y conciso. Si Claudi menciona algo que implique modificar un lead (cambiar etapa, agregar nota, cambiar datos), SIEMPRE preguntás antes de hacerlo diciendo exactamente qué vas a cambiar. Guardás ideas y pensamientos importantes que Claudi comparte.`;
+  }
+
+  // Cargar historial de hoy desde Supabase
+  React.useEffect(() => {
+    if (!supabase) return;
+    const hoy = new Date().toISOString().slice(0,10);
+    supabase.from("briefing_chat").select("*")
+      .gte("created_at", hoy + "T00:00:00")
+      .order("created_at", { ascending: true })
+      .limit(20)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setMensajes(data.map(d => ({ role: d.role, content: d.content, id: d.id })));
+          setIniciado(true);
+        }
+      });
+  }, []);
+
+  // Auto scroll
+  React.useEffect(() => {
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+  }, [mensajes]);
+
+  async function guardarMensaje(role, content) {
+    if (!supabase) return;
+    await supabase.from("briefing_chat").insert([{ role, content }]);
+  }
+
+  async function enviar(texto) {
+    if (!texto.trim() || loading) return;
+    const userMsg = { role:"user", content: texto };
+    const nuevosMensajes = [...mensajes, userMsg];
+    setMensajes(nuevosMensajes);
+    setInput("");
+    setLoading(true);
+    setIniciado(true);
+    await guardarMensaje("user", texto);
+
+    // Últimos 10 mensajes para contexto
+    const historial = nuevosMensajes.slice(-10).map(m => ({ role: m.role, content: m.content }));
 
     try {
       const res = await fetch("/api/claude", {
@@ -468,45 +510,100 @@ Propiedades en cartera: ${(properties||[]).length}`;
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-haiku-4-5-20251001",
-          max_tokens: 400,
-          system: "Sos el asistente comercial de Alba Inversiones. Respondés en español rioplatense, de forma directa y concisa. Máximo 5 líneas. Sin listas largas. Decís exactamente qué hacer hoy.",
-          messages: [{ role:"user", content: contexto + "\n\n¿Qué hago primero hoy para avanzar en ventas?" }]
+          max_tokens: 500,
+          system: buildContexto(),
+          messages: historial,
         })
       });
       const data = await res.json();
-      const texto = data.content?.[0]?.text || "Sin respuesta";
-      setRespuesta(texto);
-      setCargado(true);
-      // Estimar consumo
-      if (onConsumo) onConsumo(500, 100);
+      const respuesta = data.content?.[0]?.text || "Sin respuesta";
+      setMensajes(p => [...p, { role:"assistant", content: respuesta }]);
+      await guardarMensaje("assistant", respuesta);
+      if (onConsumo) onConsumo(800, 150);
     } catch(e) {
-      setRespuesta("Error al conectar con IA. Verificá los créditos.");
-      setCargado(true);
+      setMensajes(p => [...p, { role:"assistant", content: "Error al conectar. Verificá los créditos." }]);
     }
     setLoading(false);
   }
 
+  async function arrancarDia() {
+    await enviar("¿Qué hago primero hoy para avanzar en ventas?");
+  }
+
+  const inp = {
+    flex:1, background:B.bg, border:`1px solid ${B.border}`, borderRadius:8,
+    padding:"8px 12px", color:B.text, fontSize:12, outline:"none",
+  };
+
   return (
-    <div style={{ background:B.sidebar, border:`1px solid ${B.accentL}30`, borderRadius:14, padding:16, marginBottom:14 }}>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-        <span style={{ fontSize:11, color:B.accentL, fontWeight:700, letterSpacing:"1px" }}>✨ BRIEFING IA — QUÉ HACER HOY</span>
-        <button onClick={consultarIA} disabled={loading}
-          style={{ padding:"4px 12px", borderRadius:6, cursor:loading?"default":"pointer",
-            background:loading?B.border:B.accent, border:`1px solid ${loading?B.border:B.accentL}`,
-            color:loading?"#8AAECC":"#fff", fontSize:11, fontWeight:600 }}>
-          {loading ? "Analizando..." : cargado ? "Actualizar" : "Analizar mi día"}
-        </button>
+    <div style={{ background:B.sidebar, border:`1px solid ${B.accentL}30`, borderRadius:14, overflow:"hidden", marginBottom:14 }}>
+      {/* Header */}
+      <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <span style={{ fontSize:11, color:B.accentL, fontWeight:700, letterSpacing:"1px" }}>✨ ASISTENTE ALBA</span>
+        {iniciado && (
+          <button onClick={()=>{ setMensajes([]); setIniciado(false); }}
+            style={{ fontSize:10, color:"#4A6A90", background:"transparent", border:"none", cursor:"pointer" }}>
+            Nueva conversación
+          </button>
+        )}
       </div>
-      {!cargado && !loading && (
-        <div style={{ fontSize:12, color:"#4A6A90", fontStyle:"italic" }}>
-          Tocá "Analizar mi día" para que la IA te diga exactamente qué hacer hoy.
+
+      {/* Chat */}
+      {!iniciado ? (
+        <div style={{ padding:16, display:"flex", flexDirection:"column", gap:10 }}>
+          <div style={{ fontSize:12, color:"#8AAECC", fontStyle:"italic" }}>
+            Contame cómo arrancó el día, qué tenés en mente, o preguntame qué hacer.
+          </div>
+          <button onClick={arrancarDia}
+            style={{ padding:"9px", borderRadius:8, cursor:"pointer",
+              background:B.accent, border:`1px solid ${B.accentL}`,
+              color:"#fff", fontSize:12, fontWeight:700 }}>
+            ¿Qué hago hoy?
+          </button>
+        </div>
+      ) : (
+        <div ref={chatRef} style={{ maxHeight:320, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:10 }}>
+          {mensajes.map((m, i) => (
+            <div key={i} style={{
+              display:"flex", justifyContent: m.role==="user" ? "flex-end" : "flex-start"
+            }}>
+              <div style={{
+                maxWidth:"85%", padding:"8px 12px", borderRadius: m.role==="user" ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
+                background: m.role==="user" ? B.accent : "rgba(42,91,173,0.12)",
+                border: m.role==="user" ? "none" : `1px solid ${B.border}`,
+                fontSize:12, color: m.role==="user" ? "#fff" : "#C8D8E8",
+                lineHeight:1.6, whiteSpace:"pre-wrap",
+              }}>
+                {m.content}
+              </div>
+            </div>
+          ))}
+          {loading && (
+            <div style={{ display:"flex", justifyContent:"flex-start" }}>
+              <div style={{ padding:"8px 12px", borderRadius:"12px 12px 12px 2px",
+                background:"rgba(42,91,173,0.12)", border:`1px solid ${B.border}`,
+                fontSize:12, color:"#4A6A90", fontStyle:"italic" }}>
+                Pensando...
+              </div>
+            </div>
+          )}
         </div>
       )}
-      {loading && (
-        <div style={{ fontSize:12, color:"#8AAECC", fontStyle:"italic" }}>Revisando tus leads...</div>
-      )}
-      {cargado && !loading && (
-        <div style={{ fontSize:13, color:"#C8D8E8", lineHeight:1.7, whiteSpace:"pre-wrap" }}>{respuesta}</div>
+
+      {/* Input */}
+      {iniciado && (
+        <div style={{ padding:"10px 16px", borderTop:`1px solid ${B.border}`, display:"flex", gap:8 }}>
+          <input value={input} onChange={e=>setInput(e.target.value)}
+            onKeyDown={e=>{ if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); enviar(input); } }}
+            placeholder="Escribí acá... (Enter para enviar)"
+            style={inp} />
+          <button onClick={()=>enviar(input)} disabled={loading || !input.trim()}
+            style={{ padding:"8px 14px", borderRadius:8, cursor:loading||!input.trim()?"default":"pointer",
+              background:loading||!input.trim()?B.border:B.accent,
+              border:"none", color:"#fff", fontSize:12, fontWeight:700 }}>
+            →
+          </button>
+        </div>
       )}
     </div>
   );
@@ -593,7 +690,7 @@ export default function Briefing({ leads, properties, supabase, onConsumo }) {
       </div>
 
       {/* Briefing IA */}
-      <BriefingIA leads={leads} properties={properties} onConsumo={onConsumo} />
+      <BriefingIA leads={leads} properties={properties} supabase={supabase} onConsumo={onConsumo} />
 
       {/* Fila 1: Insights | Calendario */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
