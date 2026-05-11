@@ -222,7 +222,7 @@ Mar del Plata`;
   }
 
   return (
-    <div style={{ overflowY:"auto", maxWidth:680, display:"flex", flexDirection:"column", gap:14 }}>
+    <div style={{ maxWidth:680, display:"flex", flexDirection:"column", gap:14 }}>
 
       {/* Header */}
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10 }}>
