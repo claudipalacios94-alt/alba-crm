@@ -385,8 +385,8 @@ function ResumenCaptacionZonas({ supabase }) {
 
   React.useEffect(() => {
     if (!supabase) return;
-    supabase.from("captacion_zonas").select("*").eq("semana_inicio", getLunes()).single()
-      .then(({ data }) => { setSemana(data); setLoaded(true); });
+    supabase.from("captacion_zonas").select("*").eq("semana_inicio", getLunes()).limit(1)
+      .then(({ data }) => { setSemana(data?.[0] || null); setLoaded(true); });
   }, []);
 
   if (!loaded) return null;
