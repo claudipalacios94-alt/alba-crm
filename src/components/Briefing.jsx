@@ -745,6 +745,86 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
   );
 }
 
+// ── Canales de captación ─────────────────────────────────────
+const CANAL_CONFIG = {
+  "facebook":          { label:"Facebook",     color:"#1877F2", icono:"📘" },
+  "instagram":         { label:"Instagram",    color:"#E1306C", icono:"📸" },
+  "zonaprop":          { label:"ZonaProp",     color:"#FF6B35", icono:"🏠" },
+  "cartel":            { label:"Cartel",       color:"#E8A830", icono:"🪧" },
+  "referido":          { label:"Referido",     color:"#2E9E6A", icono:"🤝" },
+  "whatsapp":          { label:"WhatsApp",     color:"#25D366", icono:"💬" },
+  "whatsapp / referido":{ label:"WA/Referido", color:"#25D366", icono:"💬" },
+  "otro":              { label:"Otro",         color:"#8AAECC", icono:"📌" },
+};
+
+function CanalesCaptacion({ leads }) {
+  const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
+  const total   = leads.length;
+
+  // Agrupar por origen
+  const conteo = {};
+  leads.forEach(l => {
+    const key = (l.origen||"otro").toLowerCase().trim();
+    conteo[key] = (conteo[key]||0) + 1;
+  });
+
+  // Tasa de conversión por canal (cuántos llegaron a Negociación o Cerrado)
+  const conversion = {};
+  leads.forEach(l => {
+    const key = (l.origen||"otro").toLowerCase().trim();
+    if (l.etapa === "Negociación" || l.etapa === "Cerrado") {
+      conversion[key] = (conversion[key]||0) + 1;
+    }
+  });
+
+  const canales = Object.entries(conteo)
+    .sort((a,b) => b[1]-a[1])
+    .map(([key, cnt]) => {
+      const cfg = CANAL_CONFIG[key] || { label:key, color:"#8AAECC", icono:"📌" };
+      const conv = conversion[key] || 0;
+      const pct  = Math.round((cnt/total)*100);
+      const convPct = Math.round((conv/cnt)*100);
+      return { key, cfg, cnt, pct, conv, convPct };
+    });
+
+  const maxCnt = Math.max(...canales.map(c=>c.cnt), 1);
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+      <div style={{ fontSize:10, color:"#4A6A90", lineHeight:1.5 }}>
+        💡 <strong style={{ color:B.accentL }}>Cómo leerlo:</strong> La barra muestra volumen de leads. El % verde es conversión a negociación/cierre.
+      </div>
+
+      {canales.map(({ key, cfg, cnt, pct, conv, convPct }) => (
+        <div key={key}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:5 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <span style={{ fontSize:14 }}>{cfg.icono}</span>
+              <span style={{ fontSize:12, fontWeight:600, color:B.text }}>{cfg.label}</span>
+              <span style={{ fontSize:11, color:"#4A6A90" }}>{cnt} leads · {pct}%</span>
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+              {conv > 0 && (
+                <span style={{ fontSize:10, padding:"2px 7px", borderRadius:8,
+                  background:"rgba(46,158,106,0.15)", color:"#2E9E6A",
+                  border:"1px solid rgba(46,158,106,0.3)", fontWeight:700 }}>
+                  {convPct}% conv.
+                </span>
+              )}
+            </div>
+          </div>
+          {/* Barra */}
+          <div style={{ height:8, background:"rgba(10,21,37,0.5)", borderRadius:4, overflow:"hidden" }}>
+            <div style={{ height:"100%", width:`${(cnt/maxCnt)*100}%`,
+              background:`linear-gradient(90deg, ${cfg.color}CC, ${cfg.color}88)`,
+              borderRadius:4, transition:"width 0.4s" }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Zonas agrupadas ──────────────────────────────────────────
 const ZONAS_GRUPO = {
   "Costa Norte":  ["la perla","chauvin","playa grande","constitución","constitucion"],
@@ -1065,9 +1145,15 @@ export default function Briefing({ leads, properties, rentals, captaciones, supa
         <div style={card}>
           <ResumenCaptacionZonas supabase={supabase} />
         </div>
-        <div style={{ ...card, padding:16 }}>
+        <div style={card}>
           <InteligenciaMercado leads={leads} properties={properties} captaciones={captaciones} />
         </div>
+      </div>
+
+      {/* ── Fila 5: Canales de captación ───────────────────── */}
+      <div style={card}>
+        <div style={{ fontSize:11, color:"#8AAECC", fontWeight:700, letterSpacing:"1px", marginBottom:14 }}>📡 CANALES DE CAPTACIÓN</div>
+        <CanalesCaptacion leads={leads} />
       </div>
 
     </div>
