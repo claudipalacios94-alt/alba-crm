@@ -720,7 +720,7 @@ function getGrupo(zona) {
 // Velocímetro — usa strokeDasharray para arco limpio
 function Velocimetro({ value, max, label, sublabel, color }) {
   const pct = Math.min(1, value / Math.max(max, 1));
-  const r = 36, cx = 50, cy = 50;
+  const r = 34, cx = 50, cy = 54;
   const circum = 2 * Math.PI * r;
   // Mostramos 75% del círculo (270°)
   const trackLen = circum * 0.75;
@@ -735,7 +735,7 @@ function Velocimetro({ value, max, label, sublabel, color }) {
 
   return (
     <div style={{ textAlign:"center", flex:1, display:"flex", flexDirection:"column", alignItems:"center" }}>
-      <svg width="100" height="75" viewBox="0 0 100 75">
+      <svg width="100" height="80" viewBox="0 0 100 80">
         {/* Track */}
         <circle cx={cx} cy={cy} r={r} fill="none"
           stroke="#1E3A5F" strokeWidth="7" strokeLinecap="round"

@@ -298,7 +298,7 @@ export default function App() {
         display:"flex", flexDirection:"column",
         scrollbarWidth:"thin", scrollbarColor:`${B.border} transparent`,
       }}>
-        {view === "briefing"    && <Briefing    leads={leads} properties={properties} supabase={supabase} />}
+        {view === "briefing"    && <Briefing    leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase} onConsumo={agregarConsumo} />}
         {view === "buscador"    && <Buscador    leads={leads} saveSearchResult={saveSearchResult} getSearchResult={getSearchResult} />}
         {view === "cuaderno"    && <Cuaderno    leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase} onConsumo={agregarConsumo} />}
         {view === "kanban"      && <Kanban      leads={leads} updateLead={updateLead} />}
