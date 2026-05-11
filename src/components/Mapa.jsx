@@ -112,7 +112,7 @@ async function nominatim(dir) {
   return null;
 }
 
-export default function Mapa({ properties, leads = [], updateProperty, supabase }) {
+export default function Mapa({ properties, leads = [], updateProperty, supabase, flyers = [] }) {
   const mapRef   = useRef(null);
   const leafRef  = useRef(null);
   const marksRef = useRef([]);
@@ -431,6 +431,17 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase 
 
                 {/* Dirección */}
                 <div style={{ fontSize: 12, color: "#8AAECC", marginBottom: 6 }}>{sel.dir}</div>
+
+                {/* Mini flyer si existe */}
+                {(() => {
+                  const flyer = flyers.find(f => f.prop_id === sel.id);
+                  if (!flyer?.imagen_base64) return null;
+                  return (
+                    <img src={flyer.imagen_base64} alt={flyer.titulo}
+                      style={{ width:80, height:100, objectFit:"cover", borderRadius:6,
+                        border:"1px solid rgba(58,139,196,0.3)", marginBottom:6, float:"right", marginLeft:10 }} />
+                  );
+                })()}
 
                 {/* Precio */}
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 6 }}>

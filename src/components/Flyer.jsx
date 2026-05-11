@@ -52,7 +52,8 @@ export default function Flyer({ properties, supabase }) {
     setSubiendo(true);
     try {
       const prop = properties.find(p => p.id === Number(form.propId));
-      const titulo = form.titulo.trim() || (prop ? `${prop.tipo} · ${prop.zona}` : "Flyer " + new Date().toLocaleDateString("es-AR"));
+      const prop2 = properties.find(p => p.id === Number(form.propId));
+    const titulo = form.titulo.trim() || (prop2 ? `${prop2.tipo} · ${prop2.dir||prop2.zona}` : prop ? `${prop.tipo} · ${prop.dir||prop.zona}` : "Flyer " + new Date().toLocaleDateString("es-AR"));
       const { data, error } = await supabase.from("flyers").insert([{
         titulo,
         imagen_base64: preview,
@@ -71,9 +72,10 @@ export default function Flyer({ properties, supabase }) {
 
   async function guardarEdit() {
     if (!editando) return;
-    await supabase.from("flyers").update({ titulo: editForm.titulo, nota: editForm.nota }).eq("id", editando.id);
-    setFlyers(p => p.map(f => f.id===editando.id ? {...f,...editForm} : f));
-    if (flyerSel?.id === editando.id) setFlyerSel(f => ({...f,...editForm}));
+    const updates = { titulo: editForm.titulo, nota: editForm.nota, prop_id: editForm.prop_id||null };
+    await supabase.from("flyers").update(updates).eq("id", editando.id);
+    setFlyers(p => p.map(f => f.id===editando.id ? {...f,...updates} : f));
+    if (flyerSel?.id === editando.id) setFlyerSel(f => ({...f,...updates}));
     setEditando(null);
   }
 
@@ -134,11 +136,11 @@ export default function Flyer({ properties, supabase }) {
                 <div style={{ fontSize:11, color:"#4A6A90", marginBottom:12 }}>
                   JPG, PNG — los que hacés en ChatGPT
                 </div>
-                <label style={{ padding:"8px 20px", borderRadius:8, cursor:"pointer",
-                  background:B.accent, border:`1px solid ${B.accentL}`, color:"#fff", fontSize:12, fontWeight:600 }}>
+                <label htmlFor="flyer-input" style={{ padding:"8px 20px", borderRadius:8, cursor:"pointer",
+                  background:B.accent, border:`1px solid ${B.accentL}`, color:"#fff", fontSize:12, fontWeight:600, display:"inline-block" }}>
                   Elegir archivo
-                  <input type="file" accept="image/*" onChange={onFileInput} style={{ display:"none" }} />
                 </label>
+                <input id="flyer-input" type="file" accept="image/*" onChange={onFileInput} style={{ display:"none" }} />
               </>
             )}
           </div>
@@ -236,7 +238,11 @@ export default function Flyer({ properties, supabase }) {
                   <input value={editForm.titulo} onChange={e=>setEditForm(p=>({...p,titulo:e.target.value}))}
                     style={{ ...inp, fontSize:13, fontWeight:600 }} />
                   <textarea value={editForm.nota||""} onChange={e=>setEditForm(p=>({...p,nota:e.target.value}))}
-                    rows={4} placeholder="Nota..." style={{ ...inp, resize:"none", lineHeight:1.6 }} />
+                    rows={3} placeholder="Nota..." style={{ ...inp, resize:"none", lineHeight:1.6 }} />
+                  <select value={editForm.prop_id||""} onChange={e=>setEditForm(p=>({...p,prop_id:e.target.value}))} style={inp}>
+                    <option value="">Sin vincular</option>
+                    {properties.map(p=><option key={p.id} value={p.id}>{p.tipo} · {p.zona}{p.dir?" · "+p.dir:""}</option>)}
+                  </select>
                   <div style={{ display:"flex", gap:8 }}>
                     <button onClick={guardarEdit}
                       style={{ flex:1, padding:"8px", borderRadius:7, cursor:"pointer",
@@ -272,7 +278,7 @@ export default function Flyer({ properties, supabase }) {
                         fontSize:12, fontWeight:700, textDecoration:"none" }}>
                       ↓ Descargar
                     </a>
-                    <button onClick={()=>{ setEditando(flyerSel); setEditForm({titulo:flyerSel.titulo,nota:flyerSel.nota||""}); }}
+                    <button onClick={()=>{ setEditando(flyerSel); setEditForm({titulo:flyerSel.titulo,nota:flyerSel.nota||"",prop_id:flyerSel.prop_id||""}); }}
                       style={{ padding:"9px 12px", borderRadius:8, cursor:"pointer",
                         background:`${B.accentL}15`, border:`1px solid ${B.accentL}40`,
                         color:B.accentL, fontSize:12 }}>
