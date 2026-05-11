@@ -376,9 +376,9 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
  
       {/* Cards agrupadas por temperatura */}
       {[
-        { titulo:"🔴 CALIENTES", color:B.hot,  leads: filt.filter(l => { const s = scoreLead(l).label; return s.includes("Caliente") || l.etapa === "Negociación"; }) },
-        { titulo:"🟡 TIBIOS",    color:B.warm, leads: filt.filter(l => { const s = scoreLead(l).label; return s.includes("Tibio") && l.etapa !== "Negociación"; }) },
-        { titulo:"⚪ FRÍOS",     color:B.dim,  leads: filt.filter(l => { const s = scoreLead(l).label; return s.includes("Frío"); }) },
+        { titulo:"🔴 CALIENTES", color:B.hot,  leads: leadsActivos.filter(l => { const s = scoreLead(l).label; return s.includes("Caliente") || l.etapa === "Negociación"; }) },
+        { titulo:"🟡 TIBIOS",    color:B.warm, leads: leadsActivos.filter(l => { const s = scoreLead(l).label; return s.includes("Tibio") && l.etapa !== "Negociación"; }) },
+        { titulo:"⚪ FRÍOS",     color:B.dim,  leads: leadsActivos.filter(l => { const s = scoreLead(l).label; return s.includes("Frío"); }) },
       ].filter(g => g.leads.length > 0).map(grupo => (
         <div key={grupo.titulo} style={{ marginBottom:16 }}>
           <div style={{ fontSize:11, fontWeight:700, color:grupo.color, letterSpacing:"1.5px",
@@ -810,7 +810,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           </div>
         </div>
       ))}
-      {filt.length === 0 && (
+      {leadsActivos.length === 0 && (
         <div style={{ textAlign:"center", padding:"40px", color:"#8AAECC", fontSize:13 }}>Sin resultados</div>
       )}
  
