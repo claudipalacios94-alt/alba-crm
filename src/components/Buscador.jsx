@@ -100,11 +100,18 @@ function LeadBuscador({ lead }) {
   const zonaPrincipal = ZONA_SLUG[zona] || zona.replace(/\s+/g,"-");
   const alts = ZONAS_ALT[zona] || [];
 
-  const urlPrincipal = buildArgenPropUrl(lead.tipo, lead.zona, lead.presup, lead.op);
-  const urlsAlt = alts.slice(0,2).map(z => ({
-    label: z.replace(/-/g," ").replace(/\b\w/g, c => c.toUpperCase()),
-    url: buildArgenPropUrl(lead.tipo, z.replace(/-/g," "), lead.presup, lead.op),
+  const zonasRaw = (lead.zona || "").split(/[,/]|\s+y\s+/).map(z => z.trim()).filter(Boolean);
+  const zonasUnicas = [...new Set(zonasRaw)];
+  const urlsZonas = zonasUnicas.map(z => ({
+    label: z,
+    url: buildArgenPropUrl(lead.tipo, z, lead.presup, lead.op),
   }));
+  const urlsAlt = zonasUnicas.length === 1
+    ? alts.slice(0,2).map(z => ({
+        label: z.replace(/-/g," ").replace(/\b\w/g, c => c.toUpperCase()),
+        url: buildArgenPropUrl(lead.tipo, z.replace(/-/g," "), lead.presup, lead.op),
+      }))
+    : [];
 
   const urgColor = lead.dias <= 2 ? B.hot : lead.dias <= 5 ? B.warm : B.accentL;
 
