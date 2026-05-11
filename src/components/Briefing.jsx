@@ -698,6 +698,174 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
   );
 }
 
+// ── Zonas agrupadas ──────────────────────────────────────────
+const ZONAS_GRUPO = {
+  "Costa Norte":  ["la perla","chauvin","playa grande","constitución","constitucion"],
+  "Centro":       ["centro","microcentro","mitre","plaza colon","plaza colón","güemes","guemes","san juan"],
+  "Costa Sur":    ["punta mogotes","alfar","divino rostro","peralta ramos"],
+  "San Carlos":   ["san carlos","bosque grande","floresta","libertad","pompeya"],
+  "Oeste":        ["don bosco","san josé","san jose","las heras","camet","villa primera"],
+  "Norte":        ["los pinares","santa rosa","santa monica","parque luro","parque palermo"],
+};
+
+function getGrupo(zona) {
+  if (!zona) return "Otros";
+  const z = zona.toLowerCase();
+  for (const [grupo, barrios] of Object.entries(ZONAS_GRUPO)) {
+    if (barrios.some(b => z.includes(b))) return grupo;
+  }
+  return "Otros";
+}
+
+// Velocímetro SVG
+function Velocimetro({ value, max, label, sublabel, color }) {
+  const pct  = Math.min(1, value / Math.max(max, 1));
+  const ang  = -135 + pct * 270; // -135° a +135°
+  const r    = 52;
+  const cx   = 64, cy = 64;
+  // Arc path
+  function polarToXY(deg, radius) {
+    const rad = (deg - 90) * Math.PI / 180;
+    return { x: cx + radius * Math.cos(rad), y: cy + radius * Math.sin(rad) };
+  }
+  const start = polarToXY(-135, r);
+  const end   = polarToXY(135, r);
+  const valEnd = polarToXY(ang, r);
+  const largeArc = pct > 0.5 ? 1 : 0;
+
+  return (
+    <div style={{ textAlign:"center", flex:1 }}>
+      <svg width="128" height="80" viewBox="0 0 128 90" style={{ overflow:"visible" }}>
+        {/* Track */}
+        <path d={`M ${start.x} ${start.y} A ${r} ${r} 0 1 1 ${end.x} ${end.y}`}
+          fill="none" stroke={B.border} strokeWidth="8" strokeLinecap="round" />
+        {/* Value arc */}
+        {value > 0 && (
+          <path d={`M ${start.x} ${start.y} A ${r} ${r} 0 ${pct > 0.5 ? 1 : 0} 1 ${valEnd.x} ${valEnd.y}`}
+            fill="none" stroke={color} strokeWidth="8" strokeLinecap="round" />
+        )}
+        {/* Needle */}
+        <line
+          x1={cx} y1={cy}
+          x2={cx + (r-10) * Math.cos((ang - 90) * Math.PI / 180)}
+          y2={cy + (r-10) * Math.sin((ang - 90) * Math.PI / 180)}
+          stroke={color} strokeWidth="2" strokeLinecap="round" />
+        <circle cx={cx} cy={cy} r="4" fill={color} />
+        {/* Value */}
+        <text x={cx} y={cy+22} textAnchor="middle" fill={color}
+          style={{ fontSize:20, fontWeight:700, fontFamily:"Georgia,serif" }}>{value}</text>
+      </svg>
+      <div style={{ fontSize:11, fontWeight:600, color:"#C8D8E8", marginTop:-4 }}>{label}</div>
+      <div style={{ fontSize:10, color:"#4A6A90", marginTop:2 }}>{sublabel}</div>
+    </div>
+  );
+}
+
+function InteligenciaMercado({ leads, properties, captaciones }) {
+  const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido" && !l.inversor);
+  const calientes = activos.filter(l => l.dias <= 2).length;
+  const tibios    = activos.filter(l => l.dias > 2 && l.dias <= 7).length;
+  const frios     = activos.filter(l => l.dias > 7).length;
+
+  // Propiedades
+  const propsMias   = (properties||[]).filter(p => p.activa !== false).length;
+  const capsActivas = (captaciones||[]).length;
+  const totalOferta = propsMias + capsActivas;
+
+  // Demanda vs Oferta por zona
+  const zonas = Object.keys(ZONAS_GRUPO);
+  const demanda = {}, oferta = {};
+  zonas.forEach(z => { demanda[z] = 0; oferta[z] = 0; });
+
+  activos.forEach(l => {
+    // Un lead puede buscar en múltiples zonas
+    const partes = (l.zona||"").split(/[,/]|\s+y\s+/).map(z=>z.trim());
+    const grupos = new Set(partes.map(getGrupo));
+    grupos.forEach(g => { if (demanda[g] !== undefined) demanda[g]++; });
+  });
+
+  (properties||[]).filter(p=>p.activa!==false).forEach(p => {
+    const g = getGrupo(p.zona);
+    if (oferta[g] !== undefined) oferta[g]++;
+  });
+  (captaciones||[]).forEach(c => {
+    const g = getGrupo(c.zona);
+    if (oferta[g] !== undefined) oferta[g]++;
+  });
+
+  const maxBar = Math.max(...zonas.map(z => Math.max(demanda[z], oferta[z])), 1);
+
+  const ZONA_COLORS = {
+    "Costa Norte": "#3A8BC4",
+    "Centro":      "#9B6DC8",
+    "Costa Sur":   "#2E9E6A",
+    "San Carlos":  "#E8A830",
+    "Oeste":       "#CC2233",
+    "Norte":       "#4A8ABE",
+  };
+
+  return (
+    <div style={{ background:"rgba(10,21,37,0.6)", border:`1px solid ${B.border}`, borderRadius:14, padding:18, marginBottom:14 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+        <div>
+          <div style={{ fontSize:13, fontWeight:700, color:B.text, fontFamily:"Georgia,serif" }}>📊 Inteligencia de mercado</div>
+          <div style={{ fontSize:11, color:"#4A6A90", marginTop:2 }}>Demanda vs oferta por zona · identifica dónde captar</div>
+        </div>
+      </div>
+
+      {/* Velocímetros */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:20,
+        background:"rgba(7,14,28,0.4)", borderRadius:10, padding:"14px 8px" }}>
+        <Velocimetro value={leads.length} max={150} label="Leads totales" sublabel="en el sistema" color={B.accentL} />
+        <Velocimetro value={activos.length} max={80} label="Leads activos" sublabel={`${calientes}🔴 ${tibios}🟡 ${frios}🔵`} color="#E8A830" />
+        <Velocimetro value={totalOferta} max={50} label="Oferta total" sublabel={`${propsMias} propias · ${capsActivas} captadas`} color="#2E9E6A" />
+      </div>
+
+      {/* Barras demanda vs oferta */}
+      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"90px 1fr 1fr", gap:6, marginBottom:4 }}>
+          <div />
+          <div style={{ fontSize:9, color:"#3A8BC4", fontWeight:700, letterSpacing:"0.8px", textAlign:"center" }}>DEMANDA (leads)</div>
+          <div style={{ fontSize:9, color:"#2E9E6A", fontWeight:700, letterSpacing:"0.8px", textAlign:"center" }}>OFERTA (props)</div>
+        </div>
+        {zonas.map(zona => {
+          const d = demanda[zona] || 0;
+          const o = oferta[zona] || 0;
+          const gap = d - o;
+          const color = ZONA_COLORS[zona] || B.accentL;
+          return (
+            <div key={zona} style={{ display:"grid", gridTemplateColumns:"90px 1fr 1fr", gap:6, alignItems:"center" }}>
+              <div style={{ fontSize:11, color, fontWeight:600, textAlign:"right", paddingRight:8 }}>{zona}</div>
+              {/* Barra demanda */}
+              <div style={{ position:"relative", height:22, background:"rgba(58,139,196,0.08)", borderRadius:4, overflow:"hidden" }}>
+                <div style={{ height:"100%", width:`${(d/maxBar)*100}%`, background:"#3A8BC4", borderRadius:4, transition:"width 0.4s",
+                  display:"flex", alignItems:"center", justifyContent:"flex-end", paddingRight:6 }}>
+                  {d > 0 && <span style={{ fontSize:10, fontWeight:700, color:"#fff" }}>{d}</span>}
+                </div>
+                {d === 0 && <span style={{ position:"absolute", left:6, top:"50%", transform:"translateY(-50%)", fontSize:10, color:"#4A6A90" }}>0</span>}
+              </div>
+              {/* Barra oferta */}
+              <div style={{ position:"relative", height:22, background:"rgba(46,158,106,0.08)", borderRadius:4, overflow:"hidden" }}>
+                <div style={{ height:"100%", width:`${(o/maxBar)*100}%`, background:"#2E9E6A", borderRadius:4, transition:"width 0.4s",
+                  display:"flex", alignItems:"center", justifyContent:"flex-end", paddingRight:6 }}>
+                  {o > 0 && <span style={{ fontSize:10, fontWeight:700, color:"#fff" }}>{o}</span>}
+                </div>
+                {o === 0 && <span style={{ position:"absolute", left:6, top:"50%", transform:"translateY(-50%)", fontSize:10, color:"#4A6A90" }}>0</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Leyenda */}
+      <div style={{ marginTop:14, padding:"10px 12px", background:"rgba(42,91,173,0.08)", borderRadius:8,
+        border:`1px solid ${B.border}`, fontSize:11, color:"#8AAECC", lineHeight:1.6 }}>
+        💡 <strong style={{ color:B.accentL }}>Cómo leerlo:</strong> Si la barra azul (demanda) supera la verde (oferta) en una zona — hay oportunidad de captación. Priorizá captar en zonas con más leads buscando que propiedades disponibles.
+      </div>
+    </div>
+  );
+}
+
 export default function Briefing({ leads, properties, rentals, captaciones, supabase, onConsumo }) {
   const [filtroAg, setFiltroAg] = useState("Todos");
   const hoy = new Date();
@@ -850,6 +1018,9 @@ export default function Briefing({ leads, properties, rentals, captaciones, supa
 
       {/* ── Captación zonas ────────────────────────────────── */}
       <ResumenCaptacionZonas supabase={supabase} />
+
+      {/* ── Inteligencia de mercado ─────────────────────────── */}
+      <InteligenciaMercado leads={leads} properties={properties} captaciones={captaciones} />
     </div>
   );
 }
