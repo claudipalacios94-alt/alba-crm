@@ -127,10 +127,14 @@ function LeadBuscador({ lead }) {
       {open && (
         <div style={{ borderTop:`1px solid ${B.border}`, padding:"12px 14px", display:"flex", flexDirection:"column", gap:10 }}>
 
-          {/* Zona principal */}
+          {/* Zonas del lead */}
           <div>
-            <div style={{ fontSize:10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom:6 }}>ZONA PRINCIPAL</div>
-            <ZonaBtn label={lead.zona || "Mar del Plata"} url={urlPrincipal} color={B.accentL} />
+            <div style={{ fontSize:10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom:6 }}>
+              {urlsZonas.length > 1 ? "ZONAS DEL LEAD" : "ZONA PRINCIPAL"}
+            </div>
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+              {urlsZonas.map((z,i) => <ZonaBtn key={i} label={z.label} url={z.url} color={B.accentL} />)}
+            </div>
           </div>
 
           {/* Zonas alternativas */}
