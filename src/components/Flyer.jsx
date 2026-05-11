@@ -17,6 +17,7 @@ export default function Flyer({ properties, supabase }) {
   const [editForm,    setEditForm]    = useState({});
   const [confirmDel,  setConfirmDel]  = useState(null);
   const dropRef = useRef(null);
+  const fileRef = useRef(null);
 
   useEffect(() => {
     if (!supabase) return;
@@ -136,11 +137,12 @@ export default function Flyer({ properties, supabase }) {
                 <div style={{ fontSize:11, color:"#4A6A90", marginBottom:12 }}>
                   JPG, PNG — los que hacés en ChatGPT
                 </div>
-                <label htmlFor="flyer-input" style={{ padding:"8px 20px", borderRadius:8, cursor:"pointer",
-                  background:B.accent, border:`1px solid ${B.accentL}`, color:"#fff", fontSize:12, fontWeight:600, display:"inline-block" }}>
+                <button onClick={()=>fileRef.current?.click()}
+                  style={{ padding:"8px 20px", borderRadius:8, cursor:"pointer",
+                    background:B.accent, border:`1px solid ${B.accentL}`, color:"#fff", fontSize:12, fontWeight:600 }}>
                   Elegir archivo
-                </label>
-                <input id="flyer-input" type="file" accept="image/*" onChange={onFileInput} style={{ display:"none" }} />
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" onChange={onFileInput} style={{ display:"none" }} />
               </>
             )}
           </div>
