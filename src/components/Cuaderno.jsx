@@ -375,7 +375,7 @@ function Grafo({ notas, onSelectNota, selectedId }) {
 }
 
 // ── Chat Asistente ────────────────────────────────────────────
-function AsistenteChat({ leads, properties, supabase, onNotaCreada, onConsumo }) {
+function AsistenteChat({ leads, properties, rentals, captaciones, supabase, onNotaCreada, onConsumo }) {
   const [mensajes,  setMensajes]  = useState([]);
   const [input,     setInput]     = useState("");
   const [loading,   setLoading]   = useState(false);
@@ -404,11 +404,17 @@ function AsistenteChat({ leads, properties, supabase, onNotaCreada, onConsumo })
     const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
     const calientes = activos.filter(l => l.dias <= 3).slice(0, 8);
     const negociacion = activos.filter(l => l.etapa === "Negociación");
+    const caps = (captaciones||[]).slice(0,15);
+    const capResumen = caps.map(c=>`${c.tipo||"Prop"} ${c.zona||"?"} USD${c.precio||"?"} [${c.tipo_captacion||"?"}]${c.direccion?" · "+c.direccion:""}`).join(" | ");
+    const propsResumen = (properties||[]).slice(0,10).map(p=>`${p.tipo||"Prop"} ${p.zona||"?"} USD${p.precio||"?"}`).join(" | ");
+    const rentResumen = (rentals||[]).slice(0,5).map(r=>`${r.tipo||"Prop"} ${r.zona||"?"} $${r.precio||"?"}/mes`).join(" | ");
     return `Hoy es ${hoy}. Sos el asistente de Claudi de Alba Inversiones, Mar del Plata.
-Leads negociación: ${negociacion.map(l=>`${l.nombre} ${l.zona} USD${l.presup||"?"}`).join(", ")||"ninguno"}
-Leads calientes: ${calientes.map(l=>`${l.nombre}(${l.dias}d,${l.etapa},${l.zona})`).join(" | ")}
-Props cartera: ${(properties||[]).length}
-REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos del CRM, preguntás antes. Si el usuario comparte algo importante (idea, estrategia, info de lead), sugerís guardarlo como nota en el cuaderno escribiendo al final: [NOTA: título | tipo | contenido breve]`;
+LEADS negociación: ${negociacion.map(l=>`${l.nombre} ${l.zona} USD${l.presup||"?"}`).join(", ")||"ninguno"}
+LEADS calientes: ${calientes.map(l=>`${l.nombre}(${l.dias}d,${l.etapa},${l.zona})`).join(" | ")}
+PROPIEDADES en venta (${(properties||[]).length}): ${propsResumen||"ninguna"}
+ALQUILERES (${(rentals||[]).length}): ${rentResumen||"ninguno"}
+CAPTACIONES pendientes (${caps.length}): ${capResumen||"ninguna"}
+REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos, preguntás antes. Si el usuario comparte algo importante, sugerís guardarlo como nota: [NOTA: título | tipo | contenido breve]`;
   }
 
   async function guardarMensaje(role, content) {
@@ -635,7 +641,7 @@ function PanelNota({ nota, supabase, notas, onUpdate, onDelete, onLink }) {
 }
 
 // ── Módulo principal ──────────────────────────────────────────
-export default function Cuaderno({ leads, properties, supabase, onConsumo }) {
+export default function Cuaderno({ leads, properties, rentals, captaciones, supabase, onConsumo }) {
   const [notas,       setNotas]       = useState([]);
   const [loaded,      setLoaded]      = useState(false);
   const [selectedNota,setSelectedNota]= useState(null);
@@ -776,7 +782,7 @@ export default function Cuaderno({ leads, properties, supabase, onConsumo }) {
                 <PanelNota nota={selectedNota} supabase={supabase} notas={notas}
                   onUpdate={updateNota} onDelete={deleteNota} />
               ) : (
-                <AsistenteChat leads={leads} properties={properties} supabase={supabase}
+                <AsistenteChat leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase}
                   onNotaCreada={data => crearNota(data)} onConsumo={onConsumo} />
               )}
             </div>

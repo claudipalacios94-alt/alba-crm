@@ -526,7 +526,7 @@ function MicBtn({ onTranscript }) {
   );
 }
 
-function BriefingIA({ leads, properties, supabase, onConsumo }) {
+function BriefingIA({ leads, properties, rentals, captaciones, supabase, onConsumo }) {
   const [mensajes,  setMensajes]  = React.useState([]);
   const [input,     setInput]     = React.useState("");
   const [loading,   setLoading]   = React.useState(false);
@@ -540,11 +540,17 @@ function BriefingIA({ leads, properties, supabase, onConsumo }) {
     const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
     const calientes = activos.filter(l => l.dias <= 3).slice(0, 10);
     const negociacion = activos.filter(l => l.etapa === "Negociación");
+    const caps = (captaciones||[]).slice(0, 15);
+    const capResumen = caps.map(c => `${c.tipo||"Prop"} ${c.zona||"?"} USD${c.precio||"?"} [${c.tipo_captacion||"?"}]${c.direccion?" · "+c.direccion:""}`).join(" | ");
+    const propsResumen = (properties||[]).slice(0,10).map(p => `${p.tipo||"Prop"} ${p.zona||"?"} USD${p.precio||"?"}`).join(" | ");
+    const rentResumen = (rentals||[]).slice(0,5).map(r => `${r.tipo||"Prop"} ${r.zona||"?"} $${r.precio||"?"}/mes`).join(" | ");
     return `Hoy es ${hoy}. Inmobiliaria Alba Inversiones, Mar del Plata. Sos el asistente de Claudi (dueña).
-Leads en negociación (${negociacion.length}): ${negociacion.map(l => `${l.nombre} - ${l.zona} - USD ${l.presup||"?"}`).join(", ") || "ninguno"}
-Leads calientes (${calientes.length}): ${calientes.map(l => `${l.nombre} (${l.dias}d, ${l.etapa}, ${l.zona}, USD ${l.presup||"?"}${l.nota?" - "+l.nota.slice(0,60):""})`).join(" | ")}
-Propiedades en cartera: ${(properties||[]).length}
-REGLAS: Respondés en español rioplatense, directo y conciso. Si Claudi menciona algo que implique modificar un lead (cambiar etapa, agregar nota, cambiar datos), SIEMPRE preguntás antes de hacerlo diciendo exactamente qué vas a cambiar. Guardás ideas y pensamientos importantes que Claudi comparte.`;
+LEADS negociación (${negociacion.length}): ${negociacion.map(l=>`${l.nombre} ${l.zona} USD${l.presup||"?"}`).join(", ")||"ninguno"}
+LEADS calientes (${calientes.length}): ${calientes.map(l=>`${l.nombre}(${l.dias}d,${l.etapa},${l.zona},USD${l.presup||"?"})`).join(" | ")}
+PROPIEDADES en venta (${(properties||[]).length}): ${propsResumen||"ninguna"}
+ALQUILERES (${(rentals||[]).length}): ${rentResumen||"ninguno"}
+CAPTACIONES pendientes (${caps.length}): ${capResumen||"ninguna"}
+REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos del CRM, preguntás antes. Tenés visión completa del mapa, captaciones, propiedades y leads.`;
   }
 
   // Cargar historial de hoy desde Supabase
@@ -692,7 +698,7 @@ REGLAS: Respondés en español rioplatense, directo y conciso. Si Claudi mencion
   );
 }
 
-export default function Briefing({ leads, properties, supabase, onConsumo }) {
+export default function Briefing({ leads, properties, rentals, captaciones, supabase, onConsumo }) {
   const [filtroAg, setFiltroAg] = useState("Todos");
   const hoy = new Date();
   const hora = hoy.getHours();
@@ -803,7 +809,7 @@ export default function Briefing({ leads, properties, supabase, onConsumo }) {
       </div>
 
       {/* ── Asistente IA ───────────────────────────────────── */}
-      <BriefingIA leads={leads} properties={properties} supabase={supabase} onConsumo={onConsumo} />
+      <BriefingIA leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase} onConsumo={onConsumo} />
 
       {/* ── Insights + Calendario ──────────────────────────── */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:14 }}>
