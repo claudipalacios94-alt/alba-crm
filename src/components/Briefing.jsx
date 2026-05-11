@@ -717,45 +717,45 @@ function getGrupo(zona) {
   return "Otros";
 }
 
-// Velocímetro SVG
+// Velocímetro SVG — semicírculo limpio
 function Velocimetro({ value, max, label, sublabel, color }) {
-  const pct  = Math.min(1, value / Math.max(max, 1));
-  const ang  = -135 + pct * 270; // -135° a +135°
-  const r    = 52;
-  const cx   = 64, cy = 64;
-  // Arc path
-  function polarToXY(deg, radius) {
-    const rad = (deg - 90) * Math.PI / 180;
-    return { x: cx + radius * Math.cos(rad), y: cy + radius * Math.sin(rad) };
+  const pct = Math.min(1, value / Math.max(max, 1));
+  const r = 44, cx = 60, cy = 58;
+  const startAngle = 210, endAngle = 330; // 270° total
+
+  function toRad(deg) { return (deg - 90) * Math.PI / 180; }
+  function pt(deg) {
+    return { x: cx + r * Math.cos(toRad(deg)), y: cy + r * Math.sin(toRad(deg)) };
   }
-  const start = polarToXY(-135, r);
-  const end   = polarToXY(135, r);
-  const valEnd = polarToXY(ang, r);
-  const largeArc = pct > 0.5 ? 1 : 0;
+
+  const s  = pt(startAngle);
+  const e  = pt(endAngle);
+  const ve = pt(startAngle + pct * 270);
+  const needleAngle = startAngle + pct * 270;
+  const needleTip = { x: cx + (r-8) * Math.cos(toRad(needleAngle)), y: cy + (r-8) * Math.sin(toRad(needleAngle)) };
+
+  // Track: always large arc (270° > 180°)
+  const trackD = `M ${s.x.toFixed(1)} ${s.y.toFixed(1)} A ${r} ${r} 0 1 1 ${e.x.toFixed(1)} ${e.y.toFixed(1)}`;
+
+  // Value arc
+  let valueD = null;
+  if (pct > 0) {
+    const large = pct * 270 > 180 ? 1 : 0;
+    valueD = `M ${s.x.toFixed(1)} ${s.y.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${ve.x.toFixed(1)} ${ve.y.toFixed(1)}`;
+  }
 
   return (
     <div style={{ textAlign:"center", flex:1 }}>
-      <svg width="128" height="80" viewBox="0 0 128 90" style={{ overflow:"visible" }}>
-        {/* Track */}
-        <path d={`M ${start.x} ${start.y} A ${r} ${r} 0 1 1 ${end.x} ${end.y}`}
-          fill="none" stroke={B.border} strokeWidth="8" strokeLinecap="round" />
-        {/* Value arc */}
-        {value > 0 && (
-          <path d={`M ${start.x} ${start.y} A ${r} ${r} 0 ${pct > 0.5 ? 1 : 0} 1 ${valEnd.x} ${valEnd.y}`}
-            fill="none" stroke={color} strokeWidth="8" strokeLinecap="round" />
-        )}
-        {/* Needle */}
-        <line
-          x1={cx} y1={cy}
-          x2={cx + (r-10) * Math.cos((ang - 90) * Math.PI / 180)}
-          y2={cy + (r-10) * Math.sin((ang - 90) * Math.PI / 180)}
+      <svg width="120" height="80" viewBox="0 0 120 80">
+        <path d={trackD} fill="none" stroke="#1E3A5F" strokeWidth="7" strokeLinecap="round" />
+        {valueD && <path d={valueD} fill="none" stroke={color} strokeWidth="7" strokeLinecap="round" />}
+        <line x1={cx} y1={cy} x2={needleTip.x.toFixed(1)} y2={needleTip.y.toFixed(1)}
           stroke={color} strokeWidth="2" strokeLinecap="round" />
         <circle cx={cx} cy={cy} r="4" fill={color} />
-        {/* Value */}
-        <text x={cx} y={cy+22} textAnchor="middle" fill={color}
-          style={{ fontSize:20, fontWeight:700, fontFamily:"Georgia,serif" }}>{value}</text>
+        <text x={cx} y={cy+4} textAnchor="middle" fill={color}
+          fontSize="18" fontWeight="700" fontFamily="Georgia,serif">{value}</text>
       </svg>
-      <div style={{ fontSize:11, fontWeight:600, color:"#C8D8E8", marginTop:-4 }}>{label}</div>
+      <div style={{ fontSize:11, fontWeight:600, color:"#C8D8E8", marginTop:2 }}>{label}</div>
       <div style={{ fontSize:10, color:"#4A6A90", marginTop:2 }}>{sublabel}</div>
     </div>
   );
