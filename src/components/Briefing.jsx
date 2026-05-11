@@ -624,7 +624,7 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
   };
 
   return (
-    <div style={{ background:B.sidebar, border:`1px solid ${B.accentL}30`, borderRadius:14, overflow:"hidden", marginBottom:14 }}>
+    <div style={{ background:B.sidebar, border:`1px solid ${B.accentL}30`, borderRadius:14, overflow:"hidden", marginBottom:0, minHeight:80 }}>
       {/* Header */}
       <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <span style={{ fontSize:11, color:B.accentL, fontWeight:700, letterSpacing:"1px" }}>✨ ASISTENTE ALBA</span>
