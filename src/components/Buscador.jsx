@@ -164,14 +164,109 @@ export default function Buscador({ leads }) {
   const tibios    = filtrados.filter(l => l.dias > 2 && l.dias <= 7);
   const frios     = filtrados.filter(l => l.dias > 7);
 
+  const [showMail, setShowMail] = useState(false);
+  const [mailCopiado, setMailCopiado] = useState(false);
+
+  function generarMail() {
+    const calientes = activos.filter(l => l.dias <= 2);
+    const tibios    = activos.filter(l => l.dias > 2 && l.dias <= 7);
+
+    function formatLead(l) {
+      const precio = l.presup ? `USD ${l.presup.toLocaleString()}` : "presupuesto a consultar";
+      const partes = [l.tipo, l.zona && `en ${l.zona}`, precio].filter(Boolean).join(", ");
+      const extras = [
+        l.credito === "si" && "crédito aprobado",
+        l.cochera === "si" && "con cochera",
+        l.patio === "si" && "con patio",
+        l.ambientes && `${l.ambientes} amb`,
+      ].filter(Boolean).join(" · ");
+      return `• ${partes}${extras ? ` — ${extras}` : ""}`;
+    }
+
+    let mail = `Buenos días colegas,
+
+Les comparto mis pedidos activos de Alba Inversiones:
+`;
+
+    if (calientes.length > 0) {
+      mail += `
+🔴 URGENTES (compradores activos)
+`;
+      mail += calientes.map(formatLead).join("
+");
+    }
+
+    if (tibios.length > 0) {
+      mail += `
+
+🟡 EN BÚSQUEDA
+`;
+      mail += tibios.map(formatLead).join("
+");
+    }
+
+    mail += `
+
+Cualquier opción que encaje, me avisan.
+
+Saludos,
+Claudi Palacios
+Alba Inversiones Inmobiliarias — Reg. 3832
+Mar del Plata`;
+
+    return mail;
+  }
+
+  function copiarMail() {
+    navigator.clipboard.writeText(generarMail());
+    setMailCopiado(true);
+    setTimeout(() => setMailCopiado(false), 2000);
+  }
+
   return (
     <div style={{ overflowY:"auto", maxWidth:680, display:"flex", flexDirection:"column", gap:14 }}>
 
       {/* Header */}
-      <div>
-        <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Buscador Argenprop</h1>
-        <p style={{ fontSize:12, color:"#8AAECC", margin:"3px 0 0" }}>Links directos por lead — abrís Argenprop con los filtros ya cargados</p>
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10 }}>
+        <div>
+          <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Buscador Argenprop</h1>
+          <p style={{ fontSize:12, color:"#8AAECC", margin:"3px 0 0" }}>Links directos por lead — abrís Argenprop con los filtros ya cargados</p>
+        </div>
+        <button onClick={()=>setShowMail(m=>!m)}
+          style={{ padding:"8px 14px", borderRadius:9, cursor:"pointer", whiteSpace:"nowrap", flexShrink:0,
+            background: showMail ? B.accent : "rgba(42,91,173,0.12)",
+            border:`1px solid ${showMail ? B.accentL : B.border}`,
+            color: showMail ? "#fff" : B.accentL, fontSize:12, fontWeight:600 }}>
+          ✉ Mail de pedidos
+        </button>
       </div>
+
+      {/* Modal mail */}
+      {showMail && (
+        <div style={{ background:"rgba(10,21,37,0.95)", border:`1px solid ${B.accentL}40`, borderRadius:12, overflow:"hidden" }}>
+          <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <span style={{ fontSize:11, fontWeight:700, color:B.accentL, letterSpacing:"0.8px" }}>✉ MAIL DE PEDIDOS — {activos.filter(l=>l.dias<=7).length} búsquedas activas</span>
+            <div style={{ display:"flex", gap:6 }}>
+              <button onClick={copiarMail}
+                style={{ padding:"5px 14px", borderRadius:7, cursor:"pointer",
+                  background: mailCopiado ? "#2E9E6A" : B.accent,
+                  border:"none", color:"#fff", fontSize:11, fontWeight:700 }}>
+                {mailCopiado ? "✓ Copiado" : "Copiar"}
+              </button>
+              <a href={`mailto:?subject=Pedidos%20Alba%20Inversiones&body=${encodeURIComponent(generarMail())}`}
+                style={{ padding:"5px 14px", borderRadius:7, cursor:"pointer",
+                  background:"transparent", border:`1px solid ${B.border}`,
+                  color:"#8AAECC", fontSize:11, fontWeight:600, textDecoration:"none" }}>
+                Abrir en mail
+              </a>
+            </div>
+          </div>
+          <pre style={{ margin:0, padding:"14px 16px", fontSize:12, color:"#C8D8E8", lineHeight:1.7,
+            whiteSpace:"pre-wrap", fontFamily:"-apple-system, sans-serif", maxHeight:400, overflowY:"auto" }}>
+            {generarMail()}
+          </pre>
+        </div>
+      )}
 
       {/* Filtro */}
       <input value={filtro} onChange={e=>setFiltro(e.target.value)}
