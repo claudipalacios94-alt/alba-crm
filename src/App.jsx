@@ -46,6 +46,7 @@ const FULL_HEIGHT = ["kanban", "mapa", "flyer", "captaciones", "zonas", "cuadern
 export default function App() {
   const [view,  setView]  = useState("briefing");
   const [captaciones, setCaptaciones] = useState([]);
+  const [flyers,      setFlyers]      = useState([]);
 
   // ── Créditos IA ───────────────────────────────────────────
   const [saldoIA, setSaldoIA] = useState(() => {
@@ -79,6 +80,13 @@ export default function App() {
     supabase.from("captaciones").select("*").eq("convertida", false)
       .order("created_at", { ascending: false })
       .then(({ data }) => setCaptaciones(data || []));
+  }, []);
+
+  // Cargar flyers
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from("flyers").select("*").order("created_at", { ascending: false })
+      .then(({ data }) => setFlyers(data || []));
   }, []);
 
   const sinAsignar = leads.filter(l => !l.ag && l.etapa !== "Cerrado" && l.etapa !== "Perdido").length;
@@ -298,7 +306,7 @@ export default function App() {
         {view === "propiedades" && <Propiedades properties={properties} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />}
         {view === "alquileres"  && <Alquileres  rentals={rentals} />}
         {view === "mapa"        && <Mapa        properties={properties} leads={leads} updateProperty={updateProperty} supabase={supabase} flyers={flyers} />}
-        {view === "flyer"       && <Flyer       properties={properties} supabase={supabase} />}
+        {view === "flyer"       && <Flyer       properties={properties} supabase={supabase} flyers={flyers} setFlyers={setFlyers} />}
         {view === "captaciones" && <Captaciones  supabase={supabase} />}
         {view === "zonas"       && <CaptacionZonas supabase={supabase} />}
       </div>

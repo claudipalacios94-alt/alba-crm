@@ -5,9 +5,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { B, AG } from "../data/constants.js";
 
-export default function Flyer({ properties, supabase }) {
-  const [flyers,      setFlyers]      = useState([]);
-  const [loaded,      setLoaded]      = useState(false);
+export default function Flyer({ properties, supabase, flyers, setFlyers }) {
+  const [loaded,      setLoaded]      = useState(true);
   const [flyerSel,    setFlyerSel]    = useState(null);
   const [subiendo,    setSubiendo]    = useState(false);
   const [form,        setForm]        = useState({ titulo:"", nota:"", propId:"", ag:"" });
@@ -19,11 +18,7 @@ export default function Flyer({ properties, supabase }) {
   const dropRef = useRef(null);
   const fileRef = useRef(null);
 
-  useEffect(() => {
-    if (!supabase) return;
-    supabase.from("flyers").select("*").order("created_at", { ascending: false })
-      .then(({ data }) => { setFlyers(data || []); setLoaded(true); });
-  }, []);
+
 
   function onDrop(e) {
     e.preventDefault();
