@@ -624,9 +624,9 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
   };
 
   return (
-    <div style={{ background:"#080F1E", border:`2px solid ${B.accentL}40`, borderRadius:14, overflow:"hidden" }}>
+    <div style={{ background:B.sidebar, border:`1px solid ${B.accentL}50`, borderRadius:14, marginBottom:14 }}>
       {/* Header */}
-      <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", background:"rgba(42,91,173,0.08)" }}>
+      <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <span style={{ fontSize:11, color:B.accentL, fontWeight:700, letterSpacing:"1px" }}>✨ ASISTENTE ALBA</span>
         {iniciado && (
           <button onClick={()=>{ setMensajes([]); setIniciado(false); }}
@@ -636,60 +636,68 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
         )}
       </div>
 
-      {/* Chat area */}
-      <div ref={chatRef} style={{ minHeight:60, maxHeight:280, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:10 }}>
-        {!iniciado && !loading && (
-          <div style={{ fontSize:12, color:"#4A6A90", fontStyle:"italic" }}>
+      {/* Chat */}
+      {!iniciado ? (
+        <div style={{ padding:16, display:"flex", flexDirection:"column", gap:10 }}>
+          <div style={{ fontSize:12, color:"#8AAECC", fontStyle:"italic" }}>
             Contame cómo arrancó el día, qué tenés en mente, o preguntame qué hacer.
           </div>
-        )}
-        {mensajes.map((m, i) => (
-          <div key={i} style={{ display:"flex", justifyContent: m.role==="user" ? "flex-end" : "flex-start" }}>
-            <div style={{
-              maxWidth:"85%", padding:"8px 12px",
-              borderRadius: m.role==="user" ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
-              background: m.role==="user" ? B.accent : "rgba(42,91,173,0.12)",
-              border: m.role==="user" ? "none" : `1px solid ${B.border}`,
-              fontSize:12, color: m.role==="user" ? "#fff" : "#C8D8E8",
-              lineHeight:1.6, whiteSpace:"pre-wrap",
-            }}>
-              {m.content}
-            </div>
-          </div>
-        ))}
-        {loading && (
-          <div style={{ display:"flex", justifyContent:"flex-start" }}>
-            <div style={{ padding:"8px 12px", borderRadius:"12px 12px 12px 2px",
-              background:"rgba(42,91,173,0.12)", border:`1px solid ${B.border}`,
-              fontSize:12, color:"#4A6A90", fontStyle:"italic" }}>
-              Pensando...
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Input — siempre visible */}
-      <div style={{ padding:"12px 16px", display:"flex", gap:8, alignItems:"center",
-        borderTop: iniciado && mensajes.length > 0 ? `1px solid ${B.border}` : "none" }}>
-        <input value={input} onChange={e=>setInput(e.target.value)}
-          onKeyDown={e=>{ if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); enviar(input); } }}
-          placeholder={iniciado ? "Escribí o dictá..." : "Preguntame qué hacer hoy, contame novedades..."}
-          style={{ flex:1, background:"rgba(10,21,37,0.8)", border:`1px solid ${B.border}`, borderRadius:8,
-            padding:"9px 12px", color:B.text, fontSize:12, outline:"none" }} />
-        <MicBtn onTranscript={t=>setInput(p=>p?p+" "+t:t)} />
-        {!iniciado ? (
           <button onClick={arrancarDia}
-            style={{ padding:"9px 16px", borderRadius:8, cursor:"pointer",
+            style={{ padding:"9px", borderRadius:8, cursor:"pointer",
               background:B.accent, border:`1px solid ${B.accentL}`,
-              color:"#fff", fontSize:12, fontWeight:700, whiteSpace:"nowrap" }}>
+              color:"#fff", fontSize:12, fontWeight:700 }}>
             ¿Qué hago hoy?
           </button>
-        ) : (
+        </div>
+      ) : (
+        <div ref={chatRef} style={{ maxHeight:320, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:10 }}>
+          {mensajes.map((m, i) => (
+            <div key={i} style={{
+              display:"flex", justifyContent: m.role==="user" ? "flex-end" : "flex-start"
+            }}>
+              <div style={{
+                maxWidth:"85%", padding:"8px 12px", borderRadius: m.role==="user" ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
+                background: m.role==="user" ? B.accent : "rgba(42,91,173,0.12)",
+                border: m.role==="user" ? "none" : `1px solid ${B.border}`,
+                fontSize:12, color: m.role==="user" ? "#fff" : "#C8D8E8",
+                lineHeight:1.6, whiteSpace:"pre-wrap",
+              }}>
+                {m.content}
+              </div>
+            </div>
+          ))}
+          {loading && (
+            <div style={{ display:"flex", justifyContent:"flex-start" }}>
+              <div style={{ padding:"8px 12px", borderRadius:"12px 12px 12px 2px",
+                background:"rgba(42,91,173,0.12)", border:`1px solid ${B.border}`,
+                fontSize:12, color:"#4A6A90", fontStyle:"italic" }}>
+                Pensando...
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Input — siempre visible */}
+      <div style={{ padding:"10px 16px", borderTop:`1px solid ${B.border}`, display:"flex", gap:8, alignItems:"center" }}>
+        <input value={input} onChange={e=>setInput(e.target.value)}
+          onKeyDown={e=>{ if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); enviar(input); } }}
+          placeholder={iniciado ? "Escribí o dictá..." : "Preguntame qué hacer hoy..."}
+          style={inp} />
+        <MicBtn onTranscript={t=>setInput(p=>p?p+" "+t:t)} />
+        {iniciado ? (
           <button onClick={()=>enviar(input)} disabled={loading || !input.trim()}
-            style={{ padding:"9px 14px", borderRadius:8, cursor:loading||!input.trim()?"default":"pointer",
+            style={{ padding:"8px 14px", borderRadius:8, cursor:loading||!input.trim()?"default":"pointer",
               background:loading||!input.trim()?B.border:B.accent,
               border:"none", color:"#fff", fontSize:12, fontWeight:700 }}>
             →
+          </button>
+        ) : (
+          <button onClick={arrancarDia}
+            style={{ padding:"8px 14px", borderRadius:8, cursor:"pointer",
+              background:B.accent, border:`1px solid ${B.accentL}`,
+              color:"#fff", fontSize:12, fontWeight:700, whiteSpace:"nowrap" }}>
+            ¿Qué hago hoy?
           </button>
         )}
       </div>
