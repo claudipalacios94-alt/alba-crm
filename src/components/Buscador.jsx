@@ -100,8 +100,22 @@ function LeadBuscador({ lead }) {
   const zonaPrincipal = ZONA_SLUG[zona] || zona.replace(/\s+/g,"-");
   const alts = ZONAS_ALT[zona] || [];
 
-  const zonasRaw = (lead.zona || "").split(/[,/]|\s+y\s+/).map(z => z.trim()).filter(Boolean);
-  const zonasUnicas = [...new Set(zonasRaw)];
+  // Separar zonas — por coma, barra, "y", o barrios conocidos pegados
+  const BARRIOS_CONOCIDOS = Object.keys(ZONA_SLUG);
+  function separarZonas(zonaStr) {
+    if (!zonaStr) return [];
+    // Primero split por separadores explícitos
+    let partes = zonaStr.split(/[,/]|\s+y\s+/).map(z => z.trim()).filter(Boolean);
+    // Si quedó una sola parte, intentar detectar múltiples barrios conocidos dentro
+    if (partes.length === 1) {
+      const z = partes[0].toLowerCase();
+      const encontrados = BARRIOS_CONOCIDOS.filter(b => b.length > 3 && z.includes(b));
+      if (encontrados.length > 1) return encontrados.map(b => b.charAt(0).toUpperCase()+b.slice(1));
+    }
+    return partes;
+  }
+  const zonasRaw = separarZonas(lead.zona);
+  const zonasUnicas = [...new Set(zonasRaw.map(z => z.trim()).filter(Boolean))];
   const urlsZonas = zonasUnicas.map(z => ({
     label: z,
     url: buildArgenPropUrl(lead.tipo, z, lead.presup, lead.op),
