@@ -192,8 +192,7 @@ Les comparto mis pedidos activos de Alba Inversiones:
       mail += `
 🔴 URGENTES (compradores activos)
 `;
-      mail += calientes.map(formatLead).join("
-");
+      mail += calientes.map(formatLead).join("\n");
     }
 
     if (tibios.length > 0) {
@@ -201,8 +200,7 @@ Les comparto mis pedidos activos de Alba Inversiones:
 
 🟡 EN BÚSQUEDA
 `;
-      mail += tibios.map(formatLead).join("
-");
+      mail += tibios.map(formatLead).join("\n");
     }
 
     mail += `
