@@ -717,45 +717,46 @@ function getGrupo(zona) {
   return "Otros";
 }
 
-// Velocímetro SVG — semicírculo limpio
+// Velocímetro — usa strokeDasharray para arco limpio
 function Velocimetro({ value, max, label, sublabel, color }) {
   const pct = Math.min(1, value / Math.max(max, 1));
-  const r = 44, cx = 60, cy = 58;
-  const startAngle = 210, endAngle = 330; // 270° total
+  const r = 36, cx = 50, cy = 50;
+  const circum = 2 * Math.PI * r;
+  // Mostramos 75% del círculo (270°)
+  const trackLen = circum * 0.75;
+  const valueLen = trackLen * pct;
+  // Rotar para que empiece abajo-izquierda (135°)
+  const rotate = 135;
 
-  function toRad(deg) { return (deg - 90) * Math.PI / 180; }
-  function pt(deg) {
-    return { x: cx + r * Math.cos(toRad(deg)), y: cy + r * Math.sin(toRad(deg)) };
-  }
-
-  const s  = pt(startAngle);
-  const e  = pt(endAngle);
-  const ve = pt(startAngle + pct * 270);
-  const needleAngle = startAngle + pct * 270;
-  const needleTip = { x: cx + (r-8) * Math.cos(toRad(needleAngle)), y: cy + (r-8) * Math.sin(toRad(needleAngle)) };
-
-  // Track: always large arc (270° > 180°)
-  const trackD = `M ${s.x.toFixed(1)} ${s.y.toFixed(1)} A ${r} ${r} 0 1 1 ${e.x.toFixed(1)} ${e.y.toFixed(1)}`;
-
-  // Value arc
-  let valueD = null;
-  if (pct > 0) {
-    const large = pct * 270 > 180 ? 1 : 0;
-    valueD = `M ${s.x.toFixed(1)} ${s.y.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${ve.x.toFixed(1)} ${ve.y.toFixed(1)}`;
-  }
+  // Aguja
+  const needleAngle = rotate + pct * 270;
+  const nx = cx + (r - 8) * Math.cos((needleAngle - 90) * Math.PI / 180);
+  const ny = cy + (r - 8) * Math.sin((needleAngle - 90) * Math.PI / 180);
 
   return (
-    <div style={{ textAlign:"center", flex:1 }}>
-      <svg width="120" height="80" viewBox="0 0 120 80">
-        <path d={trackD} fill="none" stroke="#1E3A5F" strokeWidth="7" strokeLinecap="round" />
-        {valueD && <path d={valueD} fill="none" stroke={color} strokeWidth="7" strokeLinecap="round" />}
-        <line x1={cx} y1={cy} x2={needleTip.x.toFixed(1)} y2={needleTip.y.toFixed(1)}
+    <div style={{ textAlign:"center", flex:1, display:"flex", flexDirection:"column", alignItems:"center" }}>
+      <svg width="100" height="75" viewBox="0 0 100 75">
+        {/* Track */}
+        <circle cx={cx} cy={cy} r={r} fill="none"
+          stroke="#1E3A5F" strokeWidth="7" strokeLinecap="round"
+          strokeDasharray={`${trackLen} ${circum}`}
+          transform={`rotate(${rotate} ${cx} ${cy})`} />
+        {/* Value */}
+        {pct > 0 && (
+          <circle cx={cx} cy={cy} r={r} fill="none"
+            stroke={color} strokeWidth="7" strokeLinecap="round"
+            strokeDasharray={`${valueLen} ${circum}`}
+            transform={`rotate(${rotate} ${cx} ${cy})`} />
+        )}
+        {/* Aguja */}
+        <line x1={cx} y1={cy} x2={nx.toFixed(1)} y2={ny.toFixed(1)}
           stroke={color} strokeWidth="2" strokeLinecap="round" />
-        <circle cx={cx} cy={cy} r="4" fill={color} />
-        <text x={cx} y={cy+4} textAnchor="middle" fill={color}
-          fontSize="18" fontWeight="700" fontFamily="Georgia,serif">{value}</text>
+        <circle cx={cx} cy={cy} r="3.5" fill={color} />
+        {/* Valor */}
+        <text x={cx} y={cy+6} textAnchor="middle" fill={color}
+          fontSize="16" fontWeight="700" fontFamily="Georgia,serif">{value}</text>
       </svg>
-      <div style={{ fontSize:11, fontWeight:600, color:"#C8D8E8", marginTop:2 }}>{label}</div>
+      <div style={{ fontSize:11, fontWeight:600, color:"#C8D8E8" }}>{label}</div>
       <div style={{ fontSize:10, color:"#4A6A90", marginTop:2 }}>{sublabel}</div>
     </div>
   );
@@ -769,7 +770,7 @@ function InteligenciaMercado({ leads, properties, captaciones }) {
 
   // Propiedades
   const propsMias   = (properties||[]).filter(p => p.activa !== false).length;
-  const capsActivas = (captaciones||[]).length;
+  const capsActivas = (captaciones||[]).filter(c=>!c.convertida).length;
   const totalOferta = propsMias + capsActivas;
 
   // Demanda vs Oferta por zona
