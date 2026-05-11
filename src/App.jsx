@@ -45,6 +45,7 @@ const FULL_HEIGHT = ["kanban", "mapa", "flyer", "captaciones", "zonas", "cuadern
  
 export default function App() {
   const [view,  setView]  = useState("briefing");
+  const [captaciones, setCaptaciones] = useState([]);
 
   // ── Créditos IA ───────────────────────────────────────────
   const [saldoIA, setSaldoIA] = useState(() => {
@@ -283,7 +284,7 @@ export default function App() {
       }}>
         {view === "briefing"    && <Briefing    leads={leads} properties={properties} supabase={supabase} />}
         {view === "buscador"    && <Buscador    leads={leads} saveSearchResult={saveSearchResult} getSearchResult={getSearchResult} />}
-        {view === "cuaderno"    && <Cuaderno    leads={leads} properties={properties} supabase={supabase} onConsumo={agregarConsumo} />}
+        {view === "cuaderno"    && <Cuaderno    leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase} onConsumo={agregarConsumo} />}
         {view === "kanban"      && <Kanban      leads={leads} updateLead={updateLead} />}
         {view === "crm"         && <CRMLeads    leads={leads} updateLead={updateLead} deleteLead={deleteLead} properties={properties} supabase={supabase} />}
         {view === "propiedades" && <Propiedades properties={properties} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />}
