@@ -881,9 +881,22 @@ function InteligenciaMercado({ leads, properties, captaciones }) {
           const o = oferta[zona] || 0;
           const gap = d - o;
           const color = ZONA_COLORS[zona] || B.accentL;
+          const barrios = ZONAS_GRUPO[zona]?.map(b => b.charAt(0).toUpperCase()+b.slice(1)).join(", ") || "";
           return (
             <div key={zona} style={{ display:"grid", gridTemplateColumns:"90px 1fr 1fr", gap:6, alignItems:"center" }}>
-              <div style={{ fontSize:11, color, fontWeight:600, textAlign:"right", paddingRight:8 }}>{zona}</div>
+              <div title={barrios}
+                style={{ fontSize:11, color, fontWeight:600, textAlign:"right", paddingRight:8, cursor:"help", position:"relative" }}
+                onMouseEnter={e=>{ const t = e.currentTarget.querySelector(".tz"); if(t) t.style.display="block"; }}
+                onMouseLeave={e=>{ const t = e.currentTarget.querySelector(".tz"); if(t) t.style.display="none"; }}>
+                {zona}
+                <div className="tz" style={{ display:"none", position:"absolute", right:"100%", top:"50%", transform:"translateY(-50%)",
+                  background:"#0A1525", border:`1px solid ${color}40`, borderRadius:8, padding:"6px 10px",
+                  fontSize:10, color:"#C8D8E8", whiteSpace:"nowrap", zIndex:100, marginRight:6,
+                  boxShadow:"0 4px 12px rgba(0,0,0,0.5)", lineHeight:1.6 }}>
+                  <div style={{ fontWeight:700, color, marginBottom:3 }}>{zona}</div>
+                  {barrios}
+                </div>
+              </div>
               {/* Barra demanda */}
               <div style={{ position:"relative", height:22, background:"rgba(58,139,196,0.08)", borderRadius:4, overflow:"hidden" }}>
                 <div style={{ height:"100%", width:`${(d/maxBar)*100}%`, background:"#3A8BC4", borderRadius:4, transition:"width 0.4s",
