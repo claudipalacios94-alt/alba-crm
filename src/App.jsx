@@ -297,7 +297,7 @@ export default function App() {
         {view === "crm"         && <CRMLeads    leads={leads} updateLead={updateLead} deleteLead={deleteLead} properties={properties} captaciones={captaciones} supabase={supabase} />}
         {view === "propiedades" && <Propiedades properties={properties} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />}
         {view === "alquileres"  && <Alquileres  rentals={rentals} />}
-        {view === "mapa"        && <Mapa        properties={properties} leads={leads} updateProperty={updateProperty} supabase={supabase} />}
+        {view === "mapa"        && <Mapa        properties={properties} leads={leads} updateProperty={updateProperty} supabase={supabase} flyers={flyers} />}
         {view === "flyer"       && <Flyer       properties={properties} supabase={supabase} />}
         {view === "captaciones" && <Captaciones  supabase={supabase} />}
         {view === "zonas"       && <CaptacionZonas supabase={supabase} />}
