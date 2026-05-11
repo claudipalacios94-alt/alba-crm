@@ -91,7 +91,7 @@ function ModalPerdido({ lead, onConfirmar, onCancelar }) {
   );
 }
 
-export default function CRMLeads({ leads, updateLead, deleteLead, properties, supabase }) {
+export default function CRMLeads({ leads, updateLead, deleteLead, properties, captaciones, supabase }) {
   const [fs,  setFs]  = useState("Todos");
   const [fa,  setFa]  = useState("Todos");
   const [fop, setFop] = useState("Todos");
@@ -516,7 +516,23 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, su
  
                       {/* Propiedades compatibles */}
                       {(() => {
-                        const matches = matchLeadProps(lead, properties || []);
+                        // Normalizar captaciones al formato de properties para el match
+                        const capsNorm = (captaciones||[]).map(c => ({
+                          id: "cap-"+c.id,
+                          tipo: c.tipo,
+                          zona: c.zona,
+                          precio: c.precio,
+                          dir: c.direccion,
+                          caracts: c.caracts,
+                          activa: true,
+                          _esCaptacion: true,
+                          _tipoCap: c.tipo_captacion,
+                          _url: c.url,
+                          _propietario: c.nombre_propietario,
+                          _tel: c.telefono,
+                        }));
+                        const todasProps = [...(properties||[]), ...capsNorm];
+                        const matches = matchLeadProps(lead, todasProps);
                         if (!matches.length) return null;
                         return (
                           <div style={{ marginBottom:10 }}>
@@ -548,6 +564,12 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, su
                                     {" · "}{prop.zona}
                                     {" · "}<span style={{ color: yaMostrado ? "#6A8AAE" : B.accentL }}>USD {(prop.precio||0).toLocaleString()}</span>
                                     {prop.dir && <span style={{ color:B.muted }}> · {prop.dir}</span>}
+                                    {prop._esCaptacion && (
+                                      <span style={{ marginLeft:6, fontSize:9, padding:"1px 5px", borderRadius:4,
+                                        background:"rgba(204,34,51,0.15)", color:"#CC2233", border:"1px solid rgba(204,34,51,0.3)" }}>
+                                        📌 {prop._tipoCap||"captación"}
+                                      </span>
+                                    )}
                                   </div>
                                   {wa && !yaMostrado && (
                                     <a href={wa} target="_blank" rel="noreferrer"
