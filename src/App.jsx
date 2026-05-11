@@ -73,6 +73,14 @@ export default function App() {
     saveSearchResult, getSearchResult,
   } = useSupabase();
  
+  // Cargar captaciones
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from("captaciones").select("*").eq("convertida", false)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setCaptaciones(data || []));
+  }, []);
+
   const sinAsignar = leads.filter(l => !l.ag && l.etapa !== "Cerrado" && l.etapa !== "Perdido").length;
   const isFullH    = FULL_HEIGHT.includes(view);
  
