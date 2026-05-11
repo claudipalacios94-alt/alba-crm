@@ -637,33 +637,36 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
       </div>
 
       {/* Chat area */}
-      {iniciado && mensajes.length > 0 && (
-        <div ref={chatRef} style={{ maxHeight:280, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:10 }}>
-          {mensajes.map((m, i) => (
-            <div key={i} style={{ display:"flex", justifyContent: m.role==="user" ? "flex-end" : "flex-start" }}>
-              <div style={{
-                maxWidth:"85%", padding:"8px 12px",
-                borderRadius: m.role==="user" ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
-                background: m.role==="user" ? B.accent : "rgba(42,91,173,0.12)",
-                border: m.role==="user" ? "none" : `1px solid ${B.border}`,
-                fontSize:12, color: m.role==="user" ? "#fff" : "#C8D8E8",
-                lineHeight:1.6, whiteSpace:"pre-wrap",
-              }}>
-                {m.content}
-              </div>
+      <div ref={chatRef} style={{ minHeight:60, maxHeight:280, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:10 }}>
+        {!iniciado && !loading && (
+          <div style={{ fontSize:12, color:"#4A6A90", fontStyle:"italic" }}>
+            Contame cómo arrancó el día, qué tenés en mente, o preguntame qué hacer.
+          </div>
+        )}
+        {mensajes.map((m, i) => (
+          <div key={i} style={{ display:"flex", justifyContent: m.role==="user" ? "flex-end" : "flex-start" }}>
+            <div style={{
+              maxWidth:"85%", padding:"8px 12px",
+              borderRadius: m.role==="user" ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
+              background: m.role==="user" ? B.accent : "rgba(42,91,173,0.12)",
+              border: m.role==="user" ? "none" : `1px solid ${B.border}`,
+              fontSize:12, color: m.role==="user" ? "#fff" : "#C8D8E8",
+              lineHeight:1.6, whiteSpace:"pre-wrap",
+            }}>
+              {m.content}
             </div>
-          ))}
-          {loading && (
-            <div style={{ display:"flex", justifyContent:"flex-start" }}>
-              <div style={{ padding:"8px 12px", borderRadius:"12px 12px 12px 2px",
-                background:"rgba(42,91,173,0.12)", border:`1px solid ${B.border}`,
-                fontSize:12, color:"#4A6A90", fontStyle:"italic" }}>
-                Pensando...
-              </div>
+          </div>
+        ))}
+        {loading && (
+          <div style={{ display:"flex", justifyContent:"flex-start" }}>
+            <div style={{ padding:"8px 12px", borderRadius:"12px 12px 12px 2px",
+              background:"rgba(42,91,173,0.12)", border:`1px solid ${B.border}`,
+              fontSize:12, color:"#4A6A90", fontStyle:"italic" }}>
+              Pensando...
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       {/* Input — siempre visible */}
       <div style={{ padding:"12px 16px", display:"flex", gap:8, alignItems:"center",
