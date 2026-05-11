@@ -106,40 +106,47 @@ export default function Flyer({ properties, supabase, flyers, setFlyers }) {
         <div style={{ flex:1, overflowY:"auto", padding:16, display:"flex", flexDirection:"column", gap:14 }}>
 
           {/* Drop zone */}
+          <input ref={fileRef} type="file" accept="image/*" onChange={onFileInput} style={{ display:"none" }} />
           <div
             ref={dropRef}
             onDrop={onDrop}
             onDragOver={e=>e.preventDefault()}
             onClick={()=>{ if(!preview) fileRef.current?.click(); }}
-            style={{ border:`2px dashed ${preview?B.accentL:B.border}`, borderRadius:12, padding:preview?"0":"32px 16px",
-              textAlign:"center", cursor:"pointer", transition:"all 0.2s",
-              background: preview?"transparent":"rgba(42,91,173,0.04)", overflow:"hidden" }}>
+            style={{ border:`2px dashed ${preview?B.accentL:"#2A5BAD"}`, borderRadius:12,
+              textAlign:"center", cursor:preview?"default":"pointer", transition:"all 0.2s",
+              background: preview?"transparent":"rgba(10,21,37,0.6)", overflow:"hidden",
+              minHeight:160, display:"flex", alignItems:"center", justifyContent:"center" }}>
             {preview ? (
-              <div style={{ position:"relative" }}>
+              <div style={{ position:"relative", width:"100%" }}>
                 <img src={preview} alt="preview"
-                  style={{ width:"100%", maxHeight:300, objectFit:"contain", display:"block" }} />
-                <button onClick={()=>{ setPreview(null); setFile(null); }}
+                  style={{ width:"100%", maxHeight:320, objectFit:"contain", display:"block" }} />
+                <button onClick={e=>{ e.stopPropagation(); setPreview(null); setFile(null); }}
                   style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%",
-                    background:"rgba(0,0,0,0.7)", border:"none", color:"#fff", cursor:"pointer", fontSize:14 }}>
+                    background:"rgba(0,0,0,0.75)", border:"none", color:"#fff", cursor:"pointer", fontSize:14, lineHeight:1 }}>
                   ✕
                 </button>
               </div>
             ) : (
-              <>
-                <div style={{ fontSize:36, marginBottom:8 }}>📂</div>
-                <div style={{ fontSize:13, color:"#8AAECC", fontWeight:600, marginBottom:4 }}>
+              <div style={{ padding:"28px 20px", display:"flex", flexDirection:"column", alignItems:"center", gap:10 }}>
+                {/* Folder icon SVG */}
+                <svg width="52" height="44" viewBox="0 0 52 44" fill="none">
+                  <path d="M2 8C2 5.8 3.8 4 6 4H20L24 8H46C48.2 8 50 9.8 50 12V38C50 40.2 48.2 42 46 42H6C3.8 42 2 40.2 2 38V8Z"
+                    fill="#1E3A5F" stroke="#3A8BC4" strokeWidth="1.5"/>
+                  <path d="M2 16H50V38C50 40.2 48.2 42 46 42H6C3.8 42 2 40.2 2 38V16Z"
+                    fill="#2A5BAD" opacity="0.6"/>
+                  <path d="M26 24V34M26 24L22 28M26 24L30 28" stroke="#8AAECC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <div style={{ fontSize:13, fontWeight:600, color:"#C8D8E8" }}>
                   Arrastrá tu flyer acá
                 </div>
-                <div style={{ fontSize:11, color:"#4A6A90", marginBottom:12 }}>
-                  JPG, PNG — los que hacés en ChatGPT
+                <div style={{ fontSize:11, color:"#4A6A90" }}>
+                  o hacé clic para elegir
                 </div>
-                <button onClick={()=>fileRef.current?.click()}
-                  style={{ padding:"8px 20px", borderRadius:8, cursor:"pointer",
-                    background:B.accent, border:`1px solid ${B.accentL}`, color:"#fff", fontSize:12, fontWeight:600 }}>
-                  Elegir archivo
-                </button>
-                <input ref={fileRef} type="file" accept="image/*" onChange={onFileInput} style={{ display:"none" }} />
-              </>
+                <div style={{ fontSize:10, color:"#2A5BAD", background:"rgba(42,91,173,0.15)",
+                  padding:"3px 10px", borderRadius:10, border:"1px solid rgba(42,91,173,0.3)" }}>
+                  JPG · PNG
+                </div>
+              </div>
             )}
           </div>
 
