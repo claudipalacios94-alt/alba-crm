@@ -929,11 +929,21 @@ export default function Briefing({ leads, properties, rentals, captaciones, supa
     { label:"Pipeline total", value:activos.length,sub:`de ${leads.length} leads`, color:"#8AAECC", icon:"≡" },
   ];
 
+  const card = { background:"rgba(10,21,37,0.6)", border:`1px solid ${B.border}`, borderRadius:12, padding:16 };
+  const secTit = (txt, badge) => (
+    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+      <div style={{ width:3, height:14, background:B.accentL, borderRadius:2 }} />
+      <span style={{ fontSize:11, color:"#C8D8E8", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase" }}>{txt}</span>
+      {badge > 0 && <span style={{ marginLeft:"auto", fontSize:10, padding:"2px 8px", borderRadius:10,
+        background:"rgba(204,34,51,0.15)", color:"#CC2233", border:"1px solid rgba(204,34,51,0.3)", fontWeight:700 }}>{badge}</span>}
+    </div>
+  );
+
   return (
-    <div style={{ width:"100%", maxWidth:"100%", minWidth:0, overflowX:"hidden" }}>
+    <div style={{ width:"100%", maxWidth:"100%", minWidth:0, overflowX:"hidden", display:"flex", flexDirection:"column", gap:12 }}>
 
       {/* ── Header ─────────────────────────────────────────── */}
-      <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", marginBottom:24, paddingBottom:20, borderBottom:`1px solid ${B.border}` }}>
+      <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", paddingBottom:16, borderBottom:`1px solid ${B.border}` }}>
         <div>
           <div style={{ fontSize:11, color:"#4A6A90", letterSpacing:"2px", textTransform:"uppercase", marginBottom:6, fontWeight:500 }}>
             {hoy.toLocaleDateString("es-AR", { weekday:"long" }).toUpperCase()} · {hoy.toLocaleDateString("es-AR", { day:"numeric", month:"long", year:"numeric" })}
@@ -959,69 +969,47 @@ export default function Briefing({ leads, properties, rentals, captaciones, supa
         </div>
       </div>
 
-      {/* ── Stats row ──────────────────────────────────────── */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:8, marginBottom:20 }}>
-        {STATS.map((s,i) => (
-          <div key={i} style={{
-            background:`linear-gradient(135deg, rgba(15,30,53,0.8), rgba(10,21,37,0.9))`,
-            border:`1px solid ${B.border}`,
-            borderTop:`2px solid ${s.color}`,
-            borderRadius:10, padding:"14px 16px",
-            position:"relative", overflow:"hidden",
-          }}>
-            <div style={{ position:"absolute", top:10, right:12, fontSize:18, color:s.color, opacity:0.15, fontWeight:900 }}>{s.icon}</div>
-            <div style={{ fontSize:28, fontWeight:700, color:s.color, fontFamily:"Georgia,serif", lineHeight:1, marginBottom:4 }}>{s.value}</div>
-            <div style={{ fontSize:11, fontWeight:600, color:"#C8D8E8", marginBottom:2 }}>{s.label}</div>
-            <div style={{ fontSize:10, color:"#4A6A90" }}>{s.sub}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Asistente IA ───────────────────────────────────── */}
+      {/* ── Fila 1: Asistente IA — ancho completo ──────────── */}
       <BriefingIA leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase} onConsumo={onConsumo} />
 
-      {/* ── Insights + Calendario ──────────────────────────── */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:14 }}>
-        <div style={{ background:"rgba(10,21,37,0.6)", border:`1px solid ${B.border}`, borderRadius:12, padding:16 }}>
-          <InsightPanel leads={filtrados} properties={properties} />
+      {/* ── Fila 2: Tareas | Calendario ────────────────────── */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+        <div style={card}>
+          {secTit("Tareas")}
+          <Tareas supabase={supabase} />
         </div>
-        <div style={{ background:"rgba(10,21,37,0.6)", border:`1px solid ${B.border}`, borderRadius:12, padding:16 }}>
+        <div style={card}>
           <CalendarioSemanal supabase={supabase} />
         </div>
       </div>
 
-      {/* ── Tareas ─────────────────────────────────────────── */}
-      <div style={{ marginBottom:14 }}>
-        <Tareas supabase={supabase} />
-      </div>
-
-      {/* ── Llamar hoy ─────────────────────────────────────── */}
-      <div style={{ background:"rgba(10,21,37,0.6)", border:`1px solid ${B.border}`, borderRadius:12, padding:16, marginBottom:14 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
-          <div style={{ width:3, height:14, background:"#CC2233", borderRadius:2 }} />
-          <span style={{ fontSize:11, color:"#C8D8E8", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase" }}>Llamar hoy</span>
-          {urgentes.length > 0 && (
-            <span style={{ marginLeft:"auto", fontSize:10, padding:"2px 8px", borderRadius:10,
-              background:"rgba(204,34,51,0.15)", color:"#CC2233", border:"1px solid rgba(204,34,51,0.3)", fontWeight:700 }}>
-              {urgentes.length}
-            </span>
-          )}
+      {/* ── Fila 3: Llamar hoy | Resumen ───────────────────── */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+        <div style={card}>
+          {secTit("Llamar hoy", urgentes.length)}
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {urgentes.length === 0 && (
+              <div style={{ textAlign:"center", padding:"20px 0", color:"#4A6A90", fontSize:12 }}>Sin leads urgentes hoy ✓</div>
+            )}
+            {urgentes.map(l => <LeadCard key={l.id} lead={l} updateLead={async (id, upd) => { await supabase.from("leads").update(upd).eq("id", id); }} />)}
+          </div>
         </div>
-        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-          {urgentes.length === 0 && (
-            <div style={{ textAlign:"center", padding:"24px 0", color:"#4A6A90", fontSize:12 }}>
-              Sin leads urgentes hoy ✓
-            </div>
-          )}
-          {urgentes.map(l => <LeadCard key={l.id} lead={l} updateLead={async (id, upd) => { await supabase.from("leads").update(upd).eq("id", id); }} />)}
+        <div style={card}>
+          {secTit("Resumen")}
+          <InsightPanel leads={filtrados} properties={properties} />
         </div>
       </div>
 
-      {/* ── Captación zonas ────────────────────────────────── */}
-      <ResumenCaptacionZonas supabase={supabase} />
+      {/* ── Fila 4: Captación zonas | Inteligencia ─────────── */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+        <div style={card}>
+          <ResumenCaptacionZonas supabase={supabase} />
+        </div>
+        <div style={{ ...card, padding:16 }}>
+          <InteligenciaMercado leads={leads} properties={properties} captaciones={captaciones} />
+        </div>
+      </div>
 
-      {/* ── Inteligencia de mercado ─────────────────────────── */}
-      <InteligenciaMercado leads={leads} properties={properties} captaciones={captaciones} />
     </div>
   );
 }
