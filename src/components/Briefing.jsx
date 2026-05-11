@@ -240,22 +240,22 @@ function LeadCard({ lead, updateLead }) {
 
 
 function CalendarioSemanal({ supabase }) {
-  const [tareas,  setTareas]  = React.useState([]);
-  const [vistaM,  setVistaM]  = React.useState(false); // false=semana, true=mes
-  const [mesBase, setMesBase] = React.useState(new Date());
+  const [tareas,    setTareas]    = React.useState([]);
+  const [vistaM,    setVistaM]    = React.useState(false);
+  const [mesBase,   setMesBase]   = React.useState(new Date());
+  const [diaPopup,  setDiaPopup]  = React.useState(null); // { dia, tareas }
   const hoy = new Date(); hoy.setHours(0,0,0,0);
-  const DIAS    = ["Lu","Ma","Mi","Ju","Vi","Sa","Do"];
-  const MESES   = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const DIAS  = ["Lu","Ma","Mi","Ju","Vi","Sa","Do"];
+  const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   const PRIO_COLOR = { urgente:"#CC2233", importante:"#E8A830", normal:"#4A8ABE" };
 
   const lunes = new Date(hoy); lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
-  const semana = Array.from({ length: 7 }, (_, i) => { const d = new Date(lunes); d.setDate(lunes.getDate() + i); return d; });
+  const semana = Array.from({ length:7 }, (_,i) => { const d = new Date(lunes); d.setDate(lunes.getDate()+i); return d; });
 
-  // Mes completo
   const primerDiaMes = new Date(mesBase.getFullYear(), mesBase.getMonth(), 1);
   const diasEnMes = new Date(mesBase.getFullYear(), mesBase.getMonth()+1, 0).getDate();
-  const offsetInicio = (primerDiaMes.getDay() + 6) % 7; // lunes=0
-  const celdas = Array.from({ length: offsetInicio + diasEnMes }, (_, i) => {
+  const offsetInicio = (primerDiaMes.getDay() + 6) % 7;
+  const celdas = Array.from({ length: offsetInicio + diasEnMes }, (_,i) => {
     if (i < offsetInicio) return null;
     return new Date(mesBase.getFullYear(), mesBase.getMonth(), i - offsetInicio + 1);
   });
@@ -276,45 +276,52 @@ function CalendarioSemanal({ supabase }) {
   const tareasDelDia = (d) => d ? tareas.filter(t => t.fecha === d.toISOString().slice(0,10)) : [];
 
   const DiaCell = ({ dia, mini }) => {
-    if (!dia) return <div />;
+    if (!dia) return <div style={{ background:"transparent" }} />;
     const isHoy = dia.toDateString() === hoy.toDateString();
     const td = tareasDelDia(dia);
+    const cellH = mini ? 56 : 70;
+
     return (
-      <div>
-        <div style={{ textAlign:"center", marginBottom: mini ? 2 : 6 }}>
-          <div style={{ fontSize: mini ? 10 : 14, fontWeight: isHoy ? 700 : 400,
-            color: isHoy ? "#fff" : "#8AAECC",
-            background: isHoy ? B.accentL : "transparent",
-            borderRadius:"50%", width: mini ? 20 : 26, height: mini ? 20 : 26,
-            display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto" }}>
-            {dia.getDate()}
+      <div onClick={() => setDiaPopup({ dia, tareas: td })}
+        style={{ height:cellH, borderRadius:6, cursor:"pointer", padding:"4px 3px",
+          background: isHoy ? "rgba(42,91,173,0.15)" : "rgba(10,21,37,0.3)",
+          border:`1px solid ${isHoy ? B.accentL+"60" : B.border}`,
+          display:"flex", flexDirection:"column", gap:2, overflow:"hidden",
+          transition:"background 0.15s" }}>
+        {/* Número del día */}
+        <div style={{ fontSize: mini ? 10 : 12, fontWeight: isHoy ? 700 : 400,
+          color: isHoy ? "#fff" : "#8AAECC", textAlign:"center",
+          background: isHoy ? B.accentL : "transparent",
+          borderRadius:"50%", width:18, height:18, lineHeight:"18px",
+          margin:"0 auto 2px" }}>
+          {dia.getDate()}
+        </div>
+        {/* Tareas del día */}
+        {td.slice(0, 2).map(t => (
+          <div key={t.id}
+            style={{ fontSize:8, padding:"1px 3px", borderRadius:2, lineHeight:1.4,
+              background:(PRIO_COLOR[t.prioridad]||"#4A8ABE")+"25",
+              color:PRIO_COLOR[t.prioridad]||"#4A8ABE",
+              overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            {t.titulo}
           </div>
-        </div>
-        <div style={{ display:"flex", flexDirection:"column", gap:2, minHeight: mini ? 28 : 44, height: mini ? 28 : 44, overflow:"hidden" }}>
-          {td.length === 0
-            ? <div style={{ height:2, borderRadius:2, background:B.border, opacity:0.2, margin:"3px 0" }} />
-            : td.slice(0, mini ? 2 : 99).map(t => (
-              <div key={t.id} title={t.titulo}
-                style={{ fontSize: mini ? 8 : 9, padding:"1px 3px", borderRadius:3,
-                  background:(PRIO_COLOR[t.prioridad]||"#4A8ABE")+"20",
-                  color:PRIO_COLOR[t.prioridad]||"#4A8ABE",
-                  border:"1px solid "+(PRIO_COLOR[t.prioridad]||"#4A8ABE")+"40",
-                  overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", lineHeight:1.4 }}>
-                {t.titulo}
-              </div>
-            ))}
-          {mini && td.length > 2 && <div style={{ fontSize:8, color:"#4A6A90" }}>+{td.length-2}</div>}
-        </div>
+        ))}
+        {td.length > 2 && (
+          <div style={{ fontSize:8, color:"#4A6A90", textAlign:"center" }}>+{td.length-2}</div>
+        )}
+        {td.length === 0 && (
+          <div style={{ flex:1, borderBottom:`1px solid ${B.border}`, opacity:0.2, margin:"4px 4px 0" }} />
+        )}
       </div>
     );
   };
 
   return (
-    <div>
-      {/* Header con toggle */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+    <div style={{ position:"relative" }}>
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          {vistaM && (
+          {vistaM ? (
             <>
               <button onClick={()=>setMesBase(new Date(mesBase.getFullYear(), mesBase.getMonth()-1, 1))}
                 style={{ background:"transparent", border:`1px solid ${B.border}`, borderRadius:5, color:"#8AAECC", cursor:"pointer", padding:"2px 8px", fontSize:12 }}>‹</button>
@@ -322,44 +329,77 @@ function CalendarioSemanal({ supabase }) {
               <button onClick={()=>setMesBase(new Date(mesBase.getFullYear(), mesBase.getMonth()+1, 1))}
                 style={{ background:"transparent", border:`1px solid ${B.border}`, borderRadius:5, color:"#8AAECC", cursor:"pointer", padding:"2px 8px", fontSize:12 }}>›</button>
             </>
+          ) : (
+            <span style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px" }}>📅 ESTA SEMANA</span>
           )}
-          {!vistaM && <span style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px" }}>📅 ESTA SEMANA</span>}
         </div>
-        <div style={{ display:"flex", gap:4, background:B.card, borderRadius:6, padding:2, border:`1px solid ${B.border}` }}>
+        <div style={{ display:"flex", gap:3, background:B.card, borderRadius:6, padding:2, border:`1px solid ${B.border}` }}>
           {["Semana","Mes"].map((v,i) => (
             <button key={v} onClick={()=>setVistaM(i===1)}
               style={{ padding:"3px 10px", borderRadius:4, cursor:"pointer", fontSize:10, fontWeight:600, border:"none",
-                background: vistaM===(i===1) ? B.accent : "transparent",
-                color: vistaM===(i===1) ? "#fff" : "#8AAECC" }}>
+                background:vistaM===(i===1)?B.accent:"transparent",
+                color:vistaM===(i===1)?"#fff":"#8AAECC" }}>
               {v}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Vista semana */}
+      {/* Headers días */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap: vistaM?3:5, marginBottom: vistaM?3:5 }}>
+        {DIAS.map((d,i) => (
+          <div key={i} style={{ textAlign:"center", fontSize:9, color:"#6A8AAE", fontWeight:600 }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Grid semana */}
       {!vistaM && (
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:6 }}>
-          {DIAS.map((d,i) => (
-            <div key={i} style={{ textAlign:"center", fontSize:10, color:"#6A8AAE", marginBottom:4 }}>{d}</div>
-          ))}
-          {semana.map((dia, i) => <DiaCell key={i} dia={dia} mini={false} />)}
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:5 }}>
+          {semana.map((dia,i) => <DiaCell key={i} dia={dia} mini={false} />)}
         </div>
       )}
 
-      {/* Vista mes */}
+      {/* Grid mes */}
       {vistaM && (
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:4 }}>
-          {DIAS.map((d,i) => (
-            <div key={i} style={{ textAlign:"center", fontSize:9, color:"#6A8AAE", marginBottom:4 }}>{d}</div>
-          ))}
-          {celdas.map((dia, i) => <DiaCell key={i} dia={dia} mini={true} />)}
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:3 }}>
+          {celdas.map((dia,i) => <DiaCell key={i} dia={dia} mini={true} />)}
         </div>
       )}
 
-      {tareas.length === 0 && (
-        <div style={{ textAlign:"center", fontSize:12, color:"#4A6A90", marginTop:8 }}>
-          Sin tareas {vistaM ? "este mes" : "esta semana"}
+      {/* Popup día */}
+      {diaPopup && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999 }}
+          onClick={()=>setDiaPopup(null)}>
+          <div style={{ background:B.sidebar, border:`1px solid ${B.accentL}40`, borderRadius:14, padding:20, minWidth:280, maxWidth:360 }}
+            onClick={e=>e.stopPropagation()}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+              <div style={{ fontSize:14, fontWeight:700, color:B.text }}>
+                {diaPopup.dia.toLocaleDateString("es-AR", { weekday:"long", day:"numeric", month:"long" })}
+              </div>
+              <button onClick={()=>setDiaPopup(null)}
+                style={{ background:"transparent", border:"none", color:"#4A6A90", cursor:"pointer", fontSize:16 }}>✕</button>
+            </div>
+            {diaPopup.tareas.length === 0 ? (
+              <div style={{ fontSize:12, color:"#4A6A90", textAlign:"center", padding:"16px 0" }}>Sin tareas este día</div>
+            ) : (
+              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                {diaPopup.tareas.map(t => {
+                  const col = PRIO_COLOR[t.prioridad] || "#4A8ABE";
+                  return (
+                    <div key={t.id} style={{ padding:"10px 12px", borderRadius:8,
+                      background:col+"15", border:`1px solid ${col}40`, borderLeft:`3px solid ${col}` }}>
+                      <div style={{ fontSize:13, fontWeight:600, color:B.text }}>{t.titulo}</div>
+                      {t.nota && <div style={{ fontSize:11, color:"#8AAECC", marginTop:4 }}>{t.nota}</div>}
+                      <div style={{ fontSize:10, color:"#4A6A90", marginTop:4, display:"flex", gap:8 }}>
+                        <span>{t.prioridad}</span>
+                        {t.ag && <span>· {t.ag}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
