@@ -7,30 +7,40 @@ import { B, AG } from "../data/constants.js";
 
 // ── Mapeo de zonas a slugs de Argenprop ──────────────────────
 const ZONA_SLUG = {
-  "la perla":      "la-perla",
-  "chauvin":       "chauvin",
-  "centro":        "centro",
-  "punta mogotes": "punta-mogotes",
-  "playa grande":  "playa-grande",
-  "san carlos":    "san-carlos",
-  "san josé":      "san-jose",
-  "san jose":      "san-jose",
-  "constitución":  "constitucion",
-  "constitucion":  "constitucion",
-  "pompeya":       "pompeya",
-  "don bosco":     "don-bosco",
-  "san juan":      "san-juan",
-  "floresta":      "floresta",
-  "bosque grande": "bosque-grande",
-  "güemes":        "guemes",
-  "guemes":        "guemes",
-  "libertad":      "libertad",
-  "las heras":     "las-heras",
-  "camet":         "camet",
-  "peralta ramos": "peralta-ramos",
-  "divino rostro": "divino-rostro",
-  "los pinares":   "los-pinares",
-  "alfar":         "alfar",
+  "la perla":          "la-perla",
+  "chauvin":           "chauvin",
+  "chauvin perla":     "chauvin",
+  "perla":             "la-perla",
+  "centro":            "centro",
+  "punta mogotes":     "punta-mogotes",
+  "mogotes":           "punta-mogotes",
+  "playa grande":      "playa-grande",
+  "san carlos":        "san-carlos",
+  "san josé":          "san-jose",
+  "san jose":          "san-jose",
+  "constitución":      "constitucion",
+  "constitucion":      "constitucion",
+  "pompeya":           "pompeya",
+  "don bosco":         "don-bosco",
+  "san juan":          "san-juan",
+  "floresta":          "floresta",
+  "bosque grande":     "bosque-grande",
+  "güemes":            "guemes",
+  "guemes":            "guemes",
+  "libertad":          "libertad",
+  "las heras":         "las-heras",
+  "camet":             "camet",
+  "peralta ramos":     "peralta-ramos",
+  "divino rostro":     "divino-rostro",
+  "los pinares":       "los-pinares",
+  "alfar":             "alfar",
+  "plaza colon":       "centro",
+  "plaza colón":       "centro",
+  "mitre":             "centro",
+  "villa primera":     "villa-primera",
+  "parque luro":       "parque-luro",
+  "parque palermo":    "parque-palermo",
+  "mar del plata":     "mar-del-plata",
 };
 
 // Zonas alternativas por zona principal
@@ -60,10 +70,16 @@ const TIPO_SLUG = {
 function buildArgenPropUrl(tipo, zona, presup, operacion) {
   const tipoSlug = TIPO_SLUG[tipo?.toLowerCase()] || "departamentos";
   const opSlug   = operacion === "alquiler" ? "alquiler" : "venta";
-  const zonaSlug = ZONA_SLUG[zona?.toLowerCase()] || zona?.toLowerCase().replace(/\s+/g, "-") || "mar-del-plata";
-  const precio   = presup ? `hasta-${Math.round(presup/1000)*1000}-dolares` : "";
 
-  return `https://www.argenprop.com/${tipoSlug}/${opSlug}/mar-del-plata/${zonaSlug}/${precio}`.replace(/\/$/, "");
+  // Tomar solo la primera zona si hay varias separadas por coma/barra
+  const zonaPrimera = (zona || "").split(/[,\/]/)[0].trim().toLowerCase();
+  const zonaSlug = ZONA_SLUG[zonaPrimera] || zonaPrimera.replace(/\s+/g, "-") || "mar-del-plata";
+
+  // Construir URL limpia
+  let url = `https://www.argenprop.com/${tipoSlug}/${opSlug}/mar-del-plata/${zonaSlug}`;
+  if (presup) url += `/hasta-${Math.round(presup/1000)*1000}-dolares`;
+
+  return url;
 }
 
 function ZonaBtn({ label, url, color }) {
