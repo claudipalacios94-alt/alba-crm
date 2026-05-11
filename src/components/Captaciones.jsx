@@ -197,7 +197,7 @@ function MapaCaptaciones({ items }) {
         iconAnchor: [0, 0],
       });
       const marker = window.L.marker([item.lat, item.lng], { icon }).addTo(map)
-        .bindPopup(`<div style="font-family:sans-serif;font-size:12px;min-width:160px"><strong>${item.tipo||"Propiedad"}</strong><br/>${item.zona||""} ${item.direccion?"· "+item.direccion:""}<br/>${item.precio?"USD "+Number(item.precio).toLocaleString():"Sin precio"}<br/>${item.ambientes?item.ambientes+" amb · ":""}${item.m2tot?item.m2tot+"m²":""}</div>`);
+        .bindPopup(`<div style="font-family:sans-serif;font-size:12px;min-width:160px"><strong>${item.tipo||"Propiedad"}</strong><br/>${item.zona||""} ${item.direccion?"· "+item.direccion:""}<br/>${item.precio?"USD "+Number(item.precio).toLocaleString():"Sin precio"}<br/>${item.ambientes?item.ambientes+" amb · ":""}${item.m2tot?item.m2tot+"m²":""}<br/>${item.url?'<a href="'+item.url+'" target="_blank" style="color:#3A8BC4">🔗 Ver en portal</a>':""}</div>`);
       marksRef.current.push(marker);
     });
     if (conCoords.length > 0) {
@@ -671,6 +671,17 @@ export default function Captaciones({ supabase }) {
                 <label style={{ fontSize:10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}CARACTERÍSTICAS</label>
                 <input value={val} onChange={e=>setCompletos(p=>({...p,caracts:e.target.value}))}
                   placeholder="ej: luminoso, 1er piso, balcón..." style={{...inpS,borderColor:detected?"#2E9E6A40":inpS.border}} />
+              </div>
+            );
+          })()}
+          {/* URL / Link */}
+          {(() => {
+            const val = completos.url!==undefined?completos.url:(campos.url||"");
+            return (
+              <div>
+                <label style={{ fontSize:10, color:"#4A8ABE", display:"block", marginBottom:2 }}>🔗 LINK DEL PORTAL (opcional)</label>
+                <input value={val} onChange={e=>setCompletos(p=>({...p,url:e.target.value}))}
+                  placeholder="https://zonaprop.com.ar/..." style={{...inpS, borderColor:val?"#4A8ABE40":inpS.border}} />
               </div>
             );
           })()}
