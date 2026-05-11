@@ -208,9 +208,8 @@ Les comparto mis pedidos activos de Alba Inversiones:
 Cualquier opción que encaje, me avisan.
 
 Saludos,
-Claudi Palacios
-Alba Inversiones Inmobiliarias — Reg. 3832
-Mar del Plata`;
+Alejandra Alba
+Reg. 3832`;
 
     return mail;
   }
