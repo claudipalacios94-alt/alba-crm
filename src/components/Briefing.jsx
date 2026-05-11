@@ -678,22 +678,30 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
         </div>
       )}
 
-      {/* Input */}
-      {iniciado && (
-        <div style={{ padding:"10px 16px", borderTop:`1px solid ${B.border}`, display:"flex", gap:8, alignItems:"center" }}>
-          <input value={input} onChange={e=>setInput(e.target.value)}
-            onKeyDown={e=>{ if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); enviar(input); } }}
-            placeholder="Escribí o dictá..."
-            style={inp} />
-          <MicBtn onTranscript={t=>setInput(p=>p?p+" "+t:t)} />
+      {/* Input — siempre visible */}
+      <div style={{ padding:"10px 16px", borderTop:`1px solid ${B.border}`, display:"flex", gap:8, alignItems:"center" }}>
+        <input value={input} onChange={e=>setInput(e.target.value)}
+          onKeyDown={e=>{ if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); enviar(input); } }}
+          placeholder={iniciado ? "Escribí o dictá..." : "Preguntame qué hacer hoy..."}
+          style={inp} />
+        <MicBtn onTranscript={t=>setInput(p=>p?p+" "+t:t)} />
+        {!iniciado && (
+          <button onClick={arrancarDia}
+            style={{ padding:"8px 14px", borderRadius:8, cursor:"pointer",
+              background:B.accent, border:`1px solid ${B.accentL}`,
+              color:"#fff", fontSize:12, fontWeight:700, whiteSpace:"nowrap" }}>
+            ¿Qué hago hoy?
+          </button>
+        )}
+        {iniciado && (
           <button onClick={()=>enviar(input)} disabled={loading || !input.trim()}
             style={{ padding:"8px 14px", borderRadius:8, cursor:loading||!input.trim()?"default":"pointer",
               background:loading||!input.trim()?B.border:B.accent,
               border:"none", color:"#fff", fontSize:12, fontWeight:700 }}>
             →
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -970,9 +978,7 @@ export default function Briefing({ leads, properties, rentals, captaciones, supa
       </div>
 
       {/* ── Fila 1: Asistente IA — ancho completo ──────────── */}
-      <div style={{ background:"rgba(10,21,37,0.6)", border:`1px solid ${B.border}`, borderRadius:12, overflow:"hidden" }}>
-        <BriefingIA leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase} onConsumo={onConsumo} />
-      </div>
+      <BriefingIA leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase} onConsumo={onConsumo} />
 
       {/* ── Fila 2: Tareas | Calendario ────────────────────── */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
