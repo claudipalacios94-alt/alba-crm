@@ -110,6 +110,7 @@ export default function Flyer({ properties, supabase, flyers, setFlyers }) {
             ref={dropRef}
             onDrop={onDrop}
             onDragOver={e=>e.preventDefault()}
+            onClick={()=>{ if(!preview) fileRef.current?.click(); }}
             style={{ border:`2px dashed ${preview?B.accentL:B.border}`, borderRadius:12, padding:preview?"0":"32px 16px",
               textAlign:"center", cursor:"pointer", transition:"all 0.2s",
               background: preview?"transparent":"rgba(42,91,173,0.04)", overflow:"hidden" }}>
