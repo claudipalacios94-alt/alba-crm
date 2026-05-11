@@ -282,15 +282,15 @@ function CalendarioSemanal({ supabase }) {
     return (
       <div>
         <div style={{ textAlign:"center", marginBottom: mini ? 2 : 6 }}>
-          <div style={{ fontSize: mini ? 11 : 16, fontWeight: isHoy ? 700 : 400,
+          <div style={{ fontSize: mini ? 10 : 14, fontWeight: isHoy ? 700 : 400,
             color: isHoy ? "#fff" : "#8AAECC",
             background: isHoy ? B.accentL : "transparent",
-            borderRadius:"50%", width: mini ? 22 : 28, height: mini ? 22 : 28,
+            borderRadius:"50%", width: mini ? 20 : 26, height: mini ? 20 : 26,
             display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto" }}>
             {dia.getDate()}
           </div>
         </div>
-        <div style={{ display:"flex", flexDirection:"column", gap:2, minHeight: mini ? 20 : 40 }}>
+        <div style={{ display:"flex", flexDirection:"column", gap:2, minHeight: mini ? 28 : 44, height: mini ? 28 : 44, overflow:"hidden" }}>
           {td.length === 0
             ? <div style={{ height:2, borderRadius:2, background:B.border, opacity:0.2, margin:"3px 0" }} />
             : td.slice(0, mini ? 2 : 99).map(t => (
@@ -970,7 +970,9 @@ export default function Briefing({ leads, properties, rentals, captaciones, supa
       </div>
 
       {/* ── Fila 1: Asistente IA — ancho completo ──────────── */}
-      <BriefingIA leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase} onConsumo={onConsumo} />
+      <div style={{ background:"rgba(10,21,37,0.6)", border:`1px solid ${B.border}`, borderRadius:12, overflow:"hidden" }}>
+        <BriefingIA leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase} onConsumo={onConsumo} />
+      </div>
 
       {/* ── Fila 2: Tareas | Calendario ────────────────────── */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
