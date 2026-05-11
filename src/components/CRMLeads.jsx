@@ -91,13 +91,49 @@ function ModalPerdido({ lead, onConfirmar, onCancelar }) {
   );
 }
 
+function InversorNota({ lead, onGuardar }) {
+  const [editando, setEditando] = React.useState(false);
+  const [val, setVal] = React.useState(lead.nota_inversor || "");
+
+  async function guardar() {
+    await onGuardar(lead, val);
+    setEditando(false);
+  }
+
+  if (editando) return (
+    <div style={{ display:"flex", gap:4, flex:1 }}>
+      <input value={val} onChange={e=>setVal(e.target.value)}
+        onKeyDown={e=>{ if(e.key==="Enter") guardar(); if(e.key==="Escape") setEditando(false); }}
+        placeholder="ej: busca renta 6%, quiere 2 unidades..."
+        autoFocus
+        style={{ flex:1, background:"rgba(10,21,37,0.6)", border:"1px solid #9B6DC8", borderRadius:5,
+          padding:"3px 8px", color:"#C8D8E8", fontSize:11, outline:"none" }} />
+      <button onClick={guardar}
+        style={{ padding:"3px 8px", borderRadius:5, cursor:"pointer",
+          background:"#9B6DC8", border:"none", color:"#fff", fontSize:10, fontWeight:700 }}>OK</button>
+    </div>
+  );
+
+  return (
+    <div onClick={()=>setEditando(true)} style={{ flex:1, cursor:"pointer" }}>
+      {lead.nota_inversor
+        ? <span style={{ fontSize:11, color:"#C8A8E8", fontStyle:"italic" }}>{lead.nota_inversor}</span>
+        : <span style={{ fontSize:10, color:"#6A4A90" }}>+ agregar nota</span>}
+    </div>
+  );
+}
+
 export default function CRMLeads({ leads, updateLead, deleteLead, properties, captaciones, supabase }) {
+  const [pagina, setPagina] = useState("compradores"); // "compradores" | "inversores"
   const [fs,  setFs]  = useState("Todos");
   const [fa,  setFa]  = useState("Todos");
   const [fop, setFop] = useState("Todos");
   const [q,   setQ]   = useState("");
   const [mostrarPerdidos, setMostrarPerdidos] = useState(false);
   const [mostrados,      setMostrados]      = useState(new Set());
+  const [matchesVistos,  setMatchesVistos]  = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("alba_matches_vistos")||"[]")); } catch(e) { return new Set(); }
+  });
 
   React.useEffect(() => {
     if (!supabase) return;
@@ -126,7 +162,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [saving, setSaving] = useState(false);
  
-  const filt = useMemo(() => leads.filter(l => {
+  const filtBase = useMemo(() => leads.filter(l => {
     if (!mostrarPerdidos && (l.etapa === "Perdido" || l.etapa === "Cerrado")) return false;
     const s = scoreLead(l).label;
     if (fs === "Caliente" && !s.includes("Caliente")) return false;
@@ -134,13 +170,42 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
     if (fs === "Frío"     && !s.includes("Frío"))     return false;
     if (fa === "Sin asignar" && l.ag) return false;
     if (fa !== "Todos" && fa !== "Sin asignar" && l.ag !== fa) return false;
-    if (fop === "Inversor"  && l.op !== "Inversión") return false;
-    if (fop === "Comprador" && l.op === "Inversión") return false;
     if (q && !l.nombre?.toLowerCase().includes(q.toLowerCase())
           && !(l.zona||"").toLowerCase().includes(q.toLowerCase())
           && !(l.tel||"").includes(q)) return false;
     return true;
-  }).sort((a, b) => a.dias - b.dias), [leads, fs, fa, fop, q, mostrarPerdidos]);
+  }).sort((a, b) => a.dias - b.dias), [leads, fs, fa, q, mostrarPerdidos]);
+
+  const filt = useMemo(() => filtBase.filter(l => !l.inversor), [filtBase]);
+  const filtInversores = useMemo(() => filtBase.filter(l => !!l.inversor), [filtBase]);
+
+  // Calcular matches nuevos no vistos
+  const todasProps = useMemo(() => {
+    const capsNorm = (captaciones||[]).map(c => ({
+      id:"cap-"+c.id, tipo:c.tipo, zona:c.zona, precio:c.precio,
+      dir:c.direccion, caracts:c.caracts, activa:true,
+      _esCaptacion:true, _tipoCap:c.tipo_captacion,
+    }));
+    return [...(properties||[]), ...capsNorm];
+  }, [properties, captaciones]);
+
+  const matchesNuevos = useMemo(() => {
+    let count = 0;
+    [...filt, ...filtInversores].forEach(l => {
+      const m = matchLeadProps(l, todasProps);
+      m.forEach(p => { if (!matchesVistos.has(`${l.id}-${p.id}`)) count++; });
+    });
+    return count;
+  }, [filt, filtInversores, todasProps, matchesVistos]);
+
+  function marcarMatchesVistos() {
+    const nuevos = new Set(matchesVistos);
+    [...filt, ...filtInversores].forEach(l => {
+      matchLeadProps(l, todasProps).forEach(p => nuevos.add(`${l.id}-${p.id}`));
+    });
+    setMatchesVistos(nuevos);
+    localStorage.setItem("alba_matches_vistos", JSON.stringify([...nuevos]));
+  }
  
   const perdidosCount = leads.filter(l => l.etapa === "Perdido" || l.etapa === "Cerrado").length;
  
@@ -162,6 +227,15 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
   async function setAgente(id, ag)   { await updateLead(id, { ag });    setEditE(null); }
  
   async function contacteHoy(id) { await updateLead(id, { last_contact_at: new Date().toISOString() }); }
+
+  async function toggleInversor(lead) {
+    const nuevoVal = !lead.inversor;
+    await updateLead(lead.id, { inversor: nuevoVal });
+  }
+
+  async function guardarNotaInversor(lead, nota) {
+    await updateLead(lead.id, { nota_inversor: nota });
+  }
  
   async function setScore(id, n) { await updateLead(id, { prob: n * 20 }); }
  
@@ -223,13 +297,23 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
     outline:"none", boxSizing:"border-box", fontFamily:"'Trebuchet MS',sans-serif",
   };
  
+  const leadsActivos = pagina === "compradores" ? filt : filtInversores;
+
   return (
     <div style={{ maxWidth:800 }}>
-      {/* Header */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:16 }}>
-        <div>
+      {/* Header con tabs */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>CRM Leads</h1>
-          <p style={{ fontSize:11, color:"#8AAECC", margin:"3px 0 0" }}>{filt.length} contactos</p>
+          {/* Campana de matches */}
+          {matchesNuevos > 0 && (
+            <button onClick={marcarMatchesVistos}
+              style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px", borderRadius:8,
+                background:"rgba(232,168,48,0.15)", border:"1px solid rgba(232,168,48,0.4)",
+                color:"#E8A830", fontSize:11, fontWeight:700, cursor:"pointer" }}>
+              🔔 {matchesNuevos} match{matchesNuevos>1?"es":""} nuevo{matchesNuevos>1?"s":""}
+            </button>
+          )}
         </div>
         <button onClick={() => setMostrarPerdidos(p => !p)}
           style={{ fontSize:12, color:mostrarPerdidos?B.hot:B.dim, cursor:"pointer",
@@ -237,6 +321,22 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
             borderRadius:6, padding:"4px 10px" }}>
           {mostrarPerdidos ? "Ocultar archivados" : `Archivados (${perdidosCount})`}
         </button>
+      </div>
+
+      {/* Tabs Compradores / Inversores */}
+      <div style={{ display:"flex", gap:4, background:B.card, borderRadius:10, padding:4,
+        border:`1px solid ${B.border}`, marginBottom:14, width:"fit-content" }}>
+        {[
+          { id:"compradores", label:`🏠 Compradores`, count:filt.length },
+          { id:"inversores",  label:`💼 Inversores`,  count:filtInversores.length, color:"#9B6DC8" },
+        ].map(t => (
+          <button key={t.id} onClick={()=>setPagina(t.id)}
+            style={{ padding:"6px 16px", borderRadius:7, cursor:"pointer", fontSize:12, fontWeight:600, border:"none",
+              background: pagina===t.id ? (t.color||B.accent) : "transparent",
+              color: pagina===t.id ? "#fff" : "#8AAECC" }}>
+            {t.label} <span style={{ opacity:0.7, fontSize:10 }}>({t.count})</span>
+          </button>
+        ))}
       </div>
  
       {/* Filtros */}
@@ -586,6 +686,25 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
                         );
                       })()}
  
+                      {/* Switch Inversor */}
+                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8,
+                        padding:"7px 10px", borderRadius:8,
+                        background: lead.inversor ? "rgba(155,109,200,0.1)" : "rgba(42,91,173,0.05)",
+                        border: `1px solid ${lead.inversor ? "#9B6DC840" : B.border}` }}>
+                        <button onClick={()=>toggleInversor(lead)}
+                          style={{ width:36, height:20, borderRadius:10, cursor:"pointer", border:"none", position:"relative", flexShrink:0, transition:"all 0.2s",
+                            background: lead.inversor ? "#9B6DC8" : "#2A3A5A" }}>
+                          <div style={{ position:"absolute", top:2, left: lead.inversor ? 18 : 2, width:16, height:16,
+                            borderRadius:"50%", background:"#fff", transition:"left 0.2s", boxShadow:"0 1px 3px rgba(0,0,0,0.3)" }} />
+                        </button>
+                        <span style={{ fontSize:11, color: lead.inversor ? "#9B6DC8" : "#8AAECC", fontWeight:600 }}>
+                          💼 Inversor
+                        </span>
+                        {lead.inversor && (
+                          <InversorNota lead={lead} onGuardar={guardarNotaInversor} />
+                        )}
+                      </div>
+
                       {/* Acciones */}
                       <div style={{ display:"flex", gap:7, flexWrap:"wrap" }}>
                         <button onClick={() => contacteHoy(lead.id)}
