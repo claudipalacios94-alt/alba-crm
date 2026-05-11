@@ -404,8 +404,8 @@ function AsistenteChat({ leads, properties, rentals, captaciones, supabase, onNo
     const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
     const calientes = activos.filter(l => l.dias <= 3).slice(0, 8);
     const negociacion = activos.filter(l => l.etapa === "Negociación");
-    const caps = (captaciones||[]).slice(0,15);
-    const capResumen = caps.map(c=>`${c.tipo||"Prop"} ${c.zona||"?"} USD${c.precio||"?"} [${c.tipo_captacion||"?"}]${c.direccion?" · "+c.direccion:""}`).join(" | ");
+    const caps = (captaciones||[]).slice(0,30);
+    const capResumen = caps.map(c=>`${c.tipo||"Prop"} ${c.zona||"?"} USD${c.precio||"?"} [${c.tipo_captacion||"?"}]${c.direccion?" dir:"+c.direccion:""}${c.nombre_propietario?" prop:"+c.nombre_propietario:""}`).join(" | ");
     const propsResumen = (properties||[]).slice(0,10).map(p=>`${p.tipo||"Prop"} ${p.zona||"?"} USD${p.precio||"?"}`).join(" | ");
     const rentResumen = (rentals||[]).slice(0,5).map(r=>`${r.tipo||"Prop"} ${r.zona||"?"} $${r.precio||"?"}/mes`).join(" | ");
     return `Hoy es ${hoy}. Sos el asistente de Claudi de Alba Inversiones, Mar del Plata.
