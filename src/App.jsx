@@ -298,7 +298,7 @@ export default function App() {
         {view === "propiedades" && <Propiedades properties={properties} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />}
         {view === "alquileres"  && <Alquileres  rentals={rentals} />}
         {view === "mapa"        && <Mapa        properties={properties} leads={leads} updateProperty={updateProperty} supabase={supabase} />}
-        {view === "flyer"       && <Flyer       properties={properties} />}
+        {view === "flyer"       && <Flyer       properties={properties} supabase={supabase} />}
         {view === "captaciones" && <Captaciones  supabase={supabase} />}
         {view === "zonas"       && <CaptacionZonas supabase={supabase} />}
       </div>

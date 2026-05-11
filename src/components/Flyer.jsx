@@ -5,13 +5,19 @@
 import React, { useState, useRef, useEffect } from "react";
 import { B } from "../data/constants.js";
 
-export default function Flyer({ properties }) {
+export default function Flyer({ properties, supabase }) {
   const [propId,   setPropId]   = useState(properties[0]?.id);
   const [fotos,    setFotos]    = useState([]);
   const [formato,  setFormato]  = useState("cuadrado");
   const [fotoSel,  setFotoSel]  = useState(0);
   const [texto,    setTexto]    = useState("");
   const [generando,setGenerando]= useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [flyers,    setFlyers]    = useState([]);
+  const [showGal,   setShowGal]   = useState(false);
+  const [flyerSel,  setFlyerSel]  = useState(null);
+  const [notaFlyer, setNotaFlyer] = useState("");
+  const [tituloFlyer, setTituloFlyer] = useState("");
 
   const canvasRef = useRef(null);
   const dropRef   = useRef(null);
@@ -19,6 +25,43 @@ export default function Flyer({ properties }) {
   const DIM   = formato === "cuadrado" ? { w:1080, h:1080 } : { w:1080, h:1350 };
   const SCALE = 0.42;
   const prop  = properties.find(p => p.id === propId) || properties[0];
+
+  // ── Cargar galería ───────────────────────────────────────
+  React.useEffect(() => {
+    if (!supabase) return;
+    supabase.from("flyers").select("*").order("created_at", { ascending: false })
+      .then(({ data }) => setFlyers(data || []));
+  }, []);
+
+  // ── Guardar flyer en Supabase ─────────────────────────────
+  async function guardarFlyer() {
+    if (!canvasRef.current || guardando) return;
+    setGuardando(true);
+    try {
+      const base64 = canvasRef.current.toDataURL("image/jpeg", 0.85);
+      const titulo = tituloFlyer || (prop ? prop.tipo + " · " + prop.zona : "Flyer " + new Date().toLocaleDateString("es-AR"));
+      const { data, error } = await supabase.from("flyers").insert([{
+        titulo,
+        imagen_base64: base64,
+        nota: notaFlyer || null,
+        prop_id: prop?.id || null,
+        ag: null,
+      }]).select().single();
+      if (!error && data) {
+        setFlyers(p => [data, ...p]);
+        setTituloFlyer("");
+        setNotaFlyer("");
+        setShowGal(true);
+      }
+    } catch(e) { console.error(e); }
+    setGuardando(false);
+  }
+
+  async function eliminarFlyer(id) {
+    await supabase.from("flyers").delete().eq("id", id);
+    setFlyers(p => p.filter(f => f.id !== id));
+    if (flyerSel?.id === id) setFlyerSel(null);
+  }
 
   // ── Manejo de fotos ───────────────────────────────────────
   function onDrop(e) {
@@ -247,7 +290,88 @@ export default function Flyer({ properties }) {
             fontFamily:"Georgia,serif", flexShrink:0 }}>
           {generando ? "Generando..." : "↓ Descargar PNG"}
         </button>
+
+        {/* Guardar en galería */}
+        <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+          <input value={tituloFlyer} onChange={e=>setTituloFlyer(e.target.value)}
+            placeholder="Título del flyer (opcional)"
+            style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:7,
+              padding:"7px 10px", color:B.text, fontSize:12, outline:"none" }} />
+          <input value={notaFlyer} onChange={e=>setNotaFlyer(e.target.value)}
+            placeholder="Nota (precio, contacto, detalles...)"
+            style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:7,
+              padding:"7px 10px", color:B.text, fontSize:12, outline:"none" }} />
+          <button onClick={guardarFlyer} disabled={guardando}
+            style={{ padding:"10px", borderRadius:9, cursor:guardando?"wait":"pointer",
+              background:guardando?B.border:"#2E9E6A", border:`1px solid ${guardando?B.border:"#2E9E6A"}`,
+              color:guardando?B.muted:"#fff", fontSize:12, fontWeight:700 }}>
+            {guardando ? "Guardando..." : "💾 Guardar en galería"}
+          </button>
+        </div>
+
+        {/* Botón galería */}
+        <button onClick={()=>setShowGal(g=>!g)}
+          style={{ padding:"10px 14px", borderRadius:9, cursor:"pointer",
+            background:showGal?B.accent:"rgba(42,91,173,0.12)",
+            border:`1px solid ${showGal?B.accentL:B.border}`,
+            color:showGal?"#fff":"#8AAECC", fontSize:12, fontWeight:700 }}>
+          🖼 Galería ({flyers.length})
+        </button>
+
         <div style={{ fontSize:12, color:B.dim, textAlign:"center" }}>1080×1080px · listo para Instagram y WhatsApp</div>
+
+        {/* Galería desplegable */}
+        {showGal && (
+          <div style={{ background:B.card, border:`1px solid ${B.accentL}30`, borderRadius:12, overflow:"hidden", marginTop:4 }}>
+            <div style={{ padding:"10px 14px", borderBottom:`1px solid ${B.border}`, fontSize:11, fontWeight:700, color:B.accentL, letterSpacing:"0.8px" }}>
+              FLYERS GUARDADOS
+            </div>
+            {flyers.length === 0 && (
+              <div style={{ padding:"20px", textAlign:"center", color:"#4A6A90", fontSize:12 }}>Sin flyers guardados</div>
+            )}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, padding:10, maxHeight:400, overflowY:"auto" }}>
+              {flyers.map(f => (
+                <div key={f.id}
+                  style={{ borderRadius:8, overflow:"hidden", cursor:"pointer", position:"relative",
+                    border:`2px solid ${flyerSel?.id===f.id?B.accentL:B.border}` }}
+                  onClick={()=>setFlyerSel(flyerSel?.id===f.id?null:f)}>
+                  {f.imagen_base64
+                    ? <img src={f.imagen_base64} alt={f.titulo}
+                        style={{ width:"100%", aspectRatio:"1", objectFit:"cover", display:"block" }} />
+                    : <div style={{ width:"100%", aspectRatio:"1", background:B.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>🖼</div>
+                  }
+                  <div style={{ padding:"5px 7px", background:"rgba(7,14,28,0.9)" }}>
+                    <div style={{ fontSize:10, color:B.text, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.titulo}</div>
+                    <div style={{ fontSize:9, color:"#4A6A90" }}>{new Date(f.created_at).toLocaleDateString("es-AR",{day:"numeric",month:"short"})}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Detalle flyer seleccionado */}
+            {flyerSel && (
+              <div style={{ borderTop:`1px solid ${B.border}`, padding:"12px 14px", display:"flex", flexDirection:"column", gap:8 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:B.text }}>{flyerSel.titulo}</div>
+                {flyerSel.nota && <div style={{ fontSize:12, color:"#8AAECC", fontStyle:"italic" }}>{flyerSel.nota}</div>}
+                <div style={{ fontSize:11, color:"#4A6A90" }}>{new Date(flyerSel.created_at).toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
+                <div style={{ display:"flex", gap:8 }}>
+                  {flyerSel.imagen_base64 && (
+                    <a href={flyerSel.imagen_base64} download={flyerSel.titulo+".jpg"}
+                      style={{ flex:1, padding:"8px", borderRadius:7, textAlign:"center", cursor:"pointer",
+                        background:B.accent, border:`1px solid ${B.accentL}`, color:"#fff", fontSize:12, fontWeight:700, textDecoration:"none" }}>
+                      ↓ Descargar
+                    </a>
+                  )}
+                  <button onClick={()=>eliminarFlyer(flyerSel.id)}
+                    style={{ padding:"8px 12px", borderRadius:7, cursor:"pointer",
+                      background:"transparent", border:`1px solid ${B.hot}40`, color:B.hot, fontSize:12 }}>
+                    🗑
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Preview */}
