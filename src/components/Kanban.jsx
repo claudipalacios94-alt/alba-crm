@@ -12,7 +12,7 @@ export default function Kanban({ leads, updateLead }) {
   const [toast,    setToast]    = useState(null);
   const ghostRef = useRef(null);
 
-  const vis  = filtroAg === "Todos" ? leads : leads.filter(l => l.ag === filtroAg);
+  const vis  = filtroAg === "Todos" ? leads.filter(l => !l.inversor) : leads.filter(l => l.ag === filtroAg && !l.inversor);
   const cols = ETAPAS.map(etapa => ({
     etapa,
     items: vis.filter(l => l.etapa === etapa),
