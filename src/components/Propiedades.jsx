@@ -1,10 +1,10 @@
 // ══════════════════════════════════════════════════════════════
-// ALBA CRM — MÓDULO PROPIEDADES
+// ALBA CRM — MÓDULO PROPIEDADES + ALQUILERES
 // Cards expandibles, categorías, edición inline
 // ══════════════════════════════════════════════════════════════
 import React, { useState } from "react";
 import { B, AG, matchLeadProps } from "../data/constants.js";
-
+ 
 const CATEGORIAS = [
   { key: "destacada", label: "Destacada",        color: "#E8A830" },
   { key: "hon3",      label: "Honorarios 3%",    color: "#2E9E6A" },
@@ -12,9 +12,9 @@ const CATEGORIAS = [
   { key: "colega",    label: "Colega",            color: "#9B6DC8" },
   { key: "normal",    label: "Sin categoría",     color: "#4A6A90" },
 ];
-
+ 
 const catInfo = key => CATEGORIAS.find(c => c.key === key) || CATEGORIAS[4];
-
+ 
 async function geocodeAddress(dir) {
   if (!dir) return null;
   const KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
@@ -38,7 +38,7 @@ async function geocodeAddress(dir) {
   } catch(e) {}
   return null;
 }
-
+ 
 function matchingInverso(prop, leads) {
   if (!leads || !Array.isArray(leads)) return [];
   const leadsActivos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
@@ -49,25 +49,18 @@ function matchingInverso(prop, leads) {
     const pZona = (prop.zona || "").toLowerCase();
     const pTipo = (prop.tipo || "").toLowerCase().replace("departamento", "depto");
     const pPrecio = Number(prop.precio) || 0;
-
-    // Zona match
     const zonas = zona.split(/[,\/]|\s+y\s+/).map(z => z.trim()).filter(Boolean);
     const zonaOk = zonas.some(z => pZona.includes(z) || z.includes(pZona));
     if (!zonaOk) return false;
-
-    // Precio — no más de 20% sobre presupuesto
     if (presup > 0 && pPrecio > 0 && pPrecio > presup * 1.20) return false;
-
-    // Tipo excluyente
     if (tipo && pTipo) {
       const tiposLead = tipo.replace("departamento","depto").split(/[\/,]|\s+y\s+/).map(t => t.trim());
       if (!tiposLead.some(t => pTipo.includes(t) || t.includes(pTipo))) return false;
     }
-
     return true;
   });
 }
-
+ 
 function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
   const [open,       setOpen]       = useState(false);
   const [editing,    setEditing]    = useState(false);
@@ -80,14 +73,14 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
   const [docsLoaded, setDocsLoaded] = useState(false);
   const [uploading,  setUploading]  = useState(false);
   const fileRef = React.useRef(null);
-
+ 
   async function loadDocs() {
     if (!supabase || docsLoaded) return;
     const { data } = await supabase.storage.from("documentos").list(`prop-${p.id}/`);
     setDocs(data || []);
     setDocsLoaded(true);
   }
-
+ 
   async function uploadDoc(e) {
     const file = e.target.files[0];
     if (!file || !supabase) return;
@@ -101,16 +94,16 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
     setUploading(false);
     e.target.value = "";
   }
-
+ 
   async function deleteDoc(name) {
     await supabase.storage.from("documentos").remove([`prop-${p.id}/${name}`]);
     setDocs(prev => prev.filter(d => d.name !== name));
   }
-
+ 
   function getUrl(name) {
     return supabase.storage.from("documentos").getPublicUrl(`prop-${p.id}/${name}`).data.publicUrl;
   }
-
+ 
   function docIcon(name) {
     const ext = name.split(".").pop().toLowerCase();
     if (["pdf"].includes(ext)) return "📄";
@@ -119,27 +112,29 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
     if (["xls","xlsx"].includes(ext)) return "📊";
     return "📎";
   }
-
+ 
   const scColor = p.sc?.includes("Urgente") ? B.hot : p.sc?.includes("tenci") ? B.warm : B.ok;
   const cat = catInfo(localCat);
-
+ 
   async function changeCategoria(key) {
     setSavingCat(true);
     setLocalCat(key);
     await updateProperty(p.id, { categoria: key });
     setSavingCat(false);
   }
-
+ 
   function startEdit() {
     setEditData({
       tipo: p.tipo || "", zona: p.zona || "", dir: p.dir || "",
       precio: p.precio || "", m2tot: p.m2tot || "", m2cub: p.m2cub || "",
-      caracts: p.caracts || "", info: p.info || "", ag: p.ag || "", precio_original: p.precio_original || p.precio || "", descripcion: p.descripcion || "", fotos: p.fotos || "",
+      caracts: p.caracts || "", info: p.info || "", ag: p.ag || "",
+      precio_original: p.precio_original || p.precio || "",
+      descripcion: p.descripcion || "", fotos: p.fotos || "",
       estado: p.estado || "Buen Estado",
     });
     setEditing(true);
   }
-
+ 
   async function saveEdit() {
     setSaving(true);
     try {
@@ -158,24 +153,24 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
         m2tot:  editData.m2tot  ? Number(editData.m2tot)  : null,
         m2cub:  editData.m2cub  ? Number(editData.m2cub)  : null,
         caracts: editData.caracts, info: editData.info,
-        ag: editData.ag, estado: editData.estado, lat, lng, descripcion: editData.descripcion || null, fotos: editData.fotos || null,
+        ag: editData.ag, estado: editData.estado, lat, lng,
+        descripcion: editData.descripcion || null, fotos: editData.fotos || null,
       });
       setEditing(false);
     } catch(e) { console.error(e); }
     setSaving(false);
   }
-
+ 
   const inp = {
     width: "100%", background: B.bg, border: "1px solid " + B.border,
     borderRadius: 6, padding: "6px 9px", color: B.text, fontSize: 12,
     outline: "none", boxSizing: "border-box",
   };
-
+ 
   return (
     <div style={{ background: B.card, border: "1px solid " + (open ? B.accentL : B.border),
       borderLeft: "3px solid " + cat.color, borderRadius: 12, overflow: "hidden" }}>
-
-      {/* Cabecera */}
+ 
       <div onClick={() => { if (!editing) { setOpen(o => !o); if (!open) loadDocs(); } }}
         style={{ padding: "13px 14px", cursor: editing ? "default" : "pointer" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
@@ -221,13 +216,11 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
             textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.caracts}</div>
         )}
       </div>
-
-      {/* Panel expandido — info + categoría */}
+ 
       {open && !editing && (
         <div style={{ borderTop: "1px solid " + B.border, padding: "12px 14px",
           background: "rgba(10,21,37,0.4)", display: "flex", flexDirection: "column", gap: 12 }}>
-
-          {/* Matching inverso */}
+ 
           {(() => {
             const matches = matchingInverso(p, leads);
             if (matches.length === 0) return (
@@ -269,8 +262,7 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
               </div>
             );
           })()}
-
-          {/* Selector categoría */}
+ 
           <div>
             <div style={{ fontSize: 11, color: "#5A7A9A", fontWeight: 600, marginBottom: 7, letterSpacing: "0.8px" }}>CATEGORÍA</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -286,8 +278,7 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
               ))}
             </div>
           </div>
-
-          {/* Detalles */}
+ 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
             {p.estado && <div style={{ fontSize: 12 }}><span style={{ color: "#5A7A9A" }}>Estado: </span><span style={{ color: B.text }}>{p.estado}</span></div>}
             {p.m2tot  && <div style={{ fontSize: 12 }}><span style={{ color: "#5A7A9A" }}>Sup.: </span><span style={{ color: B.text }}>{p.m2tot}m²{p.m2cub ? " · " + p.m2cub + "m² cub" : ""}</span></div>}
@@ -309,7 +300,7 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
               ))}
             </div>
           )}
-
+ 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <a href={"https://www.openstreetmap.org/search?query=" + encodeURIComponent((p.dir || "") + ", Mar del Plata, Argentina")}
               target="_blank" rel="noreferrer"
@@ -324,8 +315,7 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
               📍 Google Maps
             </a>
           </div>
-
-          {/* Documentos */}
+ 
           <div style={{ borderTop:"1px solid "+B.border, paddingTop:10 }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:7 }}>
               <span style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", textTransform:"uppercase" }}>
@@ -351,10 +341,7 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
                 uploadDoc(fakeEvent);
               }}
               style={{ display:"flex", flexDirection:"column", gap:5, minHeight: docs.length === 0 ? 44 : "auto",
-                border: "1.5px dashed " + B.border, borderRadius:8, padding: docs.length === 0 ? "10px" : "4px",
-                transition:"border-color .15s" }}
-              onDragEnter={e => e.currentTarget.style.borderColor = B.accentL}
-              onDragLeave={e => e.currentTarget.style.borderColor = B.border}>
+                border: "1.5px dashed " + B.border, borderRadius:8, padding: docs.length === 0 ? "10px" : "4px" }}>
               {docs.length === 0 && !uploading && (
                 <div style={{ fontSize:11, color:"#4A6A90", textAlign:"center" }}>Arrastrá archivos acá o usá + Subir</div>
               )}
@@ -377,8 +364,7 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
               ))}
             </div>
           </div>
-
-          {/* Acciones */}
+ 
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={startEdit}
               style={{ flex: 1, padding: "7px", borderRadius: 7, cursor: "pointer",
@@ -395,7 +381,7 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
               </button>
             )}
           </div>
-
+ 
           {confirmDel && (
             <div style={{ background: B.hot + "15", border: "1px solid " + B.hot + "50",
               borderRadius: 8, padding: "12px" }}>
@@ -418,13 +404,11 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
           )}
         </div>
       )}
-
-      {/* Formulario edición */}
+ 
       {editing && (
         <div style={{ borderTop: "1px solid " + B.accentL + "40", padding: "12px 14px",
           background: "rgba(10,21,37,0.6)", display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: B.accentL }}>Editando</div>
-
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
             <div>
               <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>TIPO</label>
@@ -507,7 +491,7 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
     </div>
   );
 }
-
+ 
 function Seccion({ titulo, color, props, leads, supabase, updateProperty, deleteProperty, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
   if (props.length === 0) return null;
@@ -533,19 +517,57 @@ function Seccion({ titulo, color, props, leads, supabase, updateProperty, delete
     </div>
   );
 }
-
-export default function Propiedades({ properties, leads = [], supabase, updateProperty, deleteProperty }) {
+ 
+// ── Vista Alquileres ──────────────────────────────────────────
+function AlquileresView({ rentals = [] }) {
+  return (
+    <div>
+      <p style={{ fontSize: 12, color: "#8AAECC", margin: "0 0 16px" }}>{rentals.length} propiedades en gestión</p>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))", gap:12 }}>
+        {rentals.map(a => (
+          <div key={a.id} style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, padding:"14px",
+            borderLeft:`3px solid ${a.estado === "Alquilado" ? B.ok : B.warm}` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+              <div>
+                <div style={{ fontSize:13, fontWeight:600, color:B.text }}>{a.nombre}</div>
+                <div style={{ fontSize:11, color:"#8AAECC", marginTop:2 }}>{a.tipo} · {a.zona}</div>
+              </div>
+              <div style={{ fontSize:12, padding:"2px 8px", borderRadius:20, alignSelf:"flex-start",
+                background: a.estado === "Alquilado" ? `${B.ok}18` : `${B.warm}18`,
+                color: a.estado === "Alquilado" ? B.ok : B.warm }}>
+                {a.estado}
+              </div>
+            </div>
+            {a.precioARS && (
+              <div style={{ fontSize:14, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif", marginBottom:4 }}>
+                ARS {a.precioARS.toLocaleString()}/mes
+              </div>
+            )}
+            <div style={{ fontSize:11, color:B.muted }}>{a.tipoAlq}</div>
+            {a.info && <div style={{ fontSize:12, color:B.dim, marginTop:5, fontStyle:"italic" }}>{a.info}</div>}
+          </div>
+        ))}
+        {rentals.length === 0 && (
+          <div style={{ textAlign:"center", padding:"40px", color:B.muted }}>Sin alquileres registrados</div>
+        )}
+      </div>
+    </div>
+  );
+}
+ 
+export default function Propiedades({ properties, rentals = [], leads = [], supabase, updateProperty, deleteProperty }) {
+  const [tab, setTab] = useState("venta"); // "venta" | "alquiler"
   const [ft, setFt] = useState("Todos");
   const [q,  setQ]  = useState("");
-
+ 
   const tipos = ["Todos", ...new Set(properties.map(p => p.tipo).filter(Boolean))];
-
+ 
   const filtered = properties.filter(p => {
     if (ft !== "Todos" && p.tipo !== ft) return false;
     if (q && !((p.dir || "") + (p.zona || "") + (p.tipo || "") + (p.caracts || "")).toLowerCase().includes(q.toLowerCase())) return false;
     return true;
   });
-
+ 
   const isRetasado = p => p.precio_original && p.precio && Number(p.precio) < Number(p.precio_original);
   const retasadas  = filtered.filter(isRetasado);
   const destacadas = filtered.filter(p => p.categoria === "destacada" && !isRetasado(p));
@@ -553,39 +575,71 @@ export default function Propiedades({ properties, leads = [], supabase, updatePr
   const hon6       = filtered.filter(p => p.categoria === "hon6" && !isRetasado(p));
   const colegas    = filtered.filter(p => p.categoria === "colega" && !isRetasado(p));
   const resto      = filtered.filter(p => (!p.categoria || p.categoria === "normal") && !isRetasado(p));
-
+ 
   const ch = act => ({
     padding: "4px 10px", borderRadius: 20, fontSize: 11, cursor: "pointer",
     border: "1px solid " + (act ? B.accentL : B.border),
     background: act ? B.accentL + "18" : "transparent",
     color: act ? B.accentL : "#8AAECC",
   });
-
+ 
   return (
     <div style={{ overflowX: "hidden" }}>
+      {/* Header */}
       <div style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: B.text, margin: 0, fontFamily: "Georgia,serif" }}>Propiedades en venta</h1>
-          <p style={{ fontSize: 12, color: "#8AAECC", margin: "3px 0 0" }}>{filtered.length} de {properties.length} propiedades</p>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: B.text, margin: 0, fontFamily: "Georgia,serif" }}>
+            {tab === "venta" ? "Propiedades en venta" : "Alquileres"}
+          </h1>
+          <p style={{ fontSize: 12, color: "#8AAECC", margin: "3px 0 0" }}>
+            {tab === "venta" ? `${filtered.length} de ${properties.length} propiedades` : `${rentals.length} propiedades en gestión`}
+          </p>
         </div>
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar..."
-          style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid " + B.border,
-            background: B.card, color: B.text, fontSize: 12, outline: "none", width: 180 }} />
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          {tab === "venta" && (
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar..."
+              style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid " + B.border,
+                background: B.card, color: B.text, fontSize: 12, outline: "none", width: 180 }} />
+          )}
+          {/* Switch Venta / Alquiler */}
+          <div style={{ display:"flex", background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:3 }}>
+            {[
+              { id:"venta",    label:"🏠 Venta",    count: properties.length },
+              { id:"alquiler", label:"🔑 Alquiler",  count: rentals.length },
+            ].map(t => (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                style={{ padding:"5px 14px", borderRadius:7, cursor:"pointer", fontSize:12, fontWeight:600, border:"none",
+                  background: tab === t.id ? B.accent : "transparent",
+                  color: tab === t.id ? "#fff" : "#8AAECC" }}>
+                {t.label} <span style={{ opacity:0.7, fontSize:10 }}>({t.count})</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 20 }}>
-        {tipos.map(t => <button key={t} onClick={() => setFt(t)} style={ch(ft === t)}>{t}</button>)}
-      </div>
-
-      <Seccion titulo="🔥 Retasadas — precio reducido" color="#FF6B35" props={retasadas} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-      <Seccion titulo="Destacadas" color="#E8A830" props={destacadas} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-      <Seccion titulo="Honorarios 3%" color="#2E9E6A" props={hon3} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-      <Seccion titulo="Honorarios 6%" color="#3EAA72" props={hon6} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-      <Seccion titulo="Compartidas por colegas" color="#9B6DC8" props={colegas} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-      <Seccion titulo="Sin categoría" color="#4A6A90" props={resto} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
-
-      {filtered.length === 0 && (
-        <div style={{ textAlign: "center", padding: "40px", color: "#8AAECC" }}>Sin propiedades</div>
+ 
+      {/* Filtros tipo — solo en venta */}
+      {tab === "venta" && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 20 }}>
+          {tipos.map(t => <button key={t} onClick={() => setFt(t)} style={ch(ft === t)}>{t}</button>)}
+        </div>
+      )}
+ 
+      {/* Contenido */}
+      {tab === "venta" ? (
+        <>
+          <Seccion titulo="🔥 Retasadas — precio reducido" color="#FF6B35" props={retasadas} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+          <Seccion titulo="Destacadas" color="#E8A830" props={destacadas} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+          <Seccion titulo="Honorarios 3%" color="#2E9E6A" props={hon3} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+          <Seccion titulo="Honorarios 6%" color="#3EAA72" props={hon6} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+          <Seccion titulo="Compartidas por colegas" color="#9B6DC8" props={colegas} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+          <Seccion titulo="Sin categoría" color="#4A6A90" props={resto} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
+          {filtered.length === 0 && (
+            <div style={{ textAlign: "center", padding: "40px", color: "#8AAECC" }}>Sin propiedades</div>
+          )}
+        </>
+      ) : (
+        <AlquileresView rentals={rentals} />
       )}
     </div>
   );
