@@ -294,7 +294,7 @@ export default function App() {
         {view === "cuaderno"    && <Cuaderno    leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase} onConsumo={agregarConsumo} />}
         {view === "kanban"      && <Kanban      leads={leads} updateLead={updateLead} />}
         {view === "crm"         && <CRMLeads    leads={leads} updateLead={updateLead} deleteLead={deleteLead} properties={properties} captaciones={captaciones} supabase={supabase} />}
-        {view === "propiedades" && <Propiedades properties={properties} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />}
+        {view === "propiedades" && <Propiedades properties={properties} rentals={rentals} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />}
         {view === "alquileres"  && <Alquileres  rentals={rentals} />}
         {view === "mapa"        && <Mapa        properties={properties} leads={leads} updateProperty={updateProperty} supabase={supabase} flyers={flyers} />}
         {view === "flyer"       && <Flyer       properties={properties} supabase={supabase} flyers={flyers} setFlyers={setFlyers} />}
