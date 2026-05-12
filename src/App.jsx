@@ -29,7 +29,6 @@ import QuickAddProp    from "./modals/QuickAddProp.jsx";
 // ── Navegación ────────────────────────────────────────────────
 const NAV = [
   { id:"briefing",    label:"Briefing del día",  badge:"HOY" },
-  { id:"buscador",    label:"Buscador",            badge:"NEW" },
   { id:"cuaderno",    label:"Cuaderno de campo" },
   { id:"kanban",      label:"Kanban" },
   { id:"crm",         label:"CRM Leads" },
