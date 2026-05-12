@@ -476,6 +476,9 @@ export default function Captaciones({ supabase }) {
       operacion:get("operacion")||"venta", nota:nota.trim()||null,
       ag:ag||null, lat, lng, convertida:false,
       tipo_captacion:tipoCap||null,
+url:get("url")||null,
+nota_interna:get("nota_interna")||null,
+inmobiliaria:get("inmobiliaria")||null,
     }]).select().single();
     if (!error && data) {
       setItems(p=>[data,...p]);
