@@ -47,7 +47,7 @@ export default function App() {
   const [view,  setView]  = useState("briefing");
   const [captaciones, setCaptaciones] = useState([]);
   const [flyers,      setFlyers]      = useState([]);
-
+ 
   // ── Créditos IA ───────────────────────────────────────────
   const [saldoIA, setSaldoIA] = useState(() => {
     try { const s = localStorage.getItem("alba_saldo_ia"); return s ? parseFloat(s) : null; } catch(e) { return null; }
@@ -58,7 +58,7 @@ export default function App() {
   const [editSaldo, setEditSaldo] = useState(false);
   const [inputSaldo, setInputSaldo] = useState("");
   const [modal, setModal] = useState(null);
-  const [user,  setUser]  = useState(undefined); // undefined=cargando, null=no auth, obj=autenticado
+  const [user,  setUser]  = useState(undefined);
  
   // ── Auth state ────────────────────────────────────────────
   useEffect(() => {
@@ -77,18 +77,18 @@ export default function App() {
   // Cargar captaciones
   useEffect(() => {
     if (!supabase) return;
-    supabase.from("captaciones").select("*").supabase.from("captaciones").select("*")
-  .order("created_at", { ascending: false })
+    supabase.from("captaciones").select("*")
+      .order("created_at", { ascending: false })
       .then(({ data }) => setCaptaciones(data || []));
   }, []);
-
+ 
   // Cargar flyers
   useEffect(() => {
     if (!supabase) return;
     supabase.from("flyers").select("*").order("created_at", { ascending: false })
       .then(({ data }) => setFlyers(data || []));
   }, []);
-
+ 
   const sinAsignar = leads.filter(l => !l.ag && l.etapa !== "Cerrado" && l.etapa !== "Perdido").length;
   const isFullH    = FULL_HEIGHT.includes(view);
  
@@ -122,16 +122,14 @@ export default function App() {
     return <Login onLogin={signIn} />;
   }
  
-
-
   function agregarConsumo(inputTokens, outputTokens) {
     const costoBase = (inputTokens / 1000 * 0.00025) + (outputTokens / 1000 * 0.00125);
-    const costo = costoBase * 1.05; // +5% margen de seguridad
+    const costo = costoBase * 1.05;
     const nuevo = parseFloat((consumoIA + costo).toFixed(6));
     setConsumoIA(nuevo);
     localStorage.setItem("alba_consumo_ia", nuevo);
   }
-
+ 
   function guardarSaldo() {
     const v = parseFloat(inputSaldo);
     if (!isNaN(v) && v > 0) {
@@ -140,13 +138,13 @@ export default function App() {
     }
     setEditSaldo(false);
   }
-
+ 
   // ── App principal ─────────────────────────────────────────
   return (
     <div style={{ display:"flex", height:"100vh", background:B.bg,
       fontFamily:"'DM Sans',sans-serif", color:B.text,
       overflow:"hidden", position:"relative" }}>
-
+ 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; }
@@ -155,15 +153,13 @@ export default function App() {
         .nav-btn:hover { background: rgba(42,91,173,0.12) !important; color: #6AAEF8 !important; }
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
-
+ 
       {/* ── SIDEBAR ─────────────────────────────────────────── */}
       <div style={{ width:210, background:"#080F1E", borderRight:"none",
         display:"flex", flexDirection:"column", flexShrink:0, position:"relative" }}>
-
-        {/* Franja azul superior */}
+ 
         <div style={{ height:3, background:"linear-gradient(90deg,#1A3A7A,#3A6AD4,#5A9AFF,#3A6AD4,#1A3A7A)", flexShrink:0 }} />
-
-        {/* Logo */}
+ 
         <div style={{ display:"flex", alignItems:"center", gap:10, padding:"18px 16px 12px" }}>
           <div style={{ width:34, height:34, borderRadius:8,
             background:"linear-gradient(135deg,#1A3A7A,#2A5BAD)", border:"1px solid #2A5BAD",
@@ -176,12 +172,10 @@ export default function App() {
           </div>
         </div>
  
-        {/* Estado Supabase */}
         <div style={{ padding:"0 10px 10px" }}>
           <SupabaseStatus loading={loading} error={error} lastSync={lastSync} onReload={reload} />
         </div>
  
-        {/* Botones carga rápida */}
         <div style={{ padding:"0 10px 10px", display:"flex", gap:6 }}>
           <button onClick={() => setModal("lead")}
             style={{ flex:1, padding:"8px 4px", borderRadius:8, cursor:"pointer",
@@ -199,7 +193,6 @@ export default function App() {
  
         <div style={{ height:1, background:B.border, margin:"0 13px 11px" }} />
  
-        {/* Nav items */}
         <nav style={{ flex:1, padding:"0 8px", overflowY:"auto", scrollbarWidth:"none" }}>
           {NAV.map(n => (
             <button key={n.id} className="nav-btn" onClick={() => setView(n.id)}
@@ -231,7 +224,6 @@ export default function App() {
           ))}
         </nav>
  
-        {/* Footer con stats + logout */}
         <div style={{ padding:"10px 13px 12px", borderTop:`1px solid ${B.border}` }}>
           <div style={{ fontSize:11, color:B.dim, marginBottom:5 }}>
             {user.email} · {leads.length} leads
@@ -241,8 +233,7 @@ export default function App() {
               <div key={k} style={{ flex:1, height:3, borderRadius:2, background:v.c }} />
             ))}
           </div>
-
-          {/* Contador créditos IA */}
+ 
           <div style={{ background:"rgba(42,91,173,0.08)", border:`1px solid ${B.border}`, borderRadius:8, padding:"7px 9px", marginBottom:8 }}>
             <div style={{ fontSize:9, color:"#4A6A90", fontWeight:600, letterSpacing:"0.8px", marginBottom:4 }}>✨ CRÉDITOS IA</div>
             {editSaldo ? (
@@ -280,7 +271,7 @@ export default function App() {
               </button>
             )}
           </div>
-
+ 
           <button onClick={signOut}
             style={{ width:"100%", padding:"6px", borderRadius:6, cursor:"pointer",
               background:"transparent", border:`1px solid ${B.border}`,
