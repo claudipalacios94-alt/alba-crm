@@ -157,7 +157,7 @@ export function matchLeadProps(lead, properties) {
         const normProp = pTipo.replace("departamento", "depto");
 
         // Tipos simples del lead (ej: "casa / ph" → ["casa", "ph"])
-        const tiposLead = normLead.split(/[\/,]|\s+y\s+/).map(t => t.trim()).filter(Boolean);
+        const tiposLead = normLead.split(/\s*[\/,]\s*|\s+y\s+/).map(t => t.trim()).filter(Boolean);
 
         // Si el lead tiene tipo definido y ninguno matchea con la propiedad → excluir
         const tipoOk = tiposLead.some(t =>
