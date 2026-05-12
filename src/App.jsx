@@ -79,8 +79,6 @@ export default function App() {
     if (!supabase) return;
     supabase.from("captaciones").select("*").supabase.from("captaciones").select("*")
   .order("created_at", { ascending: false })
-  .then(({ data }) => setCaptaciones(data || []));
-      .order("created_at", { ascending: false })
       .then(({ data }) => setCaptaciones(data || []));
   }, []);
 
