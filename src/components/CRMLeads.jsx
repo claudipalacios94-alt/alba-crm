@@ -153,6 +153,8 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
   }
  
   const [modalPerdido,   setModalPerdido]   = useState(null);
+  const [showMail,       setShowMail]       = useState(false);
+  const [mailCopiado,    setMailCopiado]    = useState(false);
   const [exp,     setExp]     = useState(null);
   const [editE,   setEditE]   = useState(null);
   const [editing, setEditing] = useState(null);
@@ -281,6 +283,30 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
     catch(e) { console.error(e); }
   }
  
+  const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido" && l.presup && l.zona).sort((a,b) => a.dias - b.dias);
+ 
+  function generarMail() {
+    const cal = activos.filter(l => l.dias <= 2);
+    const tib = activos.filter(l => l.dias > 2 && l.dias <= 7);
+    function fmt(l) {
+      const precio = l.presup ? `USD ${l.presup.toLocaleString()}` : "presupuesto a consultar";
+      const partes = [l.tipo, l.zona && `en ${l.zona}`, precio].filter(Boolean).join(", ");
+      const extras = [l.credito==="si"&&"crédito aprobado", l.cochera==="si"&&"con cochera", l.patio==="si"&&"con patio", l.ambientes&&`${l.ambientes} amb`].filter(Boolean).join(" · ");
+      return `• ${partes}${extras ? ` — ${extras}` : ""}`;
+    }
+    let mail = `Buenos días colegas,\n\nLes comparto mis pedidos activos de Alba Inversiones:\n`;
+    if (cal.length > 0) { mail += `\n🔴 URGENTES\n`; mail += cal.map(fmt).join("\n"); }
+    if (tib.length > 0) { mail += `\n\n🟡 EN BÚSQUEDA\n`; mail += tib.map(fmt).join("\n"); }
+    mail += `\n\nCualquier opción que encaje, me avisan.\n\nSaludos,\nAlba Inversiones · Reg. 3832`;
+    return mail;
+  }
+ 
+  function copiarMail() {
+    navigator.clipboard.writeText(generarMail());
+    setMailCopiado(true);
+    setTimeout(() => setMailCopiado(false), 2000);
+  }
+ 
   const chip = (act, c) => ({
     padding:"4px 11px", borderRadius:20, fontSize:11, cursor:"pointer",
     border:`1px solid ${act ? c : B.border}`,
@@ -311,13 +337,47 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
             </button>
           )}
         </div>
-        <button onClick={() => setMostrarPerdidos(p => !p)}
-          style={{ fontSize:12, color:mostrarPerdidos?B.hot:B.dim, cursor:"pointer",
-            background:"transparent", border:`1px solid ${mostrarPerdidos?B.hot:B.border}`,
-            borderRadius:6, padding:"4px 10px" }}>
-          {mostrarPerdidos ? "Ocultar archivados" : `Archivados (${perdidosCount})`}
-        </button>
+        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <button onClick={() => setShowMail(m => !m)}
+            style={{ padding:"5px 12px", borderRadius:8, cursor:"pointer", fontSize:12, fontWeight:600,
+              background: showMail ? B.accent : "rgba(42,91,173,0.12)",
+              border:`1px solid ${showMail ? B.accentL : B.border}`,
+              color: showMail ? "#fff" : B.accentL }}>
+            ✉ Mail pedidos
+          </button>
+          <button onClick={() => setMostrarPerdidos(p => !p)}
+            style={{ fontSize:12, color:mostrarPerdidos?B.hot:B.dim, cursor:"pointer",
+              background:"transparent", border:`1px solid ${mostrarPerdidos?B.hot:B.border}`,
+              borderRadius:6, padding:"4px 10px" }}>
+            {mostrarPerdidos ? "Ocultar archivados" : `Archivados (${perdidosCount})`}
+          </button>
+        </div>
       </div>
+ 
+      {/* Panel mail */}
+      {showMail && (
+        <div style={{ background:"rgba(10,21,37,0.95)", border:`1px solid ${B.accentL}40`, borderRadius:12, overflow:"hidden", marginBottom:14 }}>
+          <div style={{ padding:"10px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <span style={{ fontSize:11, fontWeight:700, color:B.accentL }}>✉ MAIL DE PEDIDOS — {activos.filter(l=>l.dias<=7).length} búsquedas activas</span>
+            <div style={{ display:"flex", gap:6 }}>
+              <button onClick={copiarMail}
+                style={{ padding:"4px 12px", borderRadius:7, cursor:"pointer",
+                  background: mailCopiado ? "#2E9E6A" : B.accent, border:"none", color:"#fff", fontSize:11, fontWeight:700 }}>
+                {mailCopiado ? "✓ Copiado" : "Copiar"}
+              </button>
+              <a href={`mailto:?subject=Pedidos%20Alba%20Inversiones&body=${encodeURIComponent(generarMail())}`}
+                style={{ padding:"4px 12px", borderRadius:7, background:"transparent", border:`1px solid ${B.border}`,
+                  color:"#8AAECC", fontSize:11, fontWeight:600, textDecoration:"none" }}>
+                Abrir en mail
+              </a>
+            </div>
+          </div>
+          <pre style={{ margin:0, padding:"12px 16px", fontSize:12, color:"#C8D8E8", lineHeight:1.7,
+            whiteSpace:"pre-wrap", fontFamily:"-apple-system,sans-serif", maxHeight:320, overflowY:"auto" }}>
+            {generarMail()}
+          </pre>
+        </div>
+      )}
  
       {/* Tabs */}
       <div style={{ display:"flex", gap:4, background:B.card, borderRadius:10, padding:4,
