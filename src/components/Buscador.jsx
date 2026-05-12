@@ -4,7 +4,7 @@
 // ══════════════════════════════════════════════════════════════
 import React, { useState } from "react";
 import { B, AG } from "../data/constants.js";
-
+ 
 // ── Mapeo de zonas a slugs de Argenprop ──────────────────────
 const ZONA_SLUG = {
   "la perla":          "la-perla",
@@ -42,8 +42,7 @@ const ZONA_SLUG = {
   "parque palermo":    "parque-palermo",
   "mar del plata":     "mar-del-plata",
 };
-
-// Zonas alternativas por zona principal
+ 
 const ZONAS_ALT = {
   "chauvin":       ["la-perla", "constitucion", "centro"],
   "la perla":      ["chauvin", "constitucion", "playa-grande"],
@@ -56,7 +55,7 @@ const ZONAS_ALT = {
   "bosque grande": ["san-carlos", "floresta", "las-heras"],
   "pompeya":       ["san-carlos", "floresta", "bosque-grande"],
 };
-
+ 
 const TIPO_SLUG = {
   "casa":         "casas",
   "departamento": "departamentos",
@@ -66,22 +65,17 @@ const TIPO_SLUG = {
   "duplex":       "casas",
   "dúplex":       "casas",
 };
-
+ 
 function buildArgenPropUrl(tipo, zona, presup, operacion) {
   const tipoSlug = TIPO_SLUG[tipo?.toLowerCase()] || "departamentos";
   const opSlug   = operacion === "alquiler" ? "alquiler" : "venta";
-
-  // Tomar solo la primera zona si hay varias separadas por coma/barra
   const zonaPrimera = (zona || "").split(/[,\/]/)[0].trim().toLowerCase();
   const zonaSlug = ZONA_SLUG[zonaPrimera] || zonaPrimera.replace(/\s+/g, "-") || "mar-del-plata";
-
-  // Construir URL limpia
   let url = `https://www.argenprop.com/${tipoSlug}/${opSlug}/mar-del-plata/${zonaSlug}`;
   if (presup) url += `/hasta-${Math.round(presup/1000)*1000}-dolares`;
-
   return url;
 }
-
+ 
 function ZonaBtn({ label, url, color }) {
   return (
     <a href={url} target="_blank" rel="noreferrer"
@@ -92,28 +86,24 @@ function ZonaBtn({ label, url, color }) {
     </a>
   );
 }
-
-function LeadBuscador({ lead }) {
-  const [open, setOpen] = useState(false);
-  const ag = AG[lead.ag];
-  const zona = lead.zona?.toLowerCase() || "";
-  const zonaPrincipal = ZONA_SLUG[zona] || zona.replace(/\s+/g,"-");
-  const alts = ZONAS_ALT[zona] || [];
-
-  // Separar zonas — por coma, barra, "y", o barrios conocidos pegados
-  const BARRIOS_CONOCIDOS = Object.keys(ZONA_SLUG);
-  function separarZonas(zonaStr) {
-    if (!zonaStr) return [];
-    // Primero split por separadores explícitos
-    let partes = zonaStr.split(/[,/]|\s+y\s+/).map(z => z.trim()).filter(Boolean);
-    // Si quedó una sola parte, intentar detectar múltiples barrios conocidos dentro
-    if (partes.length === 1) {
-      const z = partes[0].toLowerCase();
-      const encontrados = BARRIOS_CONOCIDOS.filter(b => b.length > 3 && z.includes(b));
-      if (encontrados.length > 1) return encontrados.map(b => b.charAt(0).toUpperCase()+b.slice(1));
-    }
-    return partes;
+ 
+const BARRIOS_CONOCIDOS = Object.keys(ZONA_SLUG);
+ 
+function separarZonas(zonaStr) {
+  if (!zonaStr) return [];
+  let partes = zonaStr.split(/[,/]|\s+y\s+/).map(z => z.trim()).filter(Boolean);
+  if (partes.length === 1) {
+    const z = partes[0].toLowerCase();
+    const encontrados = BARRIOS_CONOCIDOS.filter(b => b.length > 3 && z.includes(b));
+    if (encontrados.length > 1) return encontrados.map(b => b.charAt(0).toUpperCase()+b.slice(1));
   }
+  return partes;
+}
+ 
+// ── Panel reutilizable — usado en CRMLeads ───────────────────
+export function BuscadorPanel({ lead }) {
+  const zona = lead.zona?.toLowerCase() || "";
+  const alts = ZONAS_ALT[zona] || [];
   const zonasRaw = separarZonas(lead.zona);
   const zonasUnicas = [...new Set(zonasRaw.map(z => z.trim()).filter(Boolean))];
   const urlsZonas = zonasUnicas.map(z => ({
@@ -126,9 +116,67 @@ function LeadBuscador({ lead }) {
         url: buildArgenPropUrl(lead.tipo, z.replace(/-/g," "), lead.presup, lead.op),
       }))
     : [];
-
+ 
+  return (
+    <div style={{ background:B.bg, border:`1px solid ${B.accentL}30`, borderRadius:10,
+      padding:"12px 14px", display:"flex", flexDirection:"column", gap:10 }}>
+ 
+      <div style={{ fontSize:10, color:B.accentL, fontWeight:700, letterSpacing:"0.8px" }}>
+        🔍 BUSCAR EN ARGENPROP
+      </div>
+ 
+      {urlsZonas.length > 0 && (
+        <div>
+          <div style={{ fontSize:10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom:6 }}>
+            {urlsZonas.length > 1 ? "ZONAS DEL LEAD" : "ZONA PRINCIPAL"}
+          </div>
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+            {urlsZonas.map((z,i) => <ZonaBtn key={i} label={z.label} url={z.url} color={B.accentL} />)}
+          </div>
+        </div>
+      )}
+ 
+      {urlsAlt.length > 0 && (
+        <div>
+          <div style={{ fontSize:10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom:6 }}>ZONAS ALTERNATIVAS</div>
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+            {urlsAlt.map((z,i) => <ZonaBtn key={i} label={z.label} url={z.url} color="#8AAECC" />)}
+          </div>
+        </div>
+      )}
+ 
+      <div>
+        <div style={{ fontSize:10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom:6 }}>TODA MDP</div>
+        <ZonaBtn
+          label="Ver todo Mar del Plata"
+          url={buildArgenPropUrl(lead.tipo, "mar-del-plata", lead.presup, lead.op).replace("/mar-del-plata/mar-del-plata/", "/mar-del-plata/")}
+          color="#4A6A90"
+        />
+      </div>
+    </div>
+  );
+}
+ 
+function LeadBuscador({ lead }) {
+  const [open, setOpen] = useState(false);
+  const ag = AG[lead.ag];
+  const zona = lead.zona?.toLowerCase() || "";
+  const alts = ZONAS_ALT[zona] || [];
+  const zonasRaw = separarZonas(lead.zona);
+  const zonasUnicas = [...new Set(zonasRaw.map(z => z.trim()).filter(Boolean))];
+  const urlsZonas = zonasUnicas.map(z => ({
+    label: z,
+    url: buildArgenPropUrl(lead.tipo, z, lead.presup, lead.op),
+  }));
+  const urlsAlt = zonasUnicas.length === 1
+    ? alts.slice(0,2).map(z => ({
+        label: z.replace(/-/g," ").replace(/\b\w/g, c => c.toUpperCase()),
+        url: buildArgenPropUrl(lead.tipo, z.replace(/-/g," "), lead.presup, lead.op),
+      }))
+    : [];
+ 
   const urgColor = lead.dias <= 2 ? B.hot : lead.dias <= 5 ? B.warm : B.accentL;
-
+ 
   return (
     <div style={{ background:B.card, border:`1px solid ${urgColor}30`, borderLeft:`3px solid ${urgColor}`, borderRadius:10 }}>
       <div onClick={()=>setOpen(o=>!o)} style={{ padding:"11px 14px", cursor:"pointer" }}>
@@ -144,11 +192,9 @@ function LeadBuscador({ lead }) {
           {lead.tipo} · {lead.zona} · {lead.presup ? `USD ${lead.presup.toLocaleString()}` : "Sin precio"}
         </div>
       </div>
-
+ 
       {open && (
         <div style={{ borderTop:`1px solid ${B.border}`, padding:"12px 14px", display:"flex", flexDirection:"column", gap:10 }}>
-
-          {/* Zonas del lead */}
           <div>
             <div style={{ fontSize:10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom:6 }}>
               {urlsZonas.length > 1 ? "ZONAS DEL LEAD" : "ZONA PRINCIPAL"}
@@ -157,8 +203,6 @@ function LeadBuscador({ lead }) {
               {urlsZonas.map((z,i) => <ZonaBtn key={i} label={z.label} url={z.url} color={B.accentL} />)}
             </div>
           </div>
-
-          {/* Zonas alternativas */}
           {urlsAlt.length > 0 && (
             <div>
               <div style={{ fontSize:10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom:6 }}>ZONAS ALTERNATIVAS</div>
@@ -167,8 +211,6 @@ function LeadBuscador({ lead }) {
               </div>
             </div>
           )}
-
-          {/* Link amplio sin filtro de zona */}
           <div>
             <div style={{ fontSize:10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom:6 }}>BÚSQUEDA AMPLIA — TODA MDP</div>
             <ZonaBtn
@@ -177,8 +219,6 @@ function LeadBuscador({ lead }) {
               color="#4A6A90"
             />
           </div>
-
-          {/* Nota del lead */}
           {lead.nota && (
             <div style={{ fontSize:11, color:"#6A8AAE", fontStyle:"italic", borderLeft:`2px solid ${B.border}`, paddingLeft:8 }}>
               {lead.nota.slice(0, 120)}{lead.nota.length > 120 ? "..." : ""}
@@ -189,29 +229,28 @@ function LeadBuscador({ lead }) {
     </div>
   );
 }
-
+ 
 export default function Buscador({ leads }) {
   const [filtro, setFiltro] = useState("");
-
+ 
   const activos = leads
     .filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido" && l.presup && l.zona)
     .sort((a,b) => a.dias - b.dias);
-
+ 
   const filtrados = filtro
     ? activos.filter(l => l.nombre?.toLowerCase().includes(filtro.toLowerCase()) || l.zona?.toLowerCase().includes(filtro.toLowerCase()))
     : activos;
-
+ 
   const calientes = filtrados.filter(l => l.dias <= 2);
   const tibios    = filtrados.filter(l => l.dias > 2 && l.dias <= 7);
   const frios     = filtrados.filter(l => l.dias > 7);
-
+ 
   const [showMail, setShowMail] = useState(false);
   const [mailCopiado, setMailCopiado] = useState(false);
-
+ 
   function generarMail() {
     const calientes = activos.filter(l => l.dias <= 2);
     const tibios    = activos.filter(l => l.dias > 2 && l.dias <= 7);
-
     function formatLead(l) {
       const precio = l.presup ? `USD ${l.presup.toLocaleString()}` : "presupuesto a consultar";
       const partes = [l.tipo, l.zona && `en ${l.zona}`, precio].filter(Boolean).join(", ");
@@ -223,48 +262,21 @@ export default function Buscador({ leads }) {
       ].filter(Boolean).join(" · ");
       return `• ${partes}${extras ? ` — ${extras}` : ""}`;
     }
-
-    let mail = `Buenos días colegas,
-
-Les comparto mis pedidos activos de Alba Inversiones:
-`;
-
-    if (calientes.length > 0) {
-      mail += `
-🔴 URGENTES (compradores activos)
-`;
-      mail += calientes.map(formatLead).join("\n");
-    }
-
-    if (tibios.length > 0) {
-      mail += `
-
-🟡 EN BÚSQUEDA
-`;
-      mail += tibios.map(formatLead).join("\n");
-    }
-
-    mail += `
-
-Cualquier opción que encaje, me avisan.
-
-Saludos,
-Alejandra Alba
-Reg. 3832`;
-
+    let mail = `Buenos días colegas,\n\nLes comparto mis pedidos activos de Alba Inversiones:\n`;
+    if (calientes.length > 0) { mail += `\n🔴 URGENTES (compradores activos)\n`; mail += calientes.map(formatLead).join("\n"); }
+    if (tibios.length > 0) { mail += `\n\n🟡 EN BÚSQUEDA\n`; mail += tibios.map(formatLead).join("\n"); }
+    mail += `\n\nCualquier opción que encaje, me avisan.\n\nSaludos,\nAlejandra Alba\nReg. 3832`;
     return mail;
   }
-
+ 
   function copiarMail() {
     navigator.clipboard.writeText(generarMail());
     setMailCopiado(true);
     setTimeout(() => setMailCopiado(false), 2000);
   }
-
+ 
   return (
     <div style={{ maxWidth:680, display:"flex", flexDirection:"column", gap:14 }}>
-
-      {/* Header */}
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10 }}>
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Buscador Argenprop</h1>
@@ -278,8 +290,7 @@ Reg. 3832`;
           ✉ Mail de pedidos
         </button>
       </div>
-
-      {/* Modal mail */}
+ 
       {showMail && (
         <div style={{ background:"rgba(10,21,37,0.95)", border:`1px solid ${B.accentL}40`, borderRadius:12, overflow:"hidden" }}>
           <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -305,14 +316,12 @@ Reg. 3832`;
           </pre>
         </div>
       )}
-
-      {/* Filtro */}
+ 
       <input value={filtro} onChange={e=>setFiltro(e.target.value)}
         placeholder="Filtrar por nombre o zona..."
         style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:8, padding:"8px 12px",
           color:B.text, fontSize:12, outline:"none" }} />
-
-      {/* Calientes */}
+ 
       {calientes.length > 0 && (
         <div>
           <div style={{ fontSize:10, color:B.hot, fontWeight:700, letterSpacing:"1px", marginBottom:8 }}>🔴 CALIENTES — {calientes.length}</div>
@@ -321,8 +330,6 @@ Reg. 3832`;
           </div>
         </div>
       )}
-
-      {/* Tibios */}
       {tibios.length > 0 && (
         <div>
           <div style={{ fontSize:10, color:B.warm, fontWeight:700, letterSpacing:"1px", marginBottom:8 }}>🟡 TIBIOS — {tibios.length}</div>
@@ -331,8 +338,6 @@ Reg. 3832`;
           </div>
         </div>
       )}
-
-      {/* Fríos */}
       {frios.length > 0 && (
         <div>
           <div style={{ fontSize:10, color:B.accentL, fontWeight:700, letterSpacing:"1px", marginBottom:8 }}>🔵 FRÍOS — {frios.length}</div>
@@ -341,7 +346,6 @@ Reg. 3832`;
           </div>
         </div>
       )}
-
       {filtrados.length === 0 && (
         <div style={{ textAlign:"center", padding:"30px 0", color:"#4A6A90", fontSize:12 }}>
           Sin leads con zona y presupuesto definidos
