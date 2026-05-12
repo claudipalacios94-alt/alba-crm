@@ -3,11 +3,11 @@
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useMemo } from "react";
 import { B, AG, genMsgBusqueda, ETAPAS, ECOL, scoreLead, matchLeadProps, genMsgWhatsApp } from "../data/constants.js";
+import { BuscadorPanel } from "./Buscador.jsx";
  
 const TIPOS_OP   = ["Compra","Alquiler","Inversión","Alquiler / Compra"];
 const TIPOS_PROP = ["Depto","Casa","PH","Casa / PH","Dúplex","Local","Terreno","Otro"];
  
-
 const MOTIVOS_PERDIDA = [
   "Precio fuera de rango",
   "Compró con otra inmobiliaria",
@@ -18,12 +18,12 @@ const MOTIVOS_PERDIDA = [
   "Financiamiento rechazado",
   "Motivo desconocido",
 ];
-
+ 
 function ModalPerdido({ lead, onConfirmar, onCancelar }) {
   const [motivo,  setMotivo]  = useState("");
   const [custom,  setCustom]  = useState("");
   const [saving,  setSaving]  = useState(false);
-
+ 
   async function confirmar() {
     const m = motivo === "Otro" ? custom.trim() : motivo;
     if (!m) return;
@@ -31,7 +31,7 @@ function ModalPerdido({ lead, onConfirmar, onCancelar }) {
     await onConfirmar(lead, m);
     setSaving(false);
   }
-
+ 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)",
       zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
@@ -39,14 +39,12 @@ function ModalPerdido({ lead, onConfirmar, onCancelar }) {
       <div style={{ background:"#0F1E35", border:`1px solid ${B.hot}40`, borderRadius:14,
         padding:"24px 28px", maxWidth:420, width:"100%", boxShadow:"0 20px 60px rgba(0,0,0,0.8)" }}
         onClick={e => e.stopPropagation()}>
-
         <div style={{ fontSize:14, fontWeight:700, color:B.text, marginBottom:4 }}>
           ¿Por qué se perdió este lead?
         </div>
         <div style={{ fontSize:12, color:"#8AAECC", marginBottom:18 }}>
           {lead.nombre} — {lead.zona} · USD {(lead.presup||0).toLocaleString()}
         </div>
-
         <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:16 }}>
           {MOTIVOS_PERDIDA.map(m => (
             <button key={m} onClick={() => setMotivo(m)}
@@ -71,7 +69,6 @@ function ModalPerdido({ lead, onConfirmar, onCancelar }) {
                 border:`1px solid ${B.border}`, color:B.text, fontSize:13, outline:"none" }} />
           )}
         </div>
-
         <div style={{ display:"flex", gap:10 }}>
           <button onClick={onCancelar}
             style={{ flex:1, padding:"10px", borderRadius:8, cursor:"pointer",
@@ -90,16 +87,16 @@ function ModalPerdido({ lead, onConfirmar, onCancelar }) {
     </div>
   );
 }
-
+ 
 function InversorNota({ lead, onGuardar }) {
   const [editando, setEditando] = React.useState(false);
   const [val, setVal] = React.useState(lead.nota_inversor || "");
-
+ 
   async function guardar() {
     await onGuardar(lead, val);
     setEditando(false);
   }
-
+ 
   if (editando) return (
     <div style={{ display:"flex", gap:4, flex:1 }}>
       <input value={val} onChange={e=>setVal(e.target.value)}
@@ -113,7 +110,7 @@ function InversorNota({ lead, onGuardar }) {
           background:"#9B6DC8", border:"none", color:"#fff", fontSize:10, fontWeight:700 }}>OK</button>
     </div>
   );
-
+ 
   return (
     <div onClick={()=>setEditando(true)} style={{ flex:1, cursor:"pointer" }}>
       {lead.nota_inversor
@@ -122,19 +119,20 @@ function InversorNota({ lead, onGuardar }) {
     </div>
   );
 }
-
+ 
 export default function CRMLeads({ leads, updateLead, deleteLead, properties, captaciones, supabase }) {
-  const [pagina, setPagina] = useState("compradores"); // "compradores" | "inversores"
+  const [pagina, setPagina] = useState("compradores");
   const [fs,  setFs]  = useState("Todos");
   const [fa,  setFa]  = useState("Todos");
   const [fop, setFop] = useState("Todos");
   const [q,   setQ]   = useState("");
   const [mostrarPerdidos, setMostrarPerdidos] = useState(false);
   const [mostrados,      setMostrados]      = useState(new Set());
+  const [buscandoId,     setBuscandoId]     = useState(null);
   const [matchesVistos,  setMatchesVistos]  = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem("alba_matches_vistos")||"[]")); } catch(e) { return new Set(); }
   });
-
+ 
   React.useEffect(() => {
     if (!supabase) return;
     supabase.from("matches_mostrados").select("lead_id,prop_id")
@@ -142,7 +140,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
         if (data) setMostrados(new Set(data.map(r => `${r.lead_id}-${r.prop_id}`)));
       });
   }, []);
-
+ 
   async function toggleMostrado(leadId, propId) {
     const key = `${leadId}-${propId}`;
     if (mostrados.has(key)) {
@@ -153,7 +151,8 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
       setMostrados(prev => new Set([...prev, key]));
     }
   }
-  const [modalPerdido,   setModalPerdido]   = useState(null); // lead a marcar como perdido
+ 
+  const [modalPerdido,   setModalPerdido]   = useState(null);
   const [exp,     setExp]     = useState(null);
   const [editE,   setEditE]   = useState(null);
   const [editing, setEditing] = useState(null);
@@ -175,11 +174,10 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           && !(l.tel||"").includes(q)) return false;
     return true;
   }).sort((a, b) => a.dias - b.dias), [leads, fs, fa, q, mostrarPerdidos]);
-
+ 
   const filt = useMemo(() => filtBase.filter(l => !l.inversor), [filtBase]);
   const filtInversores = useMemo(() => filtBase.filter(l => !!l.inversor), [filtBase]);
-
-  // Calcular matches nuevos no vistos
+ 
   const todasProps = useMemo(() => {
     const capsNorm = (captaciones||[]).map(c => ({
       id:"cap-"+c.id, tipo:c.tipo, zona:c.zona, precio:c.precio,
@@ -188,7 +186,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
     }));
     return [...(properties||[]), ...capsNorm];
   }, [properties, captaciones]);
-
+ 
   const matchesNuevos = useMemo(() => {
     let count = 0;
     [...filt, ...filtInversores].forEach(l => {
@@ -197,7 +195,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
     });
     return count;
   }, [filt, filtInversores, todasProps, matchesVistos]);
-
+ 
   function marcarMatchesVistos() {
     const nuevos = new Set(matchesVistos);
     [...filt, ...filtInversores].forEach(l => {
@@ -219,20 +217,19 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
     await updateLead(id, { etapa });
     setEditE(null);
   }
-
+ 
   async function confirmarPerdido(lead, motivo) {
     await updateLead(lead.id, { etapa: "Perdido", motivo_perdida: motivo });
     setModalPerdido(null);
   }
-  async function setAgente(id, ag)   { await updateLead(id, { ag });    setEditE(null); }
  
+  async function setAgente(id, ag)   { await updateLead(id, { ag }); setEditE(null); }
   async function contacteHoy(id) { await updateLead(id, { last_contact_at: new Date().toISOString() }); }
-
+ 
   async function toggleInversor(lead) {
-    const nuevoVal = !lead.inversor;
-    await updateLead(lead.id, { inversor: nuevoVal });
+    await updateLead(lead.id, { inversor: !lead.inversor });
   }
-
+ 
   async function guardarNotaInversor(lead, nota) {
     await updateLead(lead.id, { nota_inversor: nota });
   }
@@ -298,14 +295,13 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
   };
  
   const leadsActivos = pagina === "compradores" ? filt : filtInversores;
-
+ 
   return (
     <div style={{ maxWidth:800 }}>
-      {/* Header con tabs */}
+      {/* Header */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>CRM Leads</h1>
-          {/* Campana de matches */}
           {matchesNuevos > 0 && (
             <button onClick={marcarMatchesVistos}
               style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px", borderRadius:8,
@@ -322,8 +318,8 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           {mostrarPerdidos ? "Ocultar archivados" : `Archivados (${perdidosCount})`}
         </button>
       </div>
-
-      {/* Tabs Compradores / Inversores */}
+ 
+      {/* Tabs */}
       <div style={{ display:"flex", gap:4, background:B.card, borderRadius:10, padding:4,
         border:`1px solid ${B.border}`, marginBottom:14, width:"fit-content" }}>
         {[
@@ -374,7 +370,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
         </div>
       </div>
  
-      {/* Cards agrupadas por temperatura */}
+      {/* Cards */}
       {[
         { titulo:"🔴 CALIENTES", color:B.hot,  leads: leadsActivos.filter(l => { const s = scoreLead(l).label; return s.includes("Caliente") || l.etapa === "Negociación"; }) },
         { titulo:"🟡 TIBIOS",    color:B.warm, leads: leadsActivos.filter(l => { const s = scoreLead(l).label; return s.includes("Tibio") && l.etapa !== "Negociación"; }) },
@@ -387,429 +383,419 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {grupo.leads.map(lead => {
-          const s    = scoreLead(lead);
-          const ag   = AG[lead.ag];
-          const ec   = ECOL[lead.etapa] || B.dim;
-          const open = exp === lead.id;
-          const isEd = editing === lead.id;
-          const stars = Math.round((lead.prob || 0) / 20);
-          const esInv = lead.op === "Inversión";
+              const s    = scoreLead(lead);
+              const ag   = AG[lead.ag];
+              const ec   = ECOL[lead.etapa] || B.dim;
+              const open = exp === lead.id;
+              const isEd = editing === lead.id;
+              const stars = Math.round((lead.prob || 0) / 20);
+              const esInv = lead.op === "Inversión";
  
-          return (
-            <div key={lead.id} style={{ background:B.card,
-              border:`1px solid ${open ? B.accent : B.border}`,
-              borderLeft:`3px solid ${s.c}`,
-              borderRadius:12, overflow:"hidden", transition:"border-color .15s" }}>
+              return (
+                <div key={lead.id} style={{ background:B.card,
+                  border:`1px solid ${open ? B.accent : B.border}`,
+                  borderLeft:`3px solid ${s.c}`,
+                  borderRadius:12, overflow:"hidden", transition:"border-color .15s" }}>
  
-              {/* Cabecera */}
-              <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px",
-                cursor:"pointer" }} onClick={() => setExp(open ? null : lead.id)}>
- 
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
-                    <span style={{ fontSize:13, fontWeight:700, color:B.text }}>{lead.nombre}</span>
-                    {esInv && <span style={{ fontSize:11, padding:"1px 6px", borderRadius:10,
-                      background:"#9B6DC822", color:"#9B6DC8", fontWeight:700 }}>💼 INV</span>}
-                    {ag && <span style={{ fontSize:11, padding:"1px 5px", borderRadius:3,
-                      background:ag.bg||"#4A6A90", color:ag.c, fontWeight:700 }}>{ag.n}</span>}
-                  </div>
-                  <div style={{ fontSize:12, color:"#8AAECC", display:"flex", gap:10, flexWrap:"wrap" }}>
-                    {lead.zona && <span>📍 {lead.zona}</span>}
-                    {lead.tipo && <span>{lead.tipo}</span>}
-                    {lead.presup && <span style={{ color:B.accentL, fontFamily:"Georgia,serif", fontWeight:700 }}>
-                      USD {Number(lead.presup).toLocaleString()}
-                    </span>}
-                  </div>
-                </div>
- 
-                <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:5 }}>
-                  <div style={{ display:"flex", gap:2 }}>
-                    {[1,2,3,4,5].map(n => (
-                      <span key={n} onClick={e => { e.stopPropagation(); setScore(lead.id, n); }}
-                        style={{ cursor:"pointer", fontSize:13, color:n<=stars?"#F4C642":B.dim }}>★</span>
-                    ))}
-                  </div>
-                  <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-                    <span style={{ fontSize:11, padding:"2px 8px", borderRadius:4,
-                      background:`${ec}18`, color:ec }}>{lead.etapa}</span>
-                    <span style={{ fontSize:11, padding:"2px 8px", borderRadius:4,
-                      background:s.bg, color:s.c }}>{s.label}</span>
-                    <span style={{ fontSize:11, color:lead.dias>7?B.hot:lead.dias>3?B.warm:B.ok }}>
-                      {lead.dias}d
-                    </span>
-                  </div>
-                </div>
-              </div>
- 
-              {/* Panel expandido */}
-              {open && (
-                <div style={{ padding:"0 16px 16px", borderTop:`1px solid ${B.border}` }}>
-                  {isEd ? (
-                    <div style={{ paddingTop:12, display:"flex", flexDirection:"column", gap:8 }}>
-                      <div style={{ fontSize:11, fontWeight:700, color:B.accentL }}>✏️ Editando</div>
-                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                        {[
-                          ["NOMBRE","nombre","text"],["TELÉFONO","tel","text"],
-                          ["ZONA","zona","text"],["PRESUPUESTO USD","presup","number"],
-                          ["ORIGEN","origen","text"],["PRÓXIMA ACCIÓN","proxAccion","text"],
-                        ].map(([label, key, type]) => (
-                          <div key={key}>
-                            <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>{label}</label>
-                            <input type={type} value={editData[key]}
-                              onChange={e => setEditData(d => ({...d, [key]:e.target.value}))} style={inp} />
-                          </div>
-                        ))}
-                        <div>
-                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO OP.</label>
-                          <select value={editData.op} onChange={e=>setEditData(d=>({...d,op:e.target.value}))} style={inp}>
-                            {TIPOS_OP.map(t=><option key={t}>{t}</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO PROP.</label>
-                          <select value={editData.tipo} onChange={e=>setEditData(d=>({...d,tipo:e.target.value}))} style={inp}>
-                            {TIPOS_PROP.map(t=><option key={t}>{t}</option>)}
-                          </select>
-                        </div>
+                  {/* Cabecera */}
+                  <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px",
+                    cursor:"pointer" }} onClick={() => setExp(open ? null : lead.id)}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
+                        <span style={{ fontSize:13, fontWeight:700, color:B.text }}>{lead.nombre}</span>
+                        {esInv && <span style={{ fontSize:11, padding:"1px 6px", borderRadius:10,
+                          background:"#9B6DC822", color:"#9B6DC8", fontWeight:700 }}>💼 INV</span>}
+                        {ag && <span style={{ fontSize:11, padding:"1px 5px", borderRadius:3,
+                          background:ag.bg||"#4A6A90", color:ag.c, fontWeight:700 }}>{ag.n}</span>}
                       </div>
-                      <div>
-                        <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>NOTA</label>
-                        <textarea value={editData.nota} onChange={e=>setEditData(d=>({...d,nota:e.target.value}))}
-                          rows={3} style={{ ...inp, resize:"none" }} />
-                      </div>
-                      {/* Características */}
-                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
-                        <div>
-                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>COCHERA</label>
-                          <select value={editData.cochera||""} onChange={e=>setEditData(d=>({...d,cochera:e.target.value}))} style={inp}>
-                            <option value="">Indistinto</option>
-                            <option value="si">Sí</option>
-                            <option value="no">No</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>PATIO</label>
-                          <select value={editData.patio||""} onChange={e=>setEditData(d=>({...d,patio:e.target.value}))} style={inp}>
-                            <option value="">Indistinto</option>
-                            <option value="si">Sí</option>
-                            <option value="no">No</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>CRÉDITO</label>
-                          <select value={editData.credito||""} onChange={e=>setEditData(d=>({...d,credito:e.target.value}))} style={inp}>
-                            <option value="">Sin info</option>
-                            <option value="si">Aprobado</option>
-                            <option value="no">No tiene</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>AMBIENTES</label>
-                          <input value={editData.ambientes||""} onChange={e=>setEditData(d=>({...d,ambientes:e.target.value}))} style={inp} placeholder="ej: 2" />
-                        </div>
-                        <div>
-                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>M² MÍN.</label>
-                          <input type="number" value={editData.m2min||""} onChange={e=>setEditData(d=>({...d,m2min:e.target.value}))} style={inp} placeholder="ej: 50" />
-                        </div>
-                        <div>
-                          <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>BALCÓN</label>
-                          <select value={editData.balcon||""} onChange={e=>setEditData(d=>({...d,balcon:e.target.value}))} style={inp}>
-                            <option value="">Indistinto</option>
-                            <option value="si">Sí</option>
-                            <option value="no">No</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div style={{ display:"flex", gap:8 }}>
-                        <button onClick={() => saveEdit(lead.id)} disabled={saving}
-                          style={{ flex:1, padding:"8px", borderRadius:7, cursor:"pointer",
-                            background:saving?B.border:B.accent, border:`1px solid ${saving?B.border:B.accentL}`,
-                            color:saving?B.muted:"#fff", fontSize:12, fontWeight:700 }}>
-                          {saving?"Guardando...":"✓ Guardar"}
-                        </button>
-                        <button onClick={() => setEditing(null)}
-                          style={{ padding:"8px 14px", borderRadius:7, cursor:"pointer",
-                            background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:12 }}>
-                          Cancelar
-                        </button>
+                      <div style={{ fontSize:12, color:"#8AAECC", display:"flex", gap:10, flexWrap:"wrap" }}>
+                        {lead.zona && <span>📍 {lead.zona}</span>}
+                        {lead.tipo && <span>{lead.tipo}</span>}
+                        {lead.presup && <span style={{ color:B.accentL, fontFamily:"Georgia,serif", fontWeight:700 }}>
+                          USD {Number(lead.presup).toLocaleString()}
+                        </span>}
                       </div>
                     </div>
-                  ) : (
-                    <div style={{ paddingTop:12 }}>
-                      {/* Etapa selector */}
-                      <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
-                        <span style={{ fontSize:11, color:B.dim, alignSelf:"center" }}>ETAPA</span>
-                        {ETAPAS.map(e => (
-                          <button key={e} onClick={() => setEtapa(lead.id, e)}
-                            style={{ padding:"3px 9px", borderRadius:12, cursor:"pointer", fontSize:12,
-                              border:`1px solid ${lead.etapa===e?(ECOL[e]||B.dim):B.border}`,
-                              background:lead.etapa===e?`${ECOL[e]||B.dim}22`:"transparent",
-                              color:lead.etapa===e?(ECOL[e]||B.dim):B.muted, fontWeight:lead.etapa===e?700:400 }}>
-                            {e}
-                          </button>
+                    <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:5 }}>
+                      <div style={{ display:"flex", gap:2 }}>
+                        {[1,2,3,4,5].map(n => (
+                          <span key={n} onClick={e => { e.stopPropagation(); setScore(lead.id, n); }}
+                            style={{ cursor:"pointer", fontSize:13, color:n<=stars?"#F4C642":B.dim }}>★</span>
                         ))}
                       </div>
- 
-                      {/* Agente selector */}
-                      <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
-                        <span style={{ fontSize:11, color:B.dim, alignSelf:"center" }}>AGENTE</span>
-                        {Object.entries(AG).map(([k,v]) => (
-                          <button key={k} onClick={() => setAgente(lead.id, k)}
-                            style={{ padding:"3px 9px", borderRadius:12, cursor:"pointer", fontSize:12,
-                              border:`1px solid ${lead.ag===k?v.c:B.border}`,
-                              background:lead.ag===k?`${v.c}22`:"transparent",
-                              color:lead.ag===k?v.c:B.muted, fontWeight:lead.ag===k?700:400 }}>
-                            {v.n}
-                          </button>
-                        ))}
+                      <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                        <span style={{ fontSize:11, padding:"2px 8px", borderRadius:4,
+                          background:`${ec}18`, color:ec }}>{lead.etapa}</span>
+                        <span style={{ fontSize:11, padding:"2px 8px", borderRadius:4,
+                          background:s.bg, color:s.c }}>{s.label}</span>
+                        <span style={{ fontSize:11, color:lead.dias>7?B.hot:lead.dias>3?B.warm:B.ok }}>
+                          {lead.dias}d
+                        </span>
                       </div>
+                    </div>
+                  </div>
  
-                      {/* Características del lead — badges visuales */}
-                      {(() => {
-                        const tags = [
-                          lead.credito === "si"  && { label:"✅ Crédito aprobado", color:"#2E9E6A" },
-                          lead.cochera === "si"  && { label:"🚗 Con cochera",       color:"#4A8ABE" },
-                          lead.cochera === "no"  && { label:"❌ Sin cochera",        color:"#8AAECC" },
-                          lead.patio   === "si"  && { label:"🌿 Con patio",          color:"#4A8ABE" },
-                          lead.balcon  === "si"  && { label:"🏙 Con balcón",         color:"#4A8ABE" },
-                          lead.ambientes         && { label:`${lead.ambientes} amb.`, color:"#8AAECC" },
-                          lead.m2min             && { label:`Mín. ${lead.m2min}m²`,  color:"#8AAECC" },
-                          lead.op === "Inversor" && { label:"📈 Inversor",           color:"#E8A830" },
-                        ].filter(Boolean);
-                        if (!tags.length) return null;
-                        return (
-                          <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:10 }}>
-                            {tags.map((tag, i) => (
-                              <span key={i} style={{ fontSize:11, padding:"3px 9px", borderRadius:10,
-                                background: tag.color + "18", color: tag.color,
-                                border:`1px solid ${tag.color}40`, fontWeight:500 }}>
-                                {tag.label}
-                              </span>
+                  {/* Panel expandido */}
+                  {open && (
+                    <div style={{ padding:"0 16px 16px", borderTop:`1px solid ${B.border}` }}>
+                      {isEd ? (
+                        <div style={{ paddingTop:12, display:"flex", flexDirection:"column", gap:8 }}>
+                          <div style={{ fontSize:11, fontWeight:700, color:B.accentL }}>✏️ Editando</div>
+                          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                            {[
+                              ["NOMBRE","nombre","text"],["TELÉFONO","tel","text"],
+                              ["ZONA","zona","text"],["PRESUPUESTO USD","presup","number"],
+                              ["ORIGEN","origen","text"],["PRÓXIMA ACCIÓN","proxAccion","text"],
+                            ].map(([label, key, type]) => (
+                              <div key={key}>
+                                <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>{label}</label>
+                                <input type={type} value={editData[key]}
+                                  onChange={e => setEditData(d => ({...d, [key]:e.target.value}))} style={inp} />
+                              </div>
+                            ))}
+                            <div>
+                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO OP.</label>
+                              <select value={editData.op} onChange={e=>setEditData(d=>({...d,op:e.target.value}))} style={inp}>
+                                {TIPOS_OP.map(t=><option key={t}>{t}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO PROP.</label>
+                              <select value={editData.tipo} onChange={e=>setEditData(d=>({...d,tipo:e.target.value}))} style={inp}>
+                                {TIPOS_PROP.map(t=><option key={t}>{t}</option>)}
+                              </select>
+                            </div>
+                          </div>
+                          <div>
+                            <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>NOTA</label>
+                            <textarea value={editData.nota} onChange={e=>setEditData(d=>({...d,nota:e.target.value}))}
+                              rows={3} style={{ ...inp, resize:"none" }} />
+                          </div>
+                          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
+                            <div>
+                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>COCHERA</label>
+                              <select value={editData.cochera||""} onChange={e=>setEditData(d=>({...d,cochera:e.target.value}))} style={inp}>
+                                <option value="">Indistinto</option><option value="si">Sí</option><option value="no">No</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>PATIO</label>
+                              <select value={editData.patio||""} onChange={e=>setEditData(d=>({...d,patio:e.target.value}))} style={inp}>
+                                <option value="">Indistinto</option><option value="si">Sí</option><option value="no">No</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>CRÉDITO</label>
+                              <select value={editData.credito||""} onChange={e=>setEditData(d=>({...d,credito:e.target.value}))} style={inp}>
+                                <option value="">Sin info</option><option value="si">Aprobado</option><option value="no">No tiene</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>AMBIENTES</label>
+                              <input value={editData.ambientes||""} onChange={e=>setEditData(d=>({...d,ambientes:e.target.value}))} style={inp} placeholder="ej: 2" />
+                            </div>
+                            <div>
+                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>M² MÍN.</label>
+                              <input type="number" value={editData.m2min||""} onChange={e=>setEditData(d=>({...d,m2min:e.target.value}))} style={inp} placeholder="ej: 50" />
+                            </div>
+                            <div>
+                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>BALCÓN</label>
+                              <select value={editData.balcon||""} onChange={e=>setEditData(d=>({...d,balcon:e.target.value}))} style={inp}>
+                                <option value="">Indistinto</option><option value="si">Sí</option><option value="no">No</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div style={{ display:"flex", gap:8 }}>
+                            <button onClick={() => saveEdit(lead.id)} disabled={saving}
+                              style={{ flex:1, padding:"8px", borderRadius:7, cursor:"pointer",
+                                background:saving?B.border:B.accent, border:`1px solid ${saving?B.border:B.accentL}`,
+                                color:saving?B.muted:"#fff", fontSize:12, fontWeight:700 }}>
+                              {saving?"Guardando...":"✓ Guardar"}
+                            </button>
+                            <button onClick={() => setEditing(null)}
+                              style={{ padding:"8px 14px", borderRadius:7, cursor:"pointer",
+                                background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:12 }}>
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ paddingTop:12 }}>
+                          {/* Etapa */}
+                          <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
+                            <span style={{ fontSize:11, color:B.dim, alignSelf:"center" }}>ETAPA</span>
+                            {ETAPAS.map(e => (
+                              <button key={e} onClick={() => setEtapa(lead.id, e)}
+                                style={{ padding:"3px 9px", borderRadius:12, cursor:"pointer", fontSize:12,
+                                  border:`1px solid ${lead.etapa===e?(ECOL[e]||B.dim):B.border}`,
+                                  background:lead.etapa===e?`${ECOL[e]||B.dim}22`:"transparent",
+                                  color:lead.etapa===e?(ECOL[e]||B.dim):B.muted, fontWeight:lead.etapa===e?700:400 }}>
+                                {e}
+                              </button>
                             ))}
                           </div>
-                        );
-                      })()}
-
-                      {/* Nota */}
-                      {lead.nota && (
-                        <div style={{ fontSize:11, color:B.dim, background:B.bg, borderRadius:6,
-                          padding:"8px 10px", marginBottom:10, lineHeight:1.6,
-                          whiteSpace:"pre-wrap", maxHeight:80, overflow:"auto" }}>
-                          {lead.nota}
-                        </div>
-                      )}
  
-                      {/* Nueva nota */}
-                      <div style={{ display:"flex", gap:6, marginBottom:10 }}>
-                        <input placeholder="Nota rápida... (Enter para guardar)"
-                          value={notaEdit[lead.id]||""}
-                          onChange={e => setNotaEdit(p=>({...p,[lead.id]:e.target.value}))}
-                          onKeyDown={e => e.key==="Enter" && guardarNota(lead)}
-                          style={{ flex:1, background:B.bg, border:`1px solid ${B.border}`,
-                            borderRadius:6, padding:"6px 10px", color:B.text, fontSize:11, outline:"none" }} />
-                        <button onClick={() => guardarNota(lead)}
-                          style={{ padding:"6px 12px", borderRadius:6, background:`${B.accentL}18`,
-                            border:`1px solid ${B.accentL}40`, color:B.accentL, fontSize:11, cursor:"pointer" }}>
-                          + Nota
-                        </button>
-                      </div>
+                          {/* Agente */}
+                          <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
+                            <span style={{ fontSize:11, color:B.dim, alignSelf:"center" }}>AGENTE</span>
+                            {Object.entries(AG).map(([k,v]) => (
+                              <button key={k} onClick={() => setAgente(lead.id, k)}
+                                style={{ padding:"3px 9px", borderRadius:12, cursor:"pointer", fontSize:12,
+                                  border:`1px solid ${lead.ag===k?v.c:B.border}`,
+                                  background:lead.ag===k?`${v.c}22`:"transparent",
+                                  color:lead.ag===k?v.c:B.muted, fontWeight:lead.ag===k?700:400 }}>
+                                {v.n}
+                              </button>
+                            ))}
+                          </div>
  
-                      {/* Propiedades compatibles */}
-                      {(() => {
-                        // Normalizar captaciones al formato de properties para el match
-                        const capsNorm = (captaciones||[]).map(c => ({
-                          id: "cap-"+c.id,
-                          tipo: c.tipo,
-                          zona: c.zona,
-                          precio: c.precio,
-                          dir: c.direccion,
-                          caracts: c.caracts,
-                          activa: true,
-                          _esCaptacion: true,
-                          _tipoCap: c.tipo_captacion,
-                          _url: c.url,
-                          _propietario: c.nombre_propietario,
-                          _tel: c.telefono,
-                        }));
-                        const todasProps = [...(properties||[]), ...capsNorm];
-                        const matches = matchLeadProps(lead, todasProps);
-                        if (!matches.length) return null;
-                        return (
-                          <div style={{ marginBottom:10 }}>
-                            <div style={{ fontSize:11, color:"#8AAECC", letterSpacing:"1px", fontWeight:600, marginBottom:6 }}>
-                              🏠 PROPIEDADES COMPATIBLES ({matches.length})
+                          {/* Tags características */}
+                          {(() => {
+                            const tags = [
+                              lead.credito === "si"  && { label:"✅ Crédito aprobado", color:"#2E9E6A" },
+                              lead.cochera === "si"  && { label:"🚗 Con cochera",       color:"#4A8ABE" },
+                              lead.cochera === "no"  && { label:"❌ Sin cochera",        color:"#8AAECC" },
+                              lead.patio   === "si"  && { label:"🌿 Con patio",          color:"#4A8ABE" },
+                              lead.balcon  === "si"  && { label:"🏙 Con balcón",         color:"#4A8ABE" },
+                              lead.ambientes         && { label:`${lead.ambientes} amb.`, color:"#8AAECC" },
+                              lead.m2min             && { label:`Mín. ${lead.m2min}m²`,  color:"#8AAECC" },
+                              lead.op === "Inversor" && { label:"📈 Inversor",           color:"#E8A830" },
+                            ].filter(Boolean);
+                            if (!tags.length) return null;
+                            return (
+                              <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:10 }}>
+                                {tags.map((tag, i) => (
+                                  <span key={i} style={{ fontSize:11, padding:"3px 9px", borderRadius:10,
+                                    background: tag.color + "18", color: tag.color,
+                                    border:`1px solid ${tag.color}40`, fontWeight:500 }}>
+                                    {tag.label}
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          })()}
+ 
+                          {/* Nota */}
+                          {lead.nota && (
+                            <div style={{ fontSize:11, color:B.dim, background:B.bg, borderRadius:6,
+                              padding:"8px 10px", marginBottom:10, lineHeight:1.6,
+                              whiteSpace:"pre-wrap", maxHeight:80, overflow:"auto" }}>
+                              {lead.nota}
                             </div>
-                            {matches.slice(0,3).map(prop => {
-                              const msg = genMsgWhatsApp(lead, prop);
-                              const wa = lead.tel
-                                ? `https://wa.me/${lead.tel.replace(/\D/g,"")}?text=${encodeURIComponent(msg)}`
-                                : null;
-                              const yaMostrado = mostrados.has(`${lead.id}-${prop.id}`);
+                          )}
+ 
+                          {/* Nueva nota */}
+                          <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+                            <input placeholder="Nota rápida... (Enter para guardar)"
+                              value={notaEdit[lead.id]||""}
+                              onChange={e => setNotaEdit(p=>({...p,[lead.id]:e.target.value}))}
+                              onKeyDown={e => e.key==="Enter" && guardarNota(lead)}
+                              style={{ flex:1, background:B.bg, border:`1px solid ${B.border}`,
+                                borderRadius:6, padding:"6px 10px", color:B.text, fontSize:11, outline:"none" }} />
+                            <button onClick={() => guardarNota(lead)}
+                              style={{ padding:"6px 12px", borderRadius:6, background:`${B.accentL}18`,
+                                border:`1px solid ${B.accentL}40`, color:B.accentL, fontSize:11, cursor:"pointer" }}>
+                              + Nota
+                            </button>
+                          </div>
+ 
+                          {/* Propiedades compatibles */}
+                          {(() => {
+                            const capsNorm = (captaciones||[]).map(c => ({
+                              id: "cap-"+c.id, tipo: c.tipo, zona: c.zona, precio: c.precio,
+                              dir: c.direccion, caracts: c.caracts, activa: true,
+                              _esCaptacion: true, _tipoCap: c.tipo_captacion,
+                              _url: c.url, _propietario: c.nombre_propietario, _tel: c.telefono,
+                            }));
+                            const todasProps = [...(properties||[]), ...capsNorm];
+                            const matches = matchLeadProps(lead, todasProps);
+                            if (!matches.length) return null;
+                            return (
+                              <div style={{ marginBottom:10 }}>
+                                <div style={{ fontSize:11, color:"#8AAECC", letterSpacing:"1px", fontWeight:600, marginBottom:6 }}>
+                                  🏠 PROPIEDADES COMPATIBLES ({matches.length})
+                                </div>
+                                {matches.slice(0,3).map(prop => {
+                                  const msg = genMsgWhatsApp(lead, prop);
+                                  const wa = lead.tel
+                                    ? `https://wa.me/${lead.tel.replace(/\D/g,"")}?text=${encodeURIComponent(msg)}`
+                                    : null;
+                                  const yaMostrado = mostrados.has(`${lead.id}-${prop.id}`);
+                                  return (
+                                    <div key={prop.id} style={{ display:"flex", alignItems:"center", gap:8,
+                                      background:B.bg, borderRadius:7, padding:"7px 10px", marginBottom:5,
+                                      opacity: yaMostrado ? 0.45 : 1 }}>
+                                      <button onClick={() => toggleMostrado(lead.id, prop.id)}
+                                        style={{ width:16, height:16, borderRadius:"50%", border:"1.5px solid",
+                                          borderColor: yaMostrado ? "#2E9E6A" : "#4A6A90",
+                                          background: yaMostrado ? "#2E9E6A" : "transparent",
+                                          cursor:"pointer", flexShrink:0, fontSize:9, color:"white",
+                                          display:"flex", alignItems:"center", justifyContent:"center" }}>
+                                        {yaMostrado ? "✓" : ""}
+                                      </button>
+                                      <div style={{ flex:1, fontSize:11, color:B.muted,
+                                        textDecoration: yaMostrado ? "line-through" : "none" }}>
+                                        <span style={{ color: yaMostrado ? "#6A8AAE" : B.text, fontWeight:600 }}>{prop.tipo}</span>
+                                        {" · "}{prop.zona}
+                                        {" · "}<span style={{ color: yaMostrado ? "#6A8AAE" : B.accentL }}>USD {(prop.precio||0).toLocaleString()}</span>
+                                        {prop.dir && <span style={{ color:B.muted }}> · {prop.dir}</span>}
+                                        {prop._esCaptacion && (
+                                          <span style={{ marginLeft:6, fontSize:9, padding:"1px 5px", borderRadius:4,
+                                            background:"rgba(204,34,51,0.15)", color:"#CC2233", border:"1px solid rgba(204,34,51,0.3)" }}>
+                                            📌 {prop._tipoCap||"captación"}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {wa && !yaMostrado && (
+                                        <a href={wa} target="_blank" rel="noreferrer"
+                                          style={{ padding:"3px 9px", borderRadius:6, whiteSpace:"nowrap",
+                                            background:"rgba(37,211,102,0.1)", border:"1px solid rgba(37,211,102,0.25)",
+                                            color:"#25D366", fontSize:12, textDecoration:"none", fontWeight:600 }}>
+                                          💬 WA
+                                        </a>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
+ 
+                          {/* Panel buscador inline */}
+                          {buscandoId === lead.id && (
+                            <div style={{ marginBottom:10 }}>
+                              <BuscadorPanel lead={lead} />
+                            </div>
+                          )}
+ 
+                          {/* Switch Inversor */}
+                          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8,
+                            padding:"7px 10px", borderRadius:8,
+                            background: lead.inversor ? "rgba(155,109,200,0.1)" : "rgba(42,91,173,0.05)",
+                            border: `1px solid ${lead.inversor ? "#9B6DC840" : B.border}` }}>
+                            <button onClick={()=>toggleInversor(lead)}
+                              style={{ width:36, height:20, borderRadius:10, cursor:"pointer", border:"none", position:"relative", flexShrink:0,
+                                background: lead.inversor ? "#9B6DC8" : "#2A3A5A" }}>
+                              <div style={{ position:"absolute", top:2, left: lead.inversor ? 18 : 2, width:16, height:16,
+                                borderRadius:"50%", background:"#fff", transition:"left 0.2s", boxShadow:"0 1px 3px rgba(0,0,0,0.3)" }} />
+                            </button>
+                            <span style={{ fontSize:11, color: lead.inversor ? "#9B6DC8" : "#8AAECC", fontWeight:600 }}>
+                              💼 Inversor
+                            </span>
+                            {lead.inversor && (
+                              <InversorNota lead={lead} onGuardar={guardarNotaInversor} />
+                            )}
+                          </div>
+ 
+                          {/* Acciones */}
+                          <div style={{ display:"flex", gap:7, flexWrap:"wrap" }}>
+                            <button onClick={() => contacteHoy(lead.id)}
+                              style={{ padding:"5px 12px", borderRadius:6, background:`${B.ok}18`,
+                                border:`1px solid ${B.ok}40`, color:B.ok, fontSize:12, cursor:"pointer", fontWeight:600 }}>
+                              ✅ Contacté hoy
+                            </button>
+                            {lead.tel && (
+                              <a href={`https://wa.me/${lead.tel.replace(/\D/g,"")}`} target="_blank" rel="noreferrer"
+                                style={{ padding:"5px 12px", borderRadius:6, background:"rgba(37,211,102,0.1)",
+                                  border:"1px solid rgba(37,211,102,0.25)", color:"#25D366",
+                                  fontSize:12, textDecoration:"none", fontWeight:600 }}>
+                                💬 WA
+                              </a>
+                            )}
+                            {lead.tel && (
+                              <a href={`tel:${lead.tel}`}
+                                style={{ padding:"5px 12px", borderRadius:6, background:`${B.ok}18`,
+                                  border:`1px solid ${B.ok}40`, color:B.ok, fontSize:12, textDecoration:"none", fontWeight:600 }}>
+                                📞 Llamar
+                              </a>
+                            )}
+                            <button onClick={() => startEdit(lead)}
+                              style={{ padding:"5px 12px", borderRadius:6, background:`${B.accentL}12`,
+                                border:`1px solid ${B.accentL}30`, color:B.accentL, fontSize:12, cursor:"pointer", fontWeight:600 }}>
+                              ✏️ Editar
+                            </button>
+                            <button
+                              onClick={e => { e.stopPropagation(); setBuscandoId(b => b === lead.id ? null : lead.id); }}
+                              style={{ padding:"5px 12px", borderRadius:6, fontSize:12, cursor:"pointer", fontWeight:600,
+                                background: buscandoId === lead.id ? `${B.accentL}25` : `${B.accentL}12`,
+                                border:`1px solid ${buscandoId === lead.id ? B.accentL : B.accentL+"30"}`,
+                                color:B.accentL }}>
+                              🔍 Buscar
+                            </button>
+                            <button onClick={() => {
+                              const msg = lead.msg_busqueda || genMsgBusqueda(lead);
+                              const modal = document.createElement("div");
+                              modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
+                              const turno = new Date().getHours() < 14 ? "manana" : "tarde";
+                              modal.innerHTML = `<div style="background:#0F1E35;border:1px solid #2A5BA830;border-radius:14px;padding:22px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.85)">
+                                <div style="font-size:11px;color:#8AAECC;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">📋 MENSAJE BÚSQUEDA</div>
+                                <textarea id="busqueda-txt" style="width:100%;height:200px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;color:#E8F0FA;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:inherit;box-sizing:border-box">${msg}</textarea>
+                                <div style="display:flex;gap:8px;margin-top:12px">
+                                  <button id="busqueda-copy" style="flex:1;padding:10px;border-radius:8px;background:#E8A830;border:none;color:#0F1E35;font-size:13px;font-weight:700;cursor:pointer">Copiar y guardar</button>
+                                  <button id="busqueda-reset" style="padding:10px 12px;border-radius:8px;background:transparent;border:1px solid #2A4060;color:#8AAECC;font-size:12px;cursor:pointer">↺</button>
+                                  <button onclick="this.closest('div[style*=fixed]').remove()" style="padding:10px 16px;border-radius:8px;background:transparent;border:1px solid #2A4060;color:#8AAECC;font-size:13px;cursor:pointer">Cancelar</button>
+                                </div>
+                              </div>`;
+                              document.body.appendChild(modal);
+                              modal.onclick = e => { if(e.target === modal) modal.remove(); };
+                              modal.querySelector("#busqueda-copy").onclick = () => {
+                                const txt = modal.querySelector("#busqueda-txt").value;
+                                const hoy = new Date().toISOString().slice(0,10);
+                                const updates = { msg_busqueda: txt };
+                                updates[`enviado_${turno}`] = hoy;
+                                navigator.clipboard.writeText(txt).then(() => {
+                                  updateLead(lead.id, updates);
+                                  modal.remove();
+                                });
+                              };
+                              modal.querySelector("#busqueda-reset").onclick = () => {
+                                modal.querySelector("#busqueda-txt").value = genMsgBusqueda(lead);
+                              };
+                            }}
+                              style={{ padding:"5px 12px", borderRadius:6, background:"rgba(232,168,48,0.12)",
+                                border:"1px solid rgba(232,168,48,0.3)", color:"#E8A830", fontSize:12, cursor:"pointer", fontWeight:600 }}>
+                              📋 Búsqueda WA
+                            </button>
+                            {(() => {
+                              const hoy = new Date().toISOString().slice(0,10);
+                              const okM = lead.enviado_manana === hoy;
+                              const okT = lead.enviado_tarde  === hoy;
                               return (
-                                <div key={prop.id} style={{ display:"flex", alignItems:"center", gap:8,
-                                  background:B.bg, borderRadius:7, padding:"7px 10px", marginBottom:5,
-                                  opacity: yaMostrado ? 0.45 : 1 }}>
-                                  <button onClick={() => toggleMostrado(lead.id, prop.id)}
-                                    title={yaMostrado ? "Quitar tachado" : "Marcar como mostrado"}
-                                    style={{ width:16, height:16, borderRadius:"50%", border:"1.5px solid",
-                                      borderColor: yaMostrado ? "#2E9E6A" : "#4A6A90",
-                                      background: yaMostrado ? "#2E9E6A" : "transparent",
-                                      cursor:"pointer", flexShrink:0, fontSize:9, color:"white",
-                                      display:"flex", alignItems:"center", justifyContent:"center" }}>
-                                    {yaMostrado ? "✓" : ""}
+                                <div style={{ display:"flex", gap:4, alignItems:"center" }}>
+                                  <button onClick={() => updateLead(lead.id, { enviado_manana: okM ? null : hoy })}
+                                    style={{ padding:"4px 8px", borderRadius:6, cursor:"pointer", fontSize:11,
+                                      background: okM ? "rgba(204,34,51,0.2)" : "transparent",
+                                      border: `1px solid ${okM ? "#CC2233" : B.border}`,
+                                      color: okM ? "#CC2233" : "#4A6A90", fontWeight:700 }}>
+                                    {okM ? "☀✓" : "☀"}
                                   </button>
-                                  <div style={{ flex:1, fontSize:11, color:B.muted,
-                                    textDecoration: yaMostrado ? "line-through" : "none" }}>
-                                    <span style={{ color: yaMostrado ? "#6A8AAE" : B.text, fontWeight:600 }}>{prop.tipo}</span>
-                                    {" · "}{prop.zona}
-                                    {" · "}<span style={{ color: yaMostrado ? "#6A8AAE" : B.accentL }}>USD {(prop.precio||0).toLocaleString()}</span>
-                                    {prop.dir && <span style={{ color:B.muted }}> · {prop.dir}</span>}
-                                    {prop._esCaptacion && (
-                                      <span style={{ marginLeft:6, fontSize:9, padding:"1px 5px", borderRadius:4,
-                                        background:"rgba(204,34,51,0.15)", color:"#CC2233", border:"1px solid rgba(204,34,51,0.3)" }}>
-                                        📌 {prop._tipoCap||"captación"}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {wa && !yaMostrado && (
-                                    <a href={wa} target="_blank" rel="noreferrer"
-                                      style={{ padding:"3px 9px", borderRadius:6, whiteSpace:"nowrap",
-                                        background:"rgba(37,211,102,0.1)", border:"1px solid rgba(37,211,102,0.25)",
-                                        color:"#25D366", fontSize:12, textDecoration:"none", fontWeight:600 }}>
-                                      💬 WA
-                                    </a>
-                                  )}
+                                  <button onClick={() => updateLead(lead.id, { enviado_tarde: okT ? null : hoy })}
+                                    style={{ padding:"4px 8px", borderRadius:6, cursor:"pointer", fontSize:11,
+                                      background: okT ? "rgba(204,34,51,0.2)" : "transparent",
+                                      border: `1px solid ${okT ? "#CC2233" : B.border}`,
+                                      color: okT ? "#CC2233" : "#4A6A90", fontWeight:700 }}>
+                                    {okT ? "🌙✓" : "🌙"}
+                                  </button>
                                 </div>
                               );
-                            })}
+                            })()}
+                            <button onClick={() => setConfirmDelete(lead)}
+                              style={{ padding:"5px 12px", borderRadius:6, background:`${B.hot}12`,
+                                border:`1px solid ${B.hot}30`, color:B.hot, fontSize:12, cursor:"pointer", fontWeight:600, marginLeft:"auto" }}>
+                              🗑
+                            </button>
                           </div>
-                        );
-                      })()}
- 
-                      {/* Switch Inversor */}
-                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8,
-                        padding:"7px 10px", borderRadius:8,
-                        background: lead.inversor ? "rgba(155,109,200,0.1)" : "rgba(42,91,173,0.05)",
-                        border: `1px solid ${lead.inversor ? "#9B6DC840" : B.border}` }}>
-                        <button onClick={()=>toggleInversor(lead)}
-                          style={{ width:36, height:20, borderRadius:10, cursor:"pointer", border:"none", position:"relative", flexShrink:0, transition:"all 0.2s",
-                            background: lead.inversor ? "#9B6DC8" : "#2A3A5A" }}>
-                          <div style={{ position:"absolute", top:2, left: lead.inversor ? 18 : 2, width:16, height:16,
-                            borderRadius:"50%", background:"#fff", transition:"left 0.2s", boxShadow:"0 1px 3px rgba(0,0,0,0.3)" }} />
-                        </button>
-                        <span style={{ fontSize:11, color: lead.inversor ? "#9B6DC8" : "#8AAECC", fontWeight:600 }}>
-                          💼 Inversor
-                        </span>
-                        {lead.inversor && (
-                          <InversorNota lead={lead} onGuardar={guardarNotaInversor} />
-                        )}
-                      </div>
-
-                      {/* Acciones */}
-                      <div style={{ display:"flex", gap:7, flexWrap:"wrap" }}>
-                        <button onClick={() => contacteHoy(lead.id)}
-                          style={{ padding:"5px 12px", borderRadius:6, background:`${B.ok}18`,
-                            border:`1px solid ${B.ok}40`, color:B.ok, fontSize:12, cursor:"pointer", fontWeight:600 }}>
-                          ✅ Contacté hoy
-                        </button>
-                        {lead.tel && (
-                          <a href={`https://wa.me/${lead.tel.replace(/\D/g,"")}`} target="_blank" rel="noreferrer"
-                            style={{ padding:"5px 12px", borderRadius:6, background:"rgba(37,211,102,0.1)",
-                              border:"1px solid rgba(37,211,102,0.25)", color:"#25D366",
-                              fontSize:12, textDecoration:"none", fontWeight:600 }}>
-                            💬 WA
-                          </a>
-                        )}
-                        {lead.tel && (
-                          <a href={`tel:${lead.tel}`}
-                            style={{ padding:"5px 12px", borderRadius:6, background:`${B.ok}18`,
-                              border:`1px solid ${B.ok}40`, color:B.ok, fontSize:12, textDecoration:"none", fontWeight:600 }}>
-                            📞 Llamar
-                          </a>
-                        )}
-                        <button onClick={() => startEdit(lead)}
-                          style={{ padding:"5px 12px", borderRadius:6, background:`${B.accentL}12`,
-                            border:`1px solid ${B.accentL}30`, color:B.accentL, fontSize:12, cursor:"pointer", fontWeight:600 }}>
-                          ✏️ Editar
-                        </button>
-                        <button onClick={() => {
-                          const msg = lead.msg_busqueda || genMsgBusqueda(lead);
-                          const modal = document.createElement("div");
-                          modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
-                          const turno = new Date().getHours() < 14 ? "manana" : "tarde";
-                          modal.innerHTML = `<div style="background:#0F1E35;border:1px solid #2A5BA830;border-radius:14px;padding:22px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.85)">
-                            <div style="font-size:11px;color:#8AAECC;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">📋 MENSAJE BÚSQUEDA — editá y se guarda para la próxima</div>
-                            <textarea id="busqueda-txt" style="width:100%;height:200px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;color:#E8F0FA;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:inherit;box-sizing:border-box">${msg}</textarea>
-                            <div style="display:flex;gap:8px;margin-top:12px">
-                              <button id="busqueda-copy" style="flex:1;padding:10px;border-radius:8px;background:#E8A830;border:none;color:#0F1E35;font-size:13px;font-weight:700;cursor:pointer">Copiar y guardar</button>
-                              <button id="busqueda-reset" style="padding:10px 12px;border-radius:8px;background:transparent;border:1px solid #2A4060;color:#8AAECC;font-size:12px;cursor:pointer" title="Regenerar desde datos del lead">↺</button>
-                              <button onclick="this.closest('div[style*=fixed]').remove()" style="padding:10px 16px;border-radius:8px;background:transparent;border:1px solid #2A4060;color:#8AAECC;font-size:13px;cursor:pointer">Cancelar</button>
-                            </div>
-                          </div>`;
-                          document.body.appendChild(modal);
-                          modal.onclick = e => { if(e.target === modal) modal.remove(); };
-                          modal.querySelector("#busqueda-copy").onclick = () => {
-                            const txt = modal.querySelector("#busqueda-txt").value;
-                            const hoy = new Date().toISOString().slice(0,10);
-                            const updates = { msg_busqueda: txt };
-                            updates[`enviado_${turno}`] = hoy;
-                            navigator.clipboard.writeText(txt).then(() => {
-                              updateLead(lead.id, updates);
-                              modal.remove();
-                            });
-                          };
-                          modal.querySelector("#busqueda-reset").onclick = () => {
-                            modal.querySelector("#busqueda-txt").value = genMsgBusqueda(lead);
-                          };
-                        }}
-                          style={{ padding:"5px 12px", borderRadius:6, background:"rgba(232,168,48,0.12)",
-                            border:"1px solid rgba(232,168,48,0.3)", color:"#E8A830", fontSize:12, cursor:"pointer", fontWeight:600 }}>
-                          📋 Búsqueda WA
-                        </button>
-                        {/* Ticks mañana / tarde */}
-                        {(() => {
-                          const hoy = new Date().toISOString().slice(0,10);
-                          const okM = lead.enviado_manana === hoy;
-                          const okT = lead.enviado_tarde  === hoy;
-                          return (
-                            <div style={{ display:"flex", gap:4, alignItems:"center" }}>
-                              <button onClick={() => updateLead(lead.id, { enviado_manana: okM ? null : hoy })}
-                                title={okM ? "Mañana: enviado ✓" : "Mañana: no enviado"}
-                                style={{ padding:"4px 8px", borderRadius:6, cursor:"pointer", fontSize:11,
-                                  background: okM ? "rgba(204,34,51,0.2)" : "transparent",
-                                  border: `1px solid ${okM ? "#CC2233" : B.border}`,
-                                  color: okM ? "#CC2233" : "#4A6A90",
-                                  fontWeight: 700 }}>
-                                {okM ? "☀✓" : "☀"}
-                              </button>
-                              <button onClick={() => updateLead(lead.id, { enviado_tarde: okT ? null : hoy })}
-                                title={okT ? "Tarde: enviado ✓" : "Tarde: no enviado"}
-                                style={{ padding:"4px 8px", borderRadius:6, cursor:"pointer", fontSize:11,
-                                  background: okT ? "rgba(204,34,51,0.2)" : "transparent",
-                                  border: `1px solid ${okT ? "#CC2233" : B.border}`,
-                                  color: okT ? "#CC2233" : "#4A6A90",
-                                  fontWeight: 700 }}>
-                                {okT ? "🌙✓" : "🌙"}
-                              </button>
-                            </div>
-                          );
-                        })()}
-                        <button onClick={() => setConfirmDelete(lead)}
-                          style={{ padding:"5px 12px", borderRadius:6, background:`${B.hot}12`,
-                            border:`1px solid ${B.hot}30`, color:B.hot, fontSize:12, cursor:"pointer", fontWeight:600, marginLeft:"auto" }}>
-                          🗑
-                        </button>
-                      </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          );
-        })}
+              );
+            })}
           </div>
         </div>
       ))}
+ 
       {leadsActivos.length === 0 && (
         <div style={{ textAlign:"center", padding:"40px", color:"#8AAECC", fontSize:13 }}>Sin resultados</div>
       )}
@@ -843,8 +829,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           </div>
         </div>
       )}
-
-      {/* Modal — Motivo de pérdida */}
+ 
       {modalPerdido && (
         <ModalPerdido lead={modalPerdido} onConfirmar={confirmarPerdido} onCancelar={() => setModalPerdido(null)} />
       )}
