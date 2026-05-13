@@ -2,10 +2,21 @@
 // ALBA CRM — MÓDULO KANBAN
 // Drag & drop entre etapas, filtro por agente
 // ══════════════════════════════════════════════════════════════
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { B, AG, ETAPAS, ECOL, scoreLead } from "../data/constants.js";
 
+function useIsMobile(breakpoint = 768) {
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+  useEffect(() => {
+    const handler = () => setW(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return w < breakpoint;
+}
+
 export default function Kanban({ leads, updateLead }) {
+  const mobile = useIsMobile(768);
   const [dragId,   setDragId]   = useState(null);
   const [overCol,  setOverCol]  = useState(null);
   const [filtroAg, setFiltroAg] = useState("Todos");
@@ -67,14 +78,14 @@ export default function Kanban({ leads, updateLead }) {
     <div style={{ display:"flex", flexDirection:"column", height:"100%", overflow:"hidden" }}>
 
       {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10, marginBottom:14, flexShrink:0 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10, marginBottom:mobile ? 10 : 14, flexShrink:0 }}>
         <div>
-          <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Kanban</h1>
-          <p style={{ fontSize:11, color:"#8AAECC", margin:"3px 0 0" }}>{vis.length} leads · arrastrá para cambiar etapa</p>
+          <h1 style={{ fontSize: mobile ? 18 : 20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Kanban</h1>
+          <p style={{ fontSize: mobile ? 10 : 11, color:"#8AAECC", margin:"3px 0 0" }}>{vis.length} leads · {mobile ? "tocá para mover" : "arrastrá para cambiar etapa"}</p>
         </div>
         <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
           {["Todos", "C", "A", "F", "L"].map(a => (
-            <button key={a} onClick={() => setFiltroAg(a)} style={chipAg(a)}>
+            <button key={a} onClick={() => setFiltroAg(a)} style={{...chipAg(a), padding: mobile ? "6px 14px" : "4px 11px", fontSize: mobile ? 12 : 11}}>
               {a === "Todos" ? "Todos" : AG[a]?.n}
             </button>
           ))}
@@ -82,7 +93,7 @@ export default function Kanban({ leads, updateLead }) {
       </div>
 
       {/* Tablero */}
-      <div style={{ flex:1, display:"flex", gap:8, overflowX:"auto", overflowY:"hidden", paddingBottom:14,
+      <div style={{ flex:1, display:"flex", gap: mobile ? 12 : 8, overflowX: mobile ? "visible" : "auto", overflowY: mobile ? "auto" : "hidden", flexDirection: mobile ? "column" : "row", paddingBottom:14,
         scrollbarWidth:"thin", scrollbarColor:`${B.border} transparent` }}>
         {cols.map(({ etapa, items, total }) => {
           const ec   = ECOL[etapa];
@@ -92,25 +103,26 @@ export default function Kanban({ leads, updateLead }) {
               onDragOver={e => { e.preventDefault(); setOverCol(etapa); }}
               onDragLeave={() => setOverCol(null)}
               onDrop={e => onDrop(e, etapa)}
-              style={{ minWidth:200, maxWidth:200, flexShrink:0,
+              style={{ minWidth: mobile ? "100%" : 200, maxWidth: mobile ? "100%" : 200, flexShrink:0,
                 background: over ? "rgba(42,91,173,0.07)" : B.colBg,
                 border: `1px solid ${over ? B.accent : B.border}`,
-                borderRadius:12, display:"flex", flexDirection:"column", transition:"all .15s" }}>
+                borderRadius:12, display:"flex", flexDirection:"column", transition:"all .15s",
+                maxHeight: mobile ? "none" : "100%" }}>
 
               {/* Cabecera columna */}
-              <div style={{ padding:"10px 12px 8px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
+              <div style={{ padding: mobile ? "12px 14px 10px" : "10px 12px 8px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:2 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                    <div style={{ width:6, height:6, borderRadius:"50%", background:ec }} />
-                    <span style={{ fontSize:11, fontWeight:600, color:B.text }}>{etapa}</span>
+                    <div style={{ width: mobile ? 8 : 6, height: mobile ? 8 : 6, borderRadius:"50%", background:ec }} />
+                    <span style={{ fontSize: mobile ? 12 : 11, fontWeight:600, color:B.text }}>{etapa}</span>
                   </div>
-                  <span style={{ fontSize:12, fontWeight:700, background:`${ec}22`, color:ec, borderRadius:20, padding:"1px 7px" }}>{items.length}</span>
+                  <span style={{ fontSize: mobile ? 13 : 12, fontWeight:700, background:`${ec}22`, color:ec, borderRadius:20, padding: mobile ? "2px 8px" : "1px 7px" }}>{items.length}</span>
                 </div>
-                {total > 0 && <div style={{ fontSize:11, color:B.muted }}>USD {total.toLocaleString()}</div>}
+                {total > 0 && <div style={{ fontSize: mobile ? 12 : 11, color:B.muted }}>USD {total.toLocaleString()}</div>}
               </div>
 
               {/* Cards */}
-              <div style={{ flex:1, overflowY:"auto", padding:"7px", display:"flex", flexDirection:"column", gap:6,
+              <div style={{ flex:1, overflowY:"auto", padding: mobile ? "9px" : "7px", display:"flex", flexDirection:"column", gap: mobile ? 8 : 6,
                 scrollbarWidth:"thin", scrollbarColor:`${B.border} transparent` }}>
                 {items.map(lead => {
                   const s        = scoreLead(lead);
@@ -118,33 +130,33 @@ export default function Kanban({ leads, updateLead }) {
                   const dragging = dragId === lead.id;
                   return (
                     <div key={lead.id}
-                      draggable
+                      draggable={!mobile}
                       onDragStart={e => onDragStart(e, lead)}
                       onDragEnd={onDragEnd}
                       style={{ background: dragging ? "rgba(42,91,173,0.06)" : B.card,
                         border: `1px solid ${dragging ? B.accent : B.border}`,
-                        borderRadius:8, padding:"9px 10px", cursor:"grab",
+                        borderRadius: mobile ? 10 : 8, padding: mobile ? "12px 11px" : "9px 10px", cursor: mobile ? "pointer" : "grab",
                         userSelect:"none", opacity: dragging ? .35 : 1,
                         transform: dragging ? "rotate(1.2deg)" : "none", transition:"opacity .15s" }}>
-                      <div style={{ fontSize:11, fontWeight:600, color:B.text, marginBottom:2 }}>{lead.nombre}</div>
-                      {lead.zona && <div style={{ fontSize:11, color:"#8AAECC", marginBottom:5 }}>{lead.zona}</div>}
-                      {lead.presup && <div style={{ fontSize:11, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif", marginBottom:6 }}>USD {lead.presup.toLocaleString()}</div>}
+                      <div style={{ fontSize: mobile ? 12 : 11, fontWeight:600, color:B.text, marginBottom:2 }}>{lead.nombre}</div>
+                      {lead.zona && <div style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", marginBottom: mobile ? 6 : 5 }}>{lead.zona}</div>}
+                      {lead.presup && <div style={{ fontSize: mobile ? 12 : 11, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif", marginBottom: mobile ? 8 : 6 }}>USD {lead.presup.toLocaleString()}</div>}
                       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:4 }}>
                         {ag
-                          ? <span style={{ fontSize:11, padding:"1px 5px", borderRadius:3, background:ag.bg, color:ag.c, fontWeight:600 }}>{ag.n}</span>
-                          : <span style={{ fontSize:11, color:B.dim, padding:"1px 5px", borderRadius:3, background:"rgba(61,90,122,0.2)" }}>Sin asignar</span>
+                          ? <span style={{ fontSize: mobile ? 12 : 11, padding: mobile ? "3px 7px" : "1px 5px", borderRadius:3, background:ag.bg, color:ag.c, fontWeight:600 }}>{ag.n}</span>
+                          : <span style={{ fontSize: mobile ? 12 : 11, color:B.dim, padding: mobile ? "3px 7px" : "1px 5px", borderRadius:3, background:"rgba(61,90,122,0.2)" }}>Sin asignar</span>
                         }
-                        {lead.dias > 0 && <span style={{ fontSize:11, background:s.bg, color:s.c, padding:"1px 5px", borderRadius:3 }}>{lead.dias}d</span>}
+                        {lead.dias > 0 && <span style={{ fontSize: mobile ? 12 : 11, background:s.bg, color:s.c, padding: mobile ? "3px 7px" : "1px 5px", borderRadius:3 }}>{lead.dias}d</span>}
                       </div>
-                      {lead.notaImp && <div style={{ fontSize:11, color:B.hot, marginTop:4, fontWeight:600 }}>{lead.notaImp}</div>}
+                      {lead.notaImp && <div style={{ fontSize: mobile ? 12 : 11, color:B.hot, marginTop: mobile ? 6 : 4, fontWeight:600 }}>{lead.notaImp}</div>}
                     </div>
                   );
                 })}
                 {items.length === 0 && (
-                  <div style={{ flex:1, minHeight:60, borderRadius:7,
+                  <div style={{ flex:1, minHeight: mobile ? 80 : 60, borderRadius: mobile ? 9 : 7,
                     border: `1.5px dashed ${over ? B.accent : B.border}`,
                     display:"flex", alignItems:"center", justifyContent:"center", transition:"border-color .15s" }}>
-                    <span style={{ fontSize:11, color: over ? B.accentL : B.dim }}>{over ? "Soltá acá" : "Vacío"}</span>
+                    <span style={{ fontSize: mobile ? 12 : 11, color: over ? B.accentL : B.dim }}>{over ? "Soltá acá" : "Vacío"}</span>
                   </div>
                 )}
               </div>
@@ -155,9 +167,10 @@ export default function Kanban({ leads, updateLead }) {
 
       {/* Toast */}
       {toast && (
-        <div style={{ position:"fixed", bottom:20, left:"50%", transform:"translateX(-50%)",
+        <div style={{ position:"fixed", bottom: mobile ? 80 : 20, left:"50%", transform:"translateX(-50%)",
           background:"#0F1E35", border:`1px solid ${B.accent}`, borderRadius:20,
-          padding:"7px 18px", fontSize:12, color:B.accentL, zIndex:9999, pointerEvents:"none" }}>
+          padding: mobile ? "9px 20px" : "7px 18px", fontSize: mobile ? 13 : 12, color:B.accentL, zIndex:9999, pointerEvents:"none",
+          maxWidth: "90%", textAlign: "center" }}>
           {toast}
         </div>
       )}

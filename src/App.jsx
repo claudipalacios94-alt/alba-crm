@@ -1,372 +1,52 @@
-// ══════════════════════════════════════════════════════════════ 
-// ALBA CRM — APP SHELL PRINCIPAL
-// Navegación, modales, layout global
-// ══════════════════════════════════════════════════════════════
-import React, { useState, useEffect, useRef } from "react";
-import { B, AG } from "./data/constants.js";
-import { useSupabase, signIn, signOut, onAuthChange, supabase } from "./hooks/useSupabase.js";
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { B } from "./data/constants.js";
+import { signIn } from "./hooks/useSupabase.js";
+import { useAppContext } from "./context/SupabaseContext.jsx";
 import Login from "./components/Login.jsx";
- 
-import SupabaseStatus  from "./components/SupabaseStatus.jsx";
-import Briefing        from "./components/Briefing.jsx";
-import Kanban          from "./components/Kanban.jsx";
-import CRMLeads        from "./components/CRMLeads.jsx";
-import Propiedades     from "./components/Propiedades.jsx";
-import Cuaderno        from "./components/Cuaderno.jsx";
-import Mapa            from "./components/Mapa.jsx";
-import Flyer           from "./components/Flyer.jsx";
-import Captaciones     from "./components/Captaciones.jsx";
-import CaptacionZonas  from "./components/CaptacionZonas.jsx";
- 
-import Modal           from "./modals/Modal.jsx";
-import QuickAddLead    from "./modals/QuickAddLead.jsx";
-import QuickAddProp    from "./modals/QuickAddProp.jsx";
- 
-const NAV_DEFAULT = [
-  { id:"briefing",    label:"Briefing del día",  badge:"HOY" },
-  { id:"cuaderno",    label:"Cuaderno de campo" },
-  { id:"kanban",      label:"Kanban" },
-  { id:"crm",         label:"CRM Leads" },
-  { id:"propiedades", label:"Propiedades" },
-  { id:"mapa",        label:"Mapa" },
-  { id:"flyer",       label:"Generador Flyer" },
-  { id:"captaciones", label:"Captación rápida", badge:"NEW" },
-  { id:"zonas",       label:"Captación zonas" },
-];
- 
-function loadNav() {
-  try {
-    const saved = localStorage.getItem("alba_nav");
-    if (!saved) return NAV_DEFAULT;
-    const parsed = JSON.parse(saved);
-    const ids = parsed.map(n => n.id);
-    const missing = NAV_DEFAULT.filter(n => !ids.includes(n.id));
-    return [...parsed, ...missing];
-  } catch(e) { return NAV_DEFAULT; }
-}
- 
-const FULL_HEIGHT = ["kanban", "mapa", "flyer", "captaciones", "zonas", "cuaderno"];
- 
+import Layout from "./components/layout/Layout.jsx";
+
+import BriefingPage from "./pages/BriefingPage.jsx";
+import CuadernoPage from "./pages/CuadernoPage.jsx";
+import KanbanPage from "./pages/KanbanPage.jsx";
+import CRMLeadsPage from "./pages/CRMLeadsPage.jsx";
+import PropiedadesPage from "./pages/PropiedadesPage.jsx";
+import MapaPage from "./pages/MapaPage.jsx";
+import FlyerPage from "./pages/FlyerPage.jsx";
+import CaptacionesPage from "./pages/CaptacionesPage.jsx";
+import CaptacionZonasPage from "./pages/CaptacionZonasPage.jsx";
+import AlquileresPage from "./pages/AlquileresPage.jsx";
+
 export default function App() {
-  const [view,  setView]  = useState("briefing");
-  const [captaciones, setCaptaciones] = useState([]);
-  const [flyers,      setFlyers]      = useState([]);
-  const [nav, setNav] = useState(loadNav);
-  const [editingNav,  setEditingNav]  = useState(null);
-  const [editNavVal,  setEditNavVal]  = useState("");
-  const [clickCount,  setClickCount]  = useState({});
-  const clickTimer = useRef({});
-  const dragItem   = useRef(null);
-  const dragOver   = useRef(null);
- 
-  function saveNav(newNav) {
-    setNav(newNav);
-    localStorage.setItem("alba_nav", JSON.stringify(newNav));
-  }
- 
-  function handleNavClick(id) {
-    if (editingNav) return;
-    const count = (clickCount[id] || 0) + 1;
-    setClickCount(p => ({ ...p, [id]: count }));
-    clearTimeout(clickTimer.current[id]);
-    if (count >= 3) {
-      const item = nav.find(n => n.id === id);
-      setEditingNav(id);
-      setEditNavVal(item.label);
-      setClickCount(p => ({ ...p, [id]: 0 }));
-    } else {
-      clickTimer.current[id] = setTimeout(() => {
-        setClickCount(p => ({ ...p, [id]: 0 }));
-        setView(id);
-      }, 300);
-    }
-  }
- 
-  function saveNavLabel(id) {
-    const val = editNavVal.trim();
-    if (val) saveNav(nav.map(n => n.id === id ? { ...n, label: val } : n));
-    setEditingNav(null);
-  }
- 
-  function onDragStart(i) { dragItem.current = i; }
-  function onDragEnter(i) { dragOver.current = i; }
-  function onDragEnd() {
-    if (dragItem.current === null || dragOver.current === null) return;
-    const newNav = [...nav];
-    const dragged = newNav.splice(dragItem.current, 1)[0];
-    newNav.splice(dragOver.current, 0, dragged);
-    dragItem.current = null;
-    dragOver.current = null;
-    saveNav(newNav);
-  }
- 
-  const [saldoIA, setSaldoIA] = useState(() => {
-    try { const s = localStorage.getItem("alba_saldo_ia"); return s ? parseFloat(s) : null; } catch(e) { return null; }
-  });
-  const [consumoIA, setConsumoIA] = useState(() => {
-    try { const s = localStorage.getItem("alba_consumo_ia"); return s ? parseFloat(s) : 0; } catch(e) { return 0; }
-  });
-  const [editSaldo,  setEditSaldo]  = useState(false);
-  const [inputSaldo, setInputSaldo] = useState("");
-  const [modal, setModal] = useState(null);
-  const [user,  setUser]  = useState(undefined);
- 
-  useEffect(() => {
-    const { data: { subscription } } = onAuthChange(setUser);
-    return () => subscription.unsubscribe();
-  }, []);
- 
-  const {
-    leads, properties, rentals,
-    loading, error, lastSync,
-    reload, addLead, updateLead, deleteLead,
-    addProperty, updateProperty, deleteProperty, addInteraction, getInteractions,
-    saveSearchResult, getSearchResult,
-  } = useSupabase();
- 
-  useEffect(() => {
-    if (!supabase) return;
-    supabase.from("captaciones").select("*")
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setCaptaciones(data || []));
-  }, []);
- 
-  useEffect(() => {
-    if (!supabase) return;
-    supabase.from("flyers").select("*").order("created_at", { ascending: false })
-      .then(({ data }) => setFlyers(data || []));
-  }, []);
- 
-  const sinAsignar = leads.filter(l => !l.ag && l.etapa !== "Cerrado" && l.etapa !== "Perdido").length;
-  const isFullH    = FULL_HEIGHT.includes(view);
- 
-  async function handleAddLead(lead) {
-    await addLead(lead);
-    setModal(null);
-    setView("crm");
-  }
- 
-  async function handleAddProp(prop) {
-    await addProperty(prop);
-    setModal(null);
-    setView("propiedades");
-  }
- 
+  const { user } = useAppContext();
+
   if (user === undefined) {
     return (
-      <div style={{ height:"100vh", background:B.bg, display:"flex", alignItems:"center", justifyContent:"center" }}>
-        <div style={{ width:32, height:32, border:`2px solid ${B.border}`,
-          borderTop:`2px solid ${B.accentL}`, borderRadius:"50%", animation:"spin .7s linear infinite" }} />
+      <div style={{ height: "100vh", background: B.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 32, height: 32, border: `2px solid ${B.border}`,
+          borderTop: `2px solid ${B.accentL}`, borderRadius: "50%", animation: "spin .7s linear infinite" }} />
         <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
       </div>
     );
   }
- 
+
   if (!user) return <Login onLogin={signIn} />;
- 
-  function agregarConsumo(inputTokens, outputTokens) {
-    const costoBase = (inputTokens / 1000 * 0.00025) + (outputTokens / 1000 * 0.00125);
-    const costo = costoBase * 1.05;
-    const nuevo = parseFloat((consumoIA + costo).toFixed(6));
-    setConsumoIA(nuevo);
-    localStorage.setItem("alba_consumo_ia", nuevo);
-  }
- 
-  function guardarSaldo() {
-    const v = parseFloat(inputSaldo);
-    if (!isNaN(v) && v > 0) { setSaldoIA(v); localStorage.setItem("alba_saldo_ia", v); }
-    setEditSaldo(false);
-  }
- 
+
   return (
-    <div style={{ display:"flex", height:"100vh", background:B.bg,
-      fontFamily:"'DM Sans',sans-serif", color:B.text, overflow:"hidden", position:"relative" }}>
- 
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
-        * { box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #1A2F50; border-radius: 2px; }
-        .nav-btn:hover { background: rgba(42,91,173,0.12) !important; color: #6AAEF8 !important; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
- 
-      {/* ── SIDEBAR ─────────────────────────────────────────── */}
-      <div style={{ width:210, background:"#080F1E", display:"flex", flexDirection:"column", flexShrink:0 }}>
- 
-        <div style={{ height:3, background:"linear-gradient(90deg,#1A3A7A,#3A6AD4,#5A9AFF,#3A6AD4,#1A3A7A)", flexShrink:0 }} />
- 
-        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"18px 16px 12px" }}>
-          <div style={{ width:34, height:34, borderRadius:8,
-            background:"linear-gradient(135deg,#1A3A7A,#2A5BAD)", border:"1px solid #2A5BAD",
-            display:"flex", alignItems:"center", justifyContent:"center",
-            fontSize:17, fontWeight:700, color:"#7AB8FF", fontFamily:"'Cormorant Garamond',serif", flexShrink:0 }}>A</div>
-          <div>
-            <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:700, fontSize:15, color:"#D0DDEE", letterSpacing:"3px" }}>ALBA</div>
-            <div style={{ fontSize:7, color:"#7A9EC0", letterSpacing:"1.5px", fontWeight:500 }}>INVERSIONES · REG 3832</div>
-          </div>
-        </div>
- 
-        <div style={{ padding:"0 10px 10px" }}>
-          <SupabaseStatus loading={loading} error={error} lastSync={lastSync} onReload={reload} />
-        </div>
- 
-        <div style={{ padding:"0 10px 10px", display:"flex", gap:6 }}>
-          <button onClick={() => setModal("lead")}
-            style={{ flex:1, padding:"8px 4px", borderRadius:8, cursor:"pointer",
-              background:`${B.ok}18`, border:`1px solid ${B.ok}50`, color:B.ok, fontSize:11, fontWeight:700 }}>
-            + Lead
-          </button>
-          <button onClick={() => setModal("prop")}
-            style={{ flex:1, padding:"8px 4px", borderRadius:8, cursor:"pointer",
-              background:`${B.accentL}18`, border:`1px solid ${B.accentL}50`, color:B.accentL, fontSize:11, fontWeight:700 }}>
-            + Prop
-          </button>
-        </div>
- 
-        <div style={{ height:1, background:B.border, margin:"0 13px 11px" }} />
- 
-        {/* Nav drag & drop */}
-        <nav style={{ flex:1, padding:"0 8px", overflowY:"auto", scrollbarWidth:"none" }}>
-          {nav.map((n, i) => (
-            <div key={n.id}
-              draggable
-              onDragStart={() => onDragStart(i)}
-              onDragEnter={() => onDragEnter(i)}
-              onDragEnd={onDragEnd}
-              onDragOver={e => e.preventDefault()}
-              style={{ marginBottom:2 }}>
-              {editingNav === n.id ? (
-                <input autoFocus value={editNavVal}
-                  onChange={e => setEditNavVal(e.target.value)}
-                  onKeyDown={e => { if(e.key==="Enter") saveNavLabel(n.id); if(e.key==="Escape") setEditingNav(null); }}
-                  onBlur={() => saveNavLabel(n.id)}
-                  style={{ width:"100%", background:B.bg, border:`1px solid ${B.accentL}`, borderRadius:6,
-                    padding:"7px 10px", color:B.text, fontSize:12, outline:"none", boxSizing:"border-box" }} />
-              ) : (
-                <button className="nav-btn" onClick={() => handleNavClick(n.id)}
-                  style={{ display:"flex", alignItems:"center", gap:6, width:"100%",
-                    padding:"9px 8px", borderRadius:8,
-                    background: view === n.id ? "rgba(42,91,173,0.18)" : "transparent",
-                    border: view === n.id ? "1px solid rgba(74,138,232,0.35)" : "1px solid transparent",
-                    color: view === n.id ? "#7AB8FF" : "#7A9EC0",
-                    fontSize:12, fontWeight: view === n.id ? 600 : 400,
-                    cursor:"pointer", textAlign:"left", fontFamily:"'DM Sans',sans-serif", transition:"all .15s" }}>
-                  <span style={{ fontSize:10, color:"#2A3A5A", flexShrink:0 }}>⠿</span>
-                  <span style={{ width:4, height:4, borderRadius:"50%", flexShrink:0,
-                    background: view === n.id ? "#5A9AFF" : "#4A6A90" }} />
-                  <span style={{ flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.label}</span>
-                  {n.badge && view !== n.id && (
-                    <span style={{ background:"rgba(42,91,173,0.2)", color:"#6AAEF8",
-                      fontSize:7, fontWeight:700, borderRadius:4, padding:"1px 5px", flexShrink:0 }}>
-                      {n.badge}
-                    </span>
-                  )}
-                  {n.id === "crm" && sinAsignar > 0 && (
-                    <span style={{ background:B.hot, color:"#fff", fontSize:11, fontWeight:700,
-                      borderRadius:"50%", width:16, height:16, display:"flex", alignItems:"center",
-                      justifyContent:"center", flexShrink:0 }}>
-                      {sinAsignar}
-                    </span>
-                  )}
-                </button>
-              )}
-            </div>
-          ))}
-          <button onClick={() => saveNav(NAV_DEFAULT)}
-            style={{ width:"100%", marginTop:6, padding:"3px", borderRadius:5, cursor:"pointer",
-              background:"transparent", border:`1px solid ${B.border}`, color:"#2A3A5A", fontSize:9 }}>
-            ↺ reset orden
-          </button>
-        </nav>
- 
-        <div style={{ padding:"10px 13px 12px", borderTop:`1px solid ${B.border}` }}>
-          <div style={{ fontSize:11, color:B.dim, marginBottom:5 }}>
-            {user.email} · {leads.length} leads
-          </div>
-          <div style={{ display:"flex", gap:3, marginBottom:8 }}>
-            {Object.entries(AG).map(([k, v]) => (
-              <div key={k} style={{ flex:1, height:3, borderRadius:2, background:v.c }} />
-            ))}
-          </div>
- 
-          <div style={{ background:"rgba(42,91,173,0.08)", border:`1px solid ${B.border}`, borderRadius:8, padding:"7px 9px", marginBottom:8 }}>
-            <div style={{ fontSize:9, color:"#4A6A90", fontWeight:600, letterSpacing:"0.8px", marginBottom:4 }}>✨ CRÉDITOS IA</div>
-            {editSaldo ? (
-              <div style={{ display:"flex", gap:4 }}>
-                <input autoFocus value={inputSaldo} onChange={e=>setInputSaldo(e.target.value)}
-                  onKeyDown={e=>{ if(e.key==="Enter") guardarSaldo(); if(e.key==="Escape") setEditSaldo(false); }}
-                  placeholder="ej: 10.00" type="number" step="0.01"
-                  style={{ flex:1, background:B.bg, border:`1px solid ${B.accentL}`, borderRadius:5, padding:"3px 6px", color:B.text, fontSize:11, outline:"none" }} />
-                <button onClick={guardarSaldo} style={{ padding:"3px 7px", borderRadius:5, cursor:"pointer", background:B.accent, border:"none", color:"#fff", fontSize:10, fontWeight:700 }}>OK</button>
-              </div>
-            ) : saldoIA !== null ? (
-              <div>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                  <span style={{ fontSize:10, color:"#8AAECC" }}>Consumido</span>
-                  <span style={{ fontSize:10, color:"#8AAECC" }}>Saldo</span>
-                </div>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
-                  <span style={{ fontSize:11, fontWeight:700, color:B.hot }}>${consumoIA.toFixed(4)}</span>
-                  <span style={{ fontSize:11, fontWeight:700, color:"#2E9E6A" }}>${Math.max(0, saldoIA - consumoIA).toFixed(4)}</span>
-                </div>
-                <div style={{ height:3, background:B.border, borderRadius:2, overflow:"hidden", marginBottom:5 }}>
-                  <div style={{ height:"100%", borderRadius:2,
-                    background: saldoIA > 0 ? `linear-gradient(90deg, #2E9E6A, ${B.hot})` : B.hot,
-                    width: Math.min(100, (consumoIA / saldoIA) * 100) + "%" }} />
-                </div>
-                <button onClick={()=>{ setInputSaldo(saldoIA); setEditSaldo(true); }}
-                  style={{ fontSize:9, color:"#4A6A90", background:"transparent", border:"none", cursor:"pointer", padding:0 }}>
-                  Ajustar saldo
-                </button>
-              </div>
-            ) : (
-              <button onClick={()=>setEditSaldo(true)}
-                style={{ width:"100%", padding:"4px", borderRadius:5, cursor:"pointer",
-                  background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:10 }}>
-                + Ingresar saldo
-              </button>
-            )}
-          </div>
- 
-          <button onClick={signOut}
-            style={{ width:"100%", padding:"6px", borderRadius:6, cursor:"pointer",
-              background:"transparent", border:`1px solid ${B.border}`, color:B.dim, fontSize:10 }}>
-            Cerrar sesión
-          </button>
-        </div>
-      </div>
- 
-      {/* ── MAIN ────────────────────────────────────────────── */}
-      <div style={{
-        flex:1, minWidth:0, overflow:"hidden",
-        padding: isFullH ? "18px 20px 0" : "22px 26px",
-        overflowY: isFullH ? "hidden" : "auto",
-        display:"flex", flexDirection:"column",
-        scrollbarWidth:"thin", scrollbarColor:`${B.border} transparent`,
-      }}>
-        {view === "briefing"    && <Briefing    leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase} onConsumo={agregarConsumo} />}
-        {view === "cuaderno"    && <Cuaderno    leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase} onConsumo={agregarConsumo} />}
-        {view === "kanban"      && <Kanban      leads={leads} updateLead={updateLead} />}
-        {view === "crm"         && <CRMLeads    leads={leads} updateLead={updateLead} deleteLead={deleteLead} properties={properties} captaciones={captaciones} supabase={supabase} />}
-        {view === "propiedades" && <Propiedades properties={properties} rentals={rentals} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />}
-        {view === "mapa"        && <Mapa        properties={properties} leads={leads} updateProperty={updateProperty} supabase={supabase} flyers={flyers} />}
-        {view === "flyer"       && <Flyer       properties={properties} supabase={supabase} flyers={flyers} setFlyers={setFlyers} />}
-        {view === "captaciones" && <Captaciones supabase={supabase} />}
-        {view === "zonas"       && <CaptacionZonas supabase={supabase} />}
-      </div>
- 
-      {/* ── MODALES ─────────────────────────────────────────── */}
-      {modal === "lead" && (
-        <Modal title="+ Nuevo lead" onClose={() => setModal(null)}>
-          <QuickAddLead onClose={() => setModal(null)} onAdd={handleAddLead} />
-        </Modal>
-      )}
-      {modal === "prop" && (
-        <Modal title="+ Nueva propiedad" onClose={() => setModal(null)}>
-          <QuickAddProp onClose={() => setModal(null)} onAdd={handleAddProp} />
-        </Modal>
-      )}
-    </div>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route path="/" element={<Navigate to="/briefing" replace />} />
+        <Route path="/briefing" element={<BriefingPage />} />
+        <Route path="/cuaderno" element={<CuadernoPage />} />
+        <Route path="/kanban" element={<KanbanPage />} />
+        <Route path="/crm" element={<CRMLeadsPage />} />
+        <Route path="/propiedades" element={<PropiedadesPage />} />
+        <Route path="/mapa" element={<MapaPage />} />
+        <Route path="/flyer" element={<FlyerPage />} />
+        <Route path="/captaciones" element={<CaptacionesPage />} />
+        <Route path="/zonas" element={<CaptacionZonasPage />} />
+        <Route path="/alquileres" element={<AlquileresPage />} />
+      </Route>
+    </Routes>
   );
 }
