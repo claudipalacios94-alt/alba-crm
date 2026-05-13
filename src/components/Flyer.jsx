@@ -5,7 +5,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import { B, AG } from "../data/constants.js";
 
+function useIsMobile(breakpoint = 768) {
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+  useEffect(() => {
+    const handler = () => setW(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return w < breakpoint;
+}
+
 export default function Flyer({ properties, supabase, flyers, setFlyers }) {
+  const mobile = useIsMobile(768);
   const [loaded,      setLoaded]      = useState(true);
   const [flyerSel,    setFlyerSel]    = useState(null);
   const [subiendo,    setSubiendo]    = useState(false);
@@ -84,7 +95,7 @@ export default function Flyer({ properties, supabase, flyers, setFlyers }) {
 
   const inp = {
     width:"100%", background:B.bg, border:`1px solid ${B.border}`, borderRadius:7,
-    padding:"7px 10px", color:B.text, fontSize:12, outline:"none", boxSizing:"border-box",
+    padding: mobile ? "9px 12px" : "7px 10px", color:B.text, fontSize: mobile ? 13 : 12, outline:"none", boxSizing:"border-box",
   };
 
   const fmtFecha = iso => new Date(iso).toLocaleDateString("es-AR", { day:"numeric", month:"short", year:"numeric" });
@@ -93,17 +104,21 @@ export default function Flyer({ properties, supabase, flyers, setFlyers }) {
     <div style={{ height:"100%", display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
       {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 16px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding: mobile ? "8px 12px" : "10px 16px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
         <div>
-          <span style={{ fontSize:18, fontWeight:700, color:B.text, fontFamily:"Georgia,serif" }}>Galería de Flyers</span>
-          <span style={{ fontSize:11, color:"#4A6A90", marginLeft:8 }}>{flyers.length} guardados</span>
+          <span style={{ fontSize: mobile ? 16 : 18, fontWeight:700, color:B.text, fontFamily:"Georgia,serif" }}>Galería de Flyers</span>
+          <span style={{ fontSize: mobile ? 10 : 11, color:"#4A6A90", marginLeft:8 }}>{flyers.length} guardados</span>
         </div>
+        {mobile && flyerSel && (
+          <button onClick={()=>setFlyerSel(null)}
+            style={{ background:"transparent", border:"none", color:"#4A6A90", cursor:"pointer", fontSize:16, padding:"4px 8px" }}>✕</button>
+        )}
       </div>
 
-      <div style={{ flex:1, display:"flex", overflow:"hidden" }}>
+      <div style={{ flex:1, display:"flex", overflow:"hidden", flexDirection: mobile ? "column" : "row" }}>
 
         {/* Panel izquierdo — subir + grid */}
-        <div style={{ flex:1, overflowY:"auto", padding:16, display:"flex", flexDirection:"column", gap:14 }}>
+        <div style={{ flex:1, overflowY:"auto", padding: mobile ? 12 : 16, display:"flex", flexDirection:"column", gap: mobile ? 10 : 14 }}>
 
           {/* Drop zone */}
           <input ref={fileRef} type="file" accept="image/*" onChange={onFileInput} style={{ display:"none" }} />
@@ -112,38 +127,38 @@ export default function Flyer({ properties, supabase, flyers, setFlyers }) {
             onDrop={onDrop}
             onDragOver={e=>e.preventDefault()}
             onClick={()=>{ if(!preview) fileRef.current?.click(); }}
-            style={{ border:`2px dashed ${preview?B.accentL:"#2A5BAD"}`, borderRadius:12,
+            style={{ border:`2px dashed ${preview?B.accentL:"#2A5BAD"}`, borderRadius: mobile ? 10 : 12,
               textAlign:"center", cursor:preview?"default":"pointer", transition:"all 0.2s",
               background: preview?"transparent":"rgba(10,21,37,0.6)", overflow:"hidden",
-              minHeight:160, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              minHeight: mobile ? 120 : 160, display:"flex", alignItems:"center", justifyContent:"center" }}>
             {preview ? (
               <div style={{ position:"relative", width:"100%" }}>
                 <img src={preview} alt="preview"
-                  style={{ width:"100%", maxHeight:320, objectFit:"contain", display:"block" }} />
+                  style={{ width:"100%", maxHeight: mobile ? 200 : 320, objectFit:"contain", display:"block" }} />
                 <button onClick={e=>{ e.stopPropagation(); setPreview(null); setFile(null); }}
-                  style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%",
-                    background:"rgba(0,0,0,0.75)", border:"none", color:"#fff", cursor:"pointer", fontSize:14, lineHeight:1 }}>
+                  style={{ position:"absolute", top: mobile ? 6 : 8, right: mobile ? 6 : 8, width: mobile ? 24 : 28, height: mobile ? 24 : 28, borderRadius:"50%",
+                    background:"rgba(0,0,0,0.75)", border:"none", color:"#fff", cursor:"pointer", fontSize: mobile ? 12 : 14, lineHeight:1 }}>
                   ✕
                 </button>
               </div>
             ) : (
-              <div style={{ padding:"28px 20px", display:"flex", flexDirection:"column", alignItems:"center", gap:10 }}>
+              <div style={{ padding: mobile ? "20px 16px" : "28px 20px", display:"flex", flexDirection:"column", alignItems:"center", gap: mobile ? 8 : 10 }}>
                 {/* Folder icon SVG */}
-                <svg width="52" height="44" viewBox="0 0 52 44" fill="none">
+                <svg width={mobile ? 40 : 52} height={mobile ? 34 : 44} viewBox="0 0 52 44" fill="none">
                   <path d="M2 8C2 5.8 3.8 4 6 4H20L24 8H46C48.2 8 50 9.8 50 12V38C50 40.2 48.2 42 46 42H6C3.8 42 2 40.2 2 38V8Z"
                     fill="#1E3A5F" stroke="#3A8BC4" strokeWidth="1.5"/>
                   <path d="M2 16H50V38C50 40.2 48.2 42 46 42H6C3.8 42 2 40.2 2 38V16Z"
                     fill="#2A5BAD" opacity="0.6"/>
                   <path d="M26 24V34M26 24L22 28M26 24L30 28" stroke="#8AAECC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                <div style={{ fontSize:13, fontWeight:600, color:"#C8D8E8" }}>
+                <div style={{ fontSize: mobile ? 12 : 13, fontWeight:600, color:"#C8D8E8" }}>
                   Arrastrá tu flyer acá
                 </div>
-                <div style={{ fontSize:11, color:"#4A6A90" }}>
+                <div style={{ fontSize: mobile ? 10 : 11, color:"#4A6A90" }}>
                   o hacé clic para elegir
                 </div>
-                <div style={{ fontSize:10, color:"#2A5BAD", background:"rgba(42,91,173,0.15)",
-                  padding:"3px 10px", borderRadius:10, border:"1px solid rgba(42,91,173,0.3)" }}>
+                <div style={{ fontSize: mobile ? 9 : 10, color:"#2A5BAD", background:"rgba(42,91,173,0.15)",
+                  padding: mobile ? "2px 8px" : "3px 10px", borderRadius:10, border:"1px solid rgba(42,91,173,0.3)" }}>
                   JPG · PNG
                 </div>
               </div>
@@ -152,29 +167,29 @@ export default function Flyer({ properties, supabase, flyers, setFlyers }) {
 
           {/* Formulario — solo si hay preview */}
           {preview && (
-            <div style={{ background:B.card, border:`1px solid ${B.accentL}40`, borderRadius:12, padding:14, display:"flex", flexDirection:"column", gap:10 }}>
-              <div style={{ fontSize:11, fontWeight:700, color:B.accentL, letterSpacing:"0.8px" }}>INFORMACIÓN DEL FLYER</div>
+            <div style={{ background:B.card, border:`1px solid ${B.accentL}40`, borderRadius: mobile ? 10 : 12, padding: mobile ? 12 : 14, display:"flex", flexDirection:"column", gap: mobile ? 8 : 10 }}>
+              <div style={{ fontSize: mobile ? 10 : 11, fontWeight:700, color:B.accentL, letterSpacing:"0.8px" }}>INFORMACIÓN DEL FLYER</div>
               <div>
-                <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:3 }}>TÍTULO</label>
+                <label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:3 }}>TÍTULO</label>
                 <input value={form.titulo} onChange={e=>setForm(p=>({...p,titulo:e.target.value}))}
                   placeholder="ej: Depto La Perla 2 amb" style={inp} />
               </div>
               <div>
-                <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:3 }}>NOTA (precio, contacto, detalles)</label>
+                <label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:3 }}>NOTA (precio, contacto, detalles)</label>
                 <textarea value={form.nota} onChange={e=>setForm(p=>({...p,nota:e.target.value}))}
                   placeholder="ej: USD 76.500 · 2 amb · La Perla · 223 686 7327"
                   rows={3} style={{ ...inp, resize:"none", lineHeight:1.6 }} />
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+              <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 8 : 8 }}>
                 <div>
-                  <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:3 }}>PROPIEDAD</label>
+                  <label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:3 }}>PROPIEDAD</label>
                   <select value={form.propId} onChange={e=>setForm(p=>({...p,propId:e.target.value}))} style={inp}>
                     <option value="">Sin vincular</option>
                     {properties.map(p=><option key={p.id} value={p.id}>{p.tipo} · {p.zona}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:3 }}>AGENTE</label>
+                  <label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:3 }}>AGENTE</label>
                   <select value={form.ag} onChange={e=>setForm(p=>({...p,ag:e.target.value}))} style={inp}>
                     <option value="">Sin asignar</option>
                     {Object.entries(AG).map(([k,v])=><option key={k} value={k}>{v.n}</option>)}
@@ -182,40 +197,40 @@ export default function Flyer({ properties, supabase, flyers, setFlyers }) {
                 </div>
               </div>
               <button onClick={guardar} disabled={subiendo}
-                style={{ padding:"10px", borderRadius:9, cursor:subiendo?"default":"pointer",
+                style={{ padding: mobile ? "12px" : "10px", borderRadius:9, cursor:subiendo?"default":"pointer",
                   background:subiendo?B.border:"#2E9E6A", border:`1px solid ${subiendo?B.border:"#2E9E6A"}`,
-                  color:subiendo?"#8AAECC":"#fff", fontSize:13, fontWeight:700 }}>
+                  color:subiendo?"#8AAECC":"#fff", fontSize: mobile ? 14 : 13, fontWeight:700 }}>
                 {subiendo ? "Guardando..." : "💾 Guardar flyer"}
               </button>
             </div>
           )}
 
           {/* Grid de flyers */}
-          <div style={{ fontSize:10, color:"#8AAECC", fontWeight:700, letterSpacing:"1px" }}>
+          <div style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", fontWeight:700, letterSpacing:"1px" }}>
             {flyers.length > 0 ? `${flyers.length} FLYERS GUARDADOS` : ""}
           </div>
-          {!loaded && <div style={{ textAlign:"center", color:"#4A6A90", fontSize:12 }}>Cargando...</div>}
+          {!loaded && <div style={{ textAlign:"center", color:"#4A6A90", fontSize: mobile ? 13 : 12 }}>Cargando...</div>}
           {loaded && flyers.length === 0 && !preview && (
-            <div style={{ textAlign:"center", padding:"30px 0", color:"#4A6A90", fontSize:12 }}>
+            <div style={{ textAlign:"center", padding: mobile ? "40px 0" : "30px 0", color:"#4A6A90", fontSize: mobile ? 13 : 12 }}>
               Subí tu primer flyer arriba 👆
             </div>
           )}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns: mobile ? "repeat(2,1fr)" : "repeat(3,1fr)", gap: mobile ? 8 : 10 }}>
             {flyers.map(f => {
               const isSel = flyerSel?.id === f.id;
               return (
                 <div key={f.id} onClick={()=>setFlyerSel(isSel?null:f)}
-                  style={{ borderRadius:10, overflow:"hidden", cursor:"pointer", transition:"all 0.15s",
+                  style={{ borderRadius: mobile ? 8 : 10, overflow:"hidden", cursor:"pointer", transition:"all 0.15s",
                     border:`2px solid ${isSel?B.accentL:B.border}`,
                     boxShadow: isSel?"0 0 20px rgba(58,139,196,0.3)":"none" }}>
                   {f.imagen_base64
                     ? <img src={f.imagen_base64} alt={f.titulo}
                         style={{ width:"100%", aspectRatio:"3/4", objectFit:"cover", display:"block" }} />
-                    : <div style={{ width:"100%", aspectRatio:"3/4", background:B.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:32 }}>🖼</div>
+                    : <div style={{ width:"100%", aspectRatio:"3/4", background:B.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize: mobile ? 28 : 32 }}>🖼</div>
                   }
-                  <div style={{ padding:"7px 9px", background:"rgba(10,21,37,0.95)" }}>
-                    <div style={{ fontSize:11, color:B.text, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.titulo}</div>
-                    <div style={{ fontSize:9, color:"#4A6A90", marginTop:2 }}>{fmtFecha(f.created_at)}</div>
+                  <div style={{ padding: mobile ? "6px 8px" : "7px 9px", background:"rgba(10,21,37,0.95)" }}>
+                    <div style={{ fontSize: mobile ? 12 : 11, color:B.text, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.titulo}</div>
+                    <div style={{ fontSize: mobile ? 10 : 9, color:"#4A6A90", marginTop:2 }}>{fmtFecha(f.created_at)}</div>
                   </div>
                 </div>
               );
@@ -223,13 +238,19 @@ export default function Flyer({ properties, supabase, flyers, setFlyers }) {
           </div>
         </div>
 
-        {/* Panel derecho — detalle */}
+        {/* Panel derecho — detalle (overlay en mobile) */}
         {flyerSel && (
-          <div style={{ width:320, borderLeft:`1px solid ${B.border}`, background:B.card, flexShrink:0, display:"flex", flexDirection:"column", overflowY:"auto" }}>
-            <div style={{ padding:"12px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-              <span style={{ fontSize:12, fontWeight:700, color:B.text }}>Detalle</span>
-              <button onClick={()=>setFlyerSel(null)}
-                style={{ background:"transparent", border:"none", color:"#4A6A90", cursor:"pointer", fontSize:14 }}>✕</button>
+          <div style={{ width: mobile ? "100%" : 320, borderLeft: mobile ? "none" : `1px solid ${B.border}`, background:B.card, flexShrink:0, display:"flex", flexDirection:"column", overflowY:"auto",
+            position: mobile ? "absolute" : "relative", inset: mobile ? 0 : "auto", zIndex: mobile ? 100 : "auto" }}>
+            {mobile && (
+              <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.5)", zIndex:-1 }} onClick={()=>setFlyerSel(null)} />
+            )}
+            <div style={{ padding: mobile ? "10px 12px" : "12px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <span style={{ fontSize: mobile ? 13 : 12, fontWeight:700, color:B.text }}>Detalle</span>
+              {!mobile && (
+                <button onClick={()=>setFlyerSel(null)}
+                  style={{ background:"transparent", border:"none", color:"#4A6A90", cursor:"pointer", fontSize:14 }}>✕</button>
+              )}
             </div>
 
             {flyerSel.imagen_base64 && (
@@ -237,61 +258,61 @@ export default function Flyer({ properties, supabase, flyers, setFlyers }) {
                 style={{ width:"100%", objectFit:"contain", display:"block" }} />
             )}
 
-            <div style={{ padding:"12px 14px", display:"flex", flexDirection:"column", gap:10, flex:1 }}>
+            <div style={{ padding: mobile ? "10px 12px" : "12px 14px", display:"flex", flexDirection:"column", gap: mobile ? 8 : 10, flex:1 }}>
               {editando?.id === flyerSel.id ? (
                 <>
                   <input value={editForm.titulo} onChange={e=>setEditForm(p=>({...p,titulo:e.target.value}))}
-                    style={{ ...inp, fontSize:13, fontWeight:600 }} />
+                    style={{ ...inp, fontSize: mobile ? 14 : 13, fontWeight:600 }} />
                   <textarea value={editForm.nota||""} onChange={e=>setEditForm(p=>({...p,nota:e.target.value}))}
                     rows={3} placeholder="Nota..." style={{ ...inp, resize:"none", lineHeight:1.6 }} />
                   <select value={editForm.prop_id||""} onChange={e=>setEditForm(p=>({...p,prop_id:e.target.value}))} style={inp}>
                     <option value="">Sin vincular</option>
                     {properties.map(p=><option key={p.id} value={p.id}>{p.tipo} · {p.zona}{p.dir?" · "+p.dir:""}</option>)}
                   </select>
-                  <div style={{ display:"flex", gap:8 }}>
+                  <div style={{ display:"flex", gap: mobile ? 10 : 8 }}>
                     <button onClick={guardarEdit}
-                      style={{ flex:1, padding:"8px", borderRadius:7, cursor:"pointer",
-                        background:B.accent, border:`1px solid ${B.accentL}`, color:"#fff", fontSize:12, fontWeight:700 }}>
+                      style={{ flex:1, padding: mobile ? "10px" : "8px", borderRadius:7, cursor:"pointer",
+                        background:B.accent, border:`1px solid ${B.accentL}`, color:"#fff", fontSize: mobile ? 13 : 12, fontWeight:700 }}>
                       Guardar
                     </button>
                     <button onClick={()=>setEditando(null)}
-                      style={{ padding:"8px 12px", borderRadius:7, cursor:"pointer",
-                        background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:12 }}>
+                      style={{ padding: mobile ? "10px 14px" : "8px 12px", borderRadius:7, cursor:"pointer",
+                        background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize: mobile ? 13 : 12 }}>
                       Cancelar
                     </button>
                   </div>
                 </>
               ) : (
                 <>
-                  <div style={{ fontSize:14, fontWeight:700, color:B.text }}>{flyerSel.titulo}</div>
+                  <div style={{ fontSize: mobile ? 15 : 14, fontWeight:700, color:B.text }}>{flyerSel.titulo}</div>
                   {flyerSel.nota && (
-                    <div style={{ fontSize:12, color:"#8AAECC", lineHeight:1.6, background:"rgba(42,91,173,0.08)",
-                      borderRadius:8, padding:"8px 10px", borderLeft:`2px solid ${B.accentL}` }}>
+                    <div style={{ fontSize: mobile ? 13 : 12, color:"#8AAECC", lineHeight:1.6, background:"rgba(42,91,173,0.08)",
+                      borderRadius:8, padding: mobile ? "10px" : "8px 10px", borderLeft:`2px solid ${B.accentL}` }}>
                       {flyerSel.nota}
                     </div>
                   )}
-                  <div style={{ fontSize:11, color:"#4A6A90" }}>{fmtFecha(flyerSel.created_at)}</div>
+                  <div style={{ fontSize: mobile ? 12 : 11, color:"#4A6A90" }}>{fmtFecha(flyerSel.created_at)}</div>
                   {flyerSel.prop_id && (
-                    <div style={{ fontSize:11, color:"#8AAECC" }}>
+                    <div style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC" }}>
                       🏠 {properties.find(p=>p.id===flyerSel.prop_id)?.tipo} · {properties.find(p=>p.id===flyerSel.prop_id)?.zona}
                     </div>
                   )}
-                  <div style={{ display:"flex", gap:8, marginTop:4 }}>
+                  <div style={{ display:"flex", gap: mobile ? 10 : 8, marginTop: mobile ? 6 : 4 }}>
                     <a href={flyerSel.imagen_base64} download={flyerSel.titulo+".jpg"}
-                      style={{ flex:1, padding:"9px", borderRadius:8, textAlign:"center", cursor:"pointer",
+                      style={{ flex:1, padding: mobile ? "10px" : "9px", borderRadius:8, textAlign:"center", cursor:"pointer",
                         background:B.accent, border:`1px solid ${B.accentL}`, color:"#fff",
-                        fontSize:12, fontWeight:700, textDecoration:"none" }}>
+                        fontSize: mobile ? 13 : 12, fontWeight:700, textDecoration:"none" }}>
                       ↓ Descargar
                     </a>
                     <button onClick={()=>{ setEditando(flyerSel); setEditForm({titulo:flyerSel.titulo,nota:flyerSel.nota||"",prop_id:flyerSel.prop_id||""}); }}
-                      style={{ padding:"9px 12px", borderRadius:8, cursor:"pointer",
+                      style={{ padding: mobile ? "10px 14px" : "9px 12px", borderRadius:8, cursor:"pointer",
                         background:`${B.accentL}15`, border:`1px solid ${B.accentL}40`,
-                        color:B.accentL, fontSize:12 }}>
+                        color:B.accentL, fontSize: mobile ? 13 : 12 }}>
                       ✏️
                     </button>
                     <button onClick={()=>setConfirmDel(flyerSel)}
-                      style={{ padding:"9px 12px", borderRadius:8, cursor:"pointer",
-                        background:"transparent", border:`1px solid ${B.hot}40`, color:B.hot, fontSize:12 }}>
+                      style={{ padding: mobile ? "10px 14px" : "9px 12px", borderRadius:8, cursor:"pointer",
+                        background:"transparent", border:`1px solid ${B.hot}40`, color:B.hot, fontSize: mobile ? 13 : 12 }}>
                       🗑
                     </button>
                   </div>
@@ -304,21 +325,21 @@ export default function Flyer({ properties, supabase, flyers, setFlyers }) {
 
       {/* Modal eliminar */}
       {confirmDel && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999 }}
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999, padding: mobile ? 16 : 20 }}
           onClick={()=>setConfirmDel(null)}>
-          <div style={{ background:B.sidebar, border:`1px solid ${B.hot}50`, borderRadius:14, padding:"24px 28px", maxWidth:320, width:"90%" }}
+          <div style={{ background:B.sidebar, border:`1px solid ${B.hot}50`, borderRadius:14, padding: mobile ? "20px 16px" : "24px 28px", maxWidth:320, width:"90%" }}
             onClick={e=>e.stopPropagation()}>
-            <div style={{ fontSize:14, fontWeight:700, color:B.text, marginBottom:6 }}>¿Eliminar flyer?</div>
-            <div style={{ fontSize:12, color:"#8AAECC", marginBottom:18 }}>"{confirmDel.titulo}"</div>
-            <div style={{ display:"flex", gap:10 }}>
+            <div style={{ fontSize: mobile ? 15 : 14, fontWeight:700, color:B.text, marginBottom: mobile ? 8 : 6 }}>¿Eliminar flyer?</div>
+            <div style={{ fontSize: mobile ? 13 : 12, color:"#8AAECC", marginBottom: mobile ? 14 : 18 }}>"{confirmDel.titulo}"</div>
+            <div style={{ display:"flex", gap: mobile ? 12 : 10 }}>
               <button onClick={()=>setConfirmDel(null)}
-                style={{ flex:1, padding:10, borderRadius:8, cursor:"pointer",
-                  background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:12 }}>
+                style={{ flex:1, padding: mobile ? 12 : 10, borderRadius:8, cursor:"pointer",
+                  background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize: mobile ? 13 : 12 }}>
                 Cancelar
               </button>
               <button onClick={()=>eliminar(confirmDel.id)}
-                style={{ flex:1, padding:10, borderRadius:8, cursor:"pointer",
-                  background:B.hot, border:"none", color:"#fff", fontSize:12, fontWeight:700 }}>
+                style={{ flex:1, padding: mobile ? 12 : 10, borderRadius:8, cursor:"pointer",
+                  background:B.hot, border:"none", color:"#fff", fontSize: mobile ? 13 : 12, fontWeight:700 }}>
                 Eliminar
               </button>
             </div>

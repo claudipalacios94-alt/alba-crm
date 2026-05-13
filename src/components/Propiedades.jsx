@@ -2,8 +2,18 @@
 // ALBA CRM — MÓDULO PROPIEDADES + ALQUILERES
 // Cards expandibles, categorías, edición inline
 // ══════════════════════════════════════════════════════════════
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { B, AG, matchLeadProps } from "../data/constants.js";
+
+function useIsMobile(breakpoint = 768) {
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+  useEffect(() => {
+    const handler = () => setW(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return w < breakpoint;
+}
  
 const CATEGORIAS = [
   { key: "destacada", label: "Destacada",        color: "#E8A830" },
@@ -62,6 +72,7 @@ function matchingInverso(prop, leads) {
 }
  
 function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
+  const mobile = useIsMobile(768);
   const [open,       setOpen]       = useState(false);
   const [editing,    setEditing]    = useState(false);
   const [editData,   setEditData]   = useState({});
@@ -163,7 +174,7 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
  
   const inp = {
     width: "100%", background: B.bg, border: "1px solid " + B.border,
-    borderRadius: 6, padding: "6px 9px", color: B.text, fontSize: 12,
+    borderRadius: 6, padding: mobile ? "8px 10px" : "6px 9px", color: B.text, fontSize: mobile ? 13 : 12,
     outline: "none", boxSizing: "border-box",
   };
  
@@ -172,84 +183,84 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
       borderLeft: "3px solid " + cat.color, borderRadius: 12, overflow: "hidden" }}>
  
       <div onClick={() => { if (!editing) { setOpen(o => !o); if (!open) loadDocs(); } }}
-        style={{ padding: "13px 14px", cursor: editing ? "default" : "pointer" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+        style={{ padding: mobile ? "14px" : "13px 14px", cursor: editing ? "default" : "pointer" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: mobile ? "wrap" : "nowrap" }}>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginBottom: 3 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: B.text }}>{p.tipo}</span>
-              <span style={{ fontSize: 11, color: "#8AAECC" }}>{p.zona}</span>
+              <span style={{ fontSize: mobile ? 14 : 13, fontWeight: 700, color: B.text }}>{p.tipo}</span>
+              <span style={{ fontSize: mobile ? 12 : 11, color: "#8AAECC" }}>{p.zona}</span>
               {p.ag && AG[p.ag] && (
-                <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3,
+                <span style={{ fontSize: mobile ? 11 : 10, padding: mobile ? "2px 7px" : "1px 6px", borderRadius: 3,
                   background: AG[p.ag].bg, color: AG[p.ag].c, fontWeight: 700 }}>
                   {AG[p.ag].n}
                 </span>
               )}
-              <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 10,
+              <span style={{ fontSize: mobile ? 11 : 10, padding: mobile ? "2px 8px" : "1px 7px", borderRadius: 10,
                 background: cat.color + "20", color: cat.color, fontWeight: 600, border: "1px solid " + cat.color + "40" }}>
                 {cat.label}
               </span>
             </div>
-            <div style={{ fontSize: 11, color: "#6A8AAE" }}>{p.dir} {p.lat ? "📍" : ""}</div>
+            <div style={{ fontSize: mobile ? 12 : 11, color: "#6A8AAE" }}>{p.dir} {p.lat ? "📍" : ""}</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
             <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:2 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif" }}>
+              <div style={{ fontSize: mobile ? 16 : 15, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif" }}>
                 {p.precio ? "USD " + Number(p.precio).toLocaleString() : "A consultar"}
               </div>
               {p.precio_original && p.precio && Number(p.precio) < Number(p.precio_original) && (
-                <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:2 }}>
-                  <span style={{ fontSize:11, color:"#8AAECC", textDecoration:"line-through" }}>USD {Number(p.precio_original).toLocaleString()}</span>
-                  <span style={{ fontSize:11, padding:"2px 8px", borderRadius:8, background:"rgba(255,107,53,0.2)", color:"#FF6B35", fontWeight:700, border:"1px solid rgba(255,107,53,0.5)", letterSpacing:"0.5px" }}>↓ RETASADO</span>
-                  <span style={{ fontSize:10, color:"#FF6B35" }}>-{Math.round((1 - Number(p.precio)/Number(p.precio_original))*100)}%</span>
+                <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:2, flexWrap:"wrap" }}>
+                  <span style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", textDecoration:"line-through" }}>USD {Number(p.precio_original).toLocaleString()}</span>
+                  <span style={{ fontSize: mobile ? 12 : 11, padding: mobile ? "3px 9px" : "2px 8px", borderRadius:8, background:"rgba(255,107,53,0.2)", color:"#FF6B35", fontWeight:700, border:"1px solid rgba(255,107,53,0.5)", letterSpacing:"0.5px" }}>↓ RETASADO</span>
+                  <span style={{ fontSize: mobile ? 11 : 10, color:"#FF6B35" }}>-{Math.round((1 - Number(p.precio)/Number(p.precio_original))*100)}%</span>
                 </div>
               )}
             </div>
             <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-              <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4,
+              <span style={{ fontSize: mobile ? 11 : 10, padding: mobile ? "3px 7px" : "2px 6px", borderRadius: 4,
                 background: scColor + "18", color: scColor }}>{p.sc}</span>
-              <span style={{ fontSize: 13, color: B.accentL }}>{open ? "▲" : "▼"}</span>
+              <span style={{ fontSize: mobile ? 14 : 13, color: B.accentL }}>{open ? "▲" : "▼"}</span>
             </div>
           </div>
         </div>
         {!open && p.caracts && (
-          <div style={{ fontSize: 11, color: "#6A8AAE", marginTop: 5, overflow: "hidden",
+          <div style={{ fontSize: mobile ? 12 : 11, color: "#6A8AAE", marginTop: 5, overflow: "hidden",
             textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.caracts}</div>
         )}
       </div>
  
       {open && !editing && (
-        <div style={{ borderTop: "1px solid " + B.border, padding: "12px 14px",
-          background: "rgba(10,21,37,0.4)", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ borderTop: "1px solid " + B.border, padding: mobile ? "14px" : "12px 14px",
+          background: "rgba(10,21,37,0.4)", display: "flex", flexDirection: "column", gap: mobile ? 14 : 12 }}>
  
           {(() => {
             const matches = matchingInverso(p, leads);
             if (matches.length === 0) return (
-              <div style={{ padding: "8px 12px", borderRadius: 8,
+              <div style={{ padding: mobile ? "10px 14px" : "8px 12px", borderRadius: 8,
                 background: "rgba(204,34,51,0.1)", border: "1px solid rgba(204,34,51,0.3)" }}>
-                <div style={{ fontSize: 11, color: "#CC2233", fontWeight: 600, marginBottom: 2 }}>Sin leads interesados</div>
-                <div style={{ fontSize: 11, color: "#8AAECC" }}>Ningún lead activo matchea esta propiedad. Considerá retasar o ampliar la búsqueda.</div>
+                <div style={{ fontSize: mobile ? 12 : 11, color: "#CC2233", fontWeight: 600, marginBottom: 2 }}>Sin leads interesados</div>
+                <div style={{ fontSize: mobile ? 12 : 11, color: "#8AAECC" }}>Ningún lead activo matchea esta propiedad. Considerá retasar o ampliar la búsqueda.</div>
               </div>
             );
             return (
-              <div style={{ padding: "8px 12px", borderRadius: 8,
+              <div style={{ padding: mobile ? "10px 14px" : "8px 12px", borderRadius: 8,
                 background: "rgba(46,158,106,0.08)", border: "1px solid rgba(46,158,106,0.25)" }}>
-                <div style={{ fontSize: 11, color: "#2E9E6A", fontWeight: 600, marginBottom: 6 }}>
+                <div style={{ fontSize: mobile ? 12 : 11, color: "#2E9E6A", fontWeight: 600, marginBottom: 6 }}>
                   {matches.length} lead{matches.length > 1 ? "s" : ""} interesado{matches.length > 1 ? "s" : ""}
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 6 : 4 }}>
                   {matches.map(lead => {
                     const waLink = lead.tel ? "https://wa.me/" + lead.tel.replace(/\D/g, "") : null;
                     return (
-                      <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" }}>
+                      <div key={lead.id} style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between", flexWrap: mobile ? "wrap" : "nowrap" }}>
                         <div>
-                          <span style={{ fontSize: 12, color: "#E8F0FA", fontWeight: 500 }}>{lead.nombre}</span>
-                          <span style={{ fontSize: 11, color: "#6A8AAE", marginLeft: 6 }}>
+                          <span style={{ fontSize: mobile ? 13 : 12, color: "#E8F0FA", fontWeight: 500 }}>{lead.nombre}</span>
+                          <span style={{ fontSize: mobile ? 12 : 11, color: "#6A8AAE", marginLeft: 6 }}>
                             {lead.tipo} · {lead.zona} · USD {lead.presup?.toLocaleString()}
                           </span>
                         </div>
                         {waLink && (
                           <a href={waLink} target="_blank" rel="noreferrer"
-                            style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6,
+                            style={{ fontSize: mobile ? 11 : 10, padding: mobile ? "4px 10px" : "2px 8px", borderRadius: 6,
                               background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.3)",
                               color: "#25D366", textDecoration: "none", fontWeight: 600, flexShrink: 0 }}>
                             WA
@@ -264,11 +275,11 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
           })()}
  
           <div>
-            <div style={{ fontSize: 11, color: "#5A7A9A", fontWeight: 600, marginBottom: 7, letterSpacing: "0.8px" }}>CATEGORÍA</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <div style={{ fontSize: mobile ? 12 : 11, color: "#5A7A9A", fontWeight: 600, marginBottom: mobile ? 8 : 7, letterSpacing: "0.8px" }}>CATEGORÍA</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 8 : 6 }}>
               {CATEGORIAS.map(c => (
                 <button key={c.key} onClick={() => changeCategoria(c.key)} disabled={savingCat}
-                  style={{ padding: "5px 12px", borderRadius: 16, fontSize: 11, cursor: "pointer",
+                  style={{ padding: mobile ? "6px 14px" : "5px 12px", borderRadius: 16, fontSize: mobile ? 12 : 11, cursor: "pointer",
                     background: localCat === c.key ? c.color + "25" : "transparent",
                     border: "1px solid " + (localCat === c.key ? c.color : B.border),
                     color: localCat === c.key ? c.color : "#8AAECC",
@@ -279,20 +290,20 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
             </div>
           </div>
  
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-            {p.estado && <div style={{ fontSize: 12 }}><span style={{ color: "#5A7A9A" }}>Estado: </span><span style={{ color: B.text }}>{p.estado}</span></div>}
-            {p.m2tot  && <div style={{ fontSize: 12 }}><span style={{ color: "#5A7A9A" }}>Sup.: </span><span style={{ color: B.text }}>{p.m2tot}m²{p.m2cub ? " · " + p.m2cub + "m² cub" : ""}</span></div>}
-            {p.precio && p.m2tot && <div style={{ fontSize: 12 }}><span style={{ color: "#5A7A9A" }}>m²: </span><span style={{ color: B.accentL }}>USD {Math.round(p.precio / p.m2tot).toLocaleString()}</span></div>}
-            <div style={{ fontSize: 12 }}><span style={{ color: "#5A7A9A" }}>Cartera: </span><span style={{ color: B.text }}>{p.dias}d</span></div>
+          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 8 : 6 }}>
+            {p.estado && <div style={{ fontSize: mobile ? 13 : 12 }}><span style={{ color: "#5A7A9A" }}>Estado: </span><span style={{ color: B.text }}>{p.estado}</span></div>}
+            {p.m2tot  && <div style={{ fontSize: mobile ? 13 : 12 }}><span style={{ color: "#5A7A9A" }}>Sup.: </span><span style={{ color: B.text }}>{p.m2tot}m²{p.m2cub ? " · " + p.m2cub + "m² cub" : ""}</span></div>}
+            {p.precio && p.m2tot && <div style={{ fontSize: mobile ? 13 : 12 }}><span style={{ color: "#5A7A9A" }}>m²: </span><span style={{ color: B.accentL }}>USD {Math.round(p.precio / p.m2tot).toLocaleString()}</span></div>}
+            <div style={{ fontSize: mobile ? 13 : 12 }}><span style={{ color: "#5A7A9A" }}>Cartera: </span><span style={{ color: B.text }}>{p.dias}d</span></div>
           </div>
-          {p.caracts && <div style={{ fontSize: 12, color: "#8AAECC" }}>{p.caracts}</div>}
-          {p.descripcion && <div style={{ fontSize: 12, color: "#8AAECC", lineHeight: 1.6, fontStyle: "italic" }}>{p.descripcion}</div>}
-          {p.info    && <div style={{ fontSize: 12, color: "#6A8AAE", fontStyle: "italic" }}>{p.info}</div>}
+          {p.caracts && <div style={{ fontSize: mobile ? 13 : 12, color: "#8AAECC" }}>{p.caracts}</div>}
+          {p.descripcion && <div style={{ fontSize: mobile ? 13 : 12, color: "#8AAECC", lineHeight: 1.6, fontStyle: "italic" }}>{p.descripcion}</div>}
+          {p.info    && <div style={{ fontSize: mobile ? 13 : 12, color: "#6A8AAE", fontStyle: "italic" }}>{p.info}</div>}
           {p.fotos && (
-            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+            <div style={{ display:"flex", flexWrap:"wrap", gap: mobile ? 8 : 6 }}>
               {p.fotos.split("\n").filter(Boolean).map((url, i) => (
                 <a key={i} href={url.trim()} target="_blank" rel="noreferrer"
-                  style={{ display:"block", width:64, height:64, borderRadius:6, overflow:"hidden",
+                  style={{ display:"block", width: mobile ? 72 : 64, height: mobile ? 72 : 64, borderRadius:6, overflow:"hidden",
                     border:`1px solid ${B.border}`, flexShrink:0 }}>
                   <img src={url.trim()} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}
                     onError={e => { e.target.style.display="none"; }} />
@@ -301,28 +312,28 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
             </div>
           )}
  
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: mobile ? 8 : 6, flexWrap: "wrap" }}>
             <a href={"https://www.openstreetmap.org/search?query=" + encodeURIComponent((p.dir || "") + ", Mar del Plata, Argentina")}
               target="_blank" rel="noreferrer"
-              style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, textDecoration: "none",
+              style={{ fontSize: mobile ? 12 : 11, padding: mobile ? "6px 12px" : "4px 10px", borderRadius: 6, textDecoration: "none",
                 background: "rgba(100,160,220,0.12)", border: "1px solid rgba(100,160,220,0.3)", color: "#8AAECC" }}>
               🗺 Ver en OSM
             </a>
             <a href={"https://maps.google.com/?q=" + encodeURIComponent((p.dir || "") + ", Mar del Plata, Argentina")}
               target="_blank" rel="noreferrer"
-              style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, textDecoration: "none",
+              style={{ fontSize: mobile ? 12 : 11, padding: mobile ? "6px 12px" : "4px 10px", borderRadius: 6, textDecoration: "none",
                 background: "rgba(66,133,244,0.12)", border: "1px solid rgba(66,133,244,0.3)", color: "#8AAECC" }}>
               📍 Google Maps
             </a>
           </div>
  
-          <div style={{ borderTop:"1px solid "+B.border, paddingTop:10 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:7 }}>
-              <span style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", textTransform:"uppercase" }}>
+          <div style={{ borderTop:"1px solid "+B.border, paddingTop: mobile ? 12 : 10 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: mobile ? 8 : 7, flexWrap: mobile ? "wrap" : "nowrap", gap: mobile ? 6 : 0 }}>
+              <span style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", textTransform:"uppercase" }}>
                 📁 Documentos {docs.length > 0 && `(${docs.length})`}
               </span>
               <button onClick={() => fileRef.current?.click()} disabled={uploading}
-                style={{ fontSize:11, padding:"3px 10px", borderRadius:6, cursor:"pointer",
+                style={{ fontSize: mobile ? 12 : 11, padding: mobile ? "5px 12px" : "3px 10px", borderRadius:6, cursor:"pointer",
                   background:B.accent+"22", border:"1px solid "+B.accentL+"60", color:B.accentL }}>
                 {uploading ? "Subiendo..." : "+ Subir"}
               </button>
@@ -365,18 +376,18 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
             </div>
           </div>
  
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: mobile ? 10 : 8 }}>
             <button onClick={startEdit}
-              style={{ flex: 1, padding: "7px", borderRadius: 7, cursor: "pointer",
+              style={{ flex: 1, padding: mobile ? "9px" : "7px", borderRadius: 7, cursor: "pointer",
                 background: B.accent + "22", border: "1px solid " + B.accentL + "60",
-                color: B.accentL, fontSize: 12, fontWeight: 600 }}>
+                color: B.accentL, fontSize: mobile ? 13 : 12, fontWeight: 600 }}>
               Editar
             </button>
             {!confirmDel && (
               <button onClick={() => setConfirmDel(true)}
-                style={{ padding: "7px 14px", borderRadius: 7, cursor: "pointer",
+                style={{ padding: mobile ? "9px 16px" : "7px 14px", borderRadius: 7, cursor: "pointer",
                   background: "transparent", border: "1px solid " + B.hot + "40",
-                  color: B.hot, fontSize: 12 }}>
+                  color: B.hot, fontSize: mobile ? 13 : 12 }}>
                 Eliminar
               </button>
             )}
@@ -384,19 +395,19 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
  
           {confirmDel && (
             <div style={{ background: B.hot + "15", border: "1px solid " + B.hot + "50",
-              borderRadius: 8, padding: "12px" }}>
-              <div style={{ fontSize: 13, color: B.text, marginBottom: 8 }}>
+              borderRadius: 8, padding: mobile ? "14px" : "12px" }}>
+              <div style={{ fontSize: mobile ? 14 : 13, color: B.text, marginBottom: mobile ? 10 : 8 }}>
                 Eliminar <strong>{p.tipo} — {p.dir}</strong>?
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: mobile ? 10 : 8 }}>
                 <button onClick={() => deleteProperty(p.id)}
-                  style={{ flex: 1, padding: "7px", borderRadius: 6, cursor: "pointer",
-                    background: B.hot, border: "none", color: "#fff", fontSize: 12, fontWeight: 700 }}>
+                  style={{ flex: 1, padding: mobile ? "9px" : "7px", borderRadius: 6, cursor: "pointer",
+                    background: B.hot, border: "none", color: "#fff", fontSize: mobile ? 13 : 12, fontWeight: 700 }}>
                   Sí
                 </button>
                 <button onClick={() => setConfirmDel(false)}
-                  style={{ flex: 1, padding: "7px", borderRadius: 6, cursor: "pointer",
-                    background: "transparent", border: "1px solid " + B.border, color: "#8AAECC", fontSize: 12 }}>
+                  style={{ flex: 1, padding: mobile ? "9px" : "7px", borderRadius: 6, cursor: "pointer",
+                    background: "transparent", border: "1px solid " + B.border, color: "#8AAECC", fontSize: mobile ? 13 : 12 }}>
                   No
                 </button>
               </div>
@@ -406,10 +417,10 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
       )}
  
       {editing && (
-        <div style={{ borderTop: "1px solid " + B.accentL + "40", padding: "12px 14px",
-          background: "rgba(10,21,37,0.6)", display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: B.accentL }}>Editando</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+        <div style={{ borderTop: "1px solid " + B.accentL + "40", padding: mobile ? "14px" : "12px 14px",
+          background: "rgba(10,21,37,0.6)", display: "flex", flexDirection: "column", gap: mobile ? 10 : 8 }}>
+          <div style={{ fontSize: mobile ? 12 : 11, fontWeight: 700, color: B.accentL }}>Editando</div>
+          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 8 : 6 }}>
             <div>
               <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>TIPO</label>
               <select value={editData.tipo} onChange={e => setEditData(d => ({...d, tipo: e.target.value}))} style={inp}>
@@ -431,58 +442,58 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
             <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>DIRECCIÓN</label>
             <input value={editData.dir} onChange={e => setEditData(d => ({...d, dir: e.target.value}))} style={inp} />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr 1fr", gap: mobile ? 8 : 6 }}>
             <div>
-              <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>PRECIO USD</label>
+              <label style={{ fontSize: mobile ? 12 : 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>PRECIO USD</label>
               <input type="number" value={editData.precio} onChange={e => setEditData(d => ({...d, precio: e.target.value}))} style={inp} />
             </div>
             <div>
-              <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>M² TOT</label>
+              <label style={{ fontSize: mobile ? 12 : 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>M² TOT</label>
               <input type="number" value={editData.m2tot} onChange={e => setEditData(d => ({...d, m2tot: e.target.value}))} style={inp} />
             </div>
             <div>
-              <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>M² CUB</label>
+              <label style={{ fontSize: mobile ? 12 : 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>M² CUB</label>
               <input type="number" value={editData.m2cub} onChange={e => setEditData(d => ({...d, m2cub: e.target.value}))} style={inp} />
             </div>
           </div>
           <div>
-            <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>CARACTERÍSTICAS</label>
+            <label style={{ fontSize: mobile ? 12 : 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>CARACTERÍSTICAS</label>
             <input value={editData.caracts} onChange={e => setEditData(d => ({...d, caracts: e.target.value}))} style={inp} />
           </div>
           <div>
-            <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>DESCRIPCIÓN DE MARKETING</label>
+            <label style={{ fontSize: mobile ? 12 : 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>DESCRIPCIÓN DE MARKETING</label>
             <textarea value={editData.descripcion} onChange={e => setEditData(d => ({...d, descripcion: e.target.value}))}
               rows={3} placeholder="Texto para flyer, portales, WA..."
               style={{ ...inp, resize:"vertical", lineHeight:1.5 }} />
           </div>
           <div>
-            <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>FOTOS (una URL por línea)</label>
+            <label style={{ fontSize: mobile ? 12 : 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>FOTOS (una URL por línea)</label>
             <textarea value={editData.fotos} onChange={e => setEditData(d => ({...d, fotos: e.target.value}))}
               rows={3} placeholder={"https://...\nhttps://..."}
-              style={{ ...inp, resize:"vertical", lineHeight:1.6, fontFamily:"monospace", fontSize:11 }} />
+              style={{ ...inp, resize:"vertical", lineHeight:1.6, fontFamily:"monospace", fontSize: mobile ? 12 : 11 }} />
           </div>
           <div>
-            <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>INFO INTERNA</label>
+            <label style={{ fontSize: mobile ? 12 : 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>INFO INTERNA</label>
             <input value={editData.info} onChange={e => setEditData(d => ({...d, info: e.target.value}))} style={inp} />
           </div>
           <div>
-            <label style={{ fontSize: 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>AGENTE</label>
+            <label style={{ fontSize: mobile ? 12 : 11, color: "#8AAECC", display: "block", marginBottom: 2 }}>AGENTE</label>
             <select value={editData.ag} onChange={e => setEditData(d => ({...d, ag: e.target.value}))} style={inp}>
               <option value="">Sin asignar</option>
               {Object.entries(AG).map(([k, v]) => <option key={k} value={k}>{v.n}</option>)}
             </select>
           </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+          <div style={{ display: "flex", gap: mobile ? 10 : 8, marginTop: 4 }}>
             <button onClick={saveEdit} disabled={saving}
-              style={{ flex: 1, padding: "8px", borderRadius: 7, cursor: "pointer",
+              style={{ flex: 1, padding: mobile ? "10px" : "8px", borderRadius: 7, cursor: "pointer",
                 background: saving ? B.border : B.accent,
                 border: "1px solid " + (saving ? B.border : B.accentL),
-                color: saving ? "#8AAECC" : "#fff", fontSize: 12, fontWeight: 700 }}>
+                color: saving ? "#8AAECC" : "#fff", fontSize: mobile ? 13 : 12, fontWeight: 700 }}>
               {saving ? "Guardando..." : "Guardar"}
             </button>
             <button onClick={() => setEditing(false)}
-              style={{ padding: "8px 14px", borderRadius: 7, cursor: "pointer",
-                background: "transparent", border: "1px solid " + B.border, color: "#8AAECC", fontSize: 12 }}>
+              style={{ padding: mobile ? "10px 16px" : "8px 14px", borderRadius: 7, cursor: "pointer",
+                background: "transparent", border: "1px solid " + B.border, color: "#8AAECC", fontSize: mobile ? 13 : 12 }}>
               Cancelar
             </button>
           </div>
@@ -493,22 +504,23 @@ function PropCard({ p, leads, supabase, updateProperty, deleteProperty }) {
 }
  
 function Seccion({ titulo, color, props, leads, supabase, updateProperty, deleteProperty, defaultOpen = true }) {
+  const mobile = useIsMobile(768);
   const [open, setOpen] = useState(defaultOpen);
   if (props.length === 0) return null;
   return (
-    <div style={{ marginBottom: 28 }}>
+    <div style={{ marginBottom: mobile ? 20 : 28 }}>
       <div onClick={() => setOpen(o => !o)}
-        style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, cursor: "pointer",
-          padding: "6px 0", borderBottom: "1px solid " + color + "30" }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: color }} />
-        <span style={{ fontSize: 12, fontWeight: 700, color, letterSpacing: "1px", textTransform: "uppercase" }}>
+        style={{ display: "flex", alignItems: "center", gap: mobile ? 8 : 10, marginBottom: mobile ? 10 : 12, cursor: "pointer",
+          padding: mobile ? "8px 0" : "6px 0", borderBottom: "1px solid " + color + "30" }}>
+        <div style={{ width: mobile ? 10 : 8, height: mobile ? 10 : 8, borderRadius: "50%", background: color }} />
+        <span style={{ fontSize: mobile ? 13 : 12, fontWeight: 700, color, letterSpacing: "1px", textTransform: "uppercase" }}>
           {titulo}
         </span>
-        <span style={{ fontSize: 12, color: "#4A6A90" }}>({props.length})</span>
-        <span style={{ fontSize: 12, color: "#4A6A90", marginLeft: "auto" }}>{open ? "▲" : "▼"}</span>
+        <span style={{ fontSize: mobile ? 13 : 12, color: "#4A6A90" }}>({props.length})</span>
+        <span style={{ fontSize: mobile ? 13 : 12, color: "#4A6A90", marginLeft: "auto" }}>{open ? "▲" : "▼"}</span>
       </div>
       {open && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "repeat(auto-fill,minmax(300px,1fr))", gap: mobile ? 14 : 12 }}>
           {props.map(p => (
             <PropCard key={p.id} p={p} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
           ))}
@@ -520,35 +532,36 @@ function Seccion({ titulo, color, props, leads, supabase, updateProperty, delete
  
 // ── Vista Alquileres ──────────────────────────────────────────
 function AlquileresView({ rentals = [] }) {
+  const mobile = useIsMobile(768);
   return (
     <div>
-      <p style={{ fontSize: 12, color: "#8AAECC", margin: "0 0 16px" }}>{rentals.length} propiedades en gestión</p>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))", gap:12 }}>
+      <p style={{ fontSize: mobile ? 13 : 12, color: "#8AAECC", margin: mobile ? "0 0 14px" : "0 0 16px" }}>{rentals.length} propiedades en gestión</p>
+      <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "repeat(auto-fill,minmax(250px,1fr))", gap: mobile ? 14 : 12 }}>
         {rentals.map(a => (
-          <div key={a.id} style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, padding:"14px",
+          <div key={a.id} style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, padding: mobile ? "16px" : "14px",
             borderLeft:`3px solid ${a.estado === "Alquilado" ? B.ok : B.warm}` }}>
-            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom: mobile ? 10 : 8, flexWrap: mobile ? "wrap" : "nowrap", gap: mobile ? 6 : 0 }}>
               <div>
-                <div style={{ fontSize:13, fontWeight:600, color:B.text }}>{a.nombre}</div>
-                <div style={{ fontSize:11, color:"#8AAECC", marginTop:2 }}>{a.tipo} · {a.zona}</div>
+                <div style={{ fontSize: mobile ? 14 : 13, fontWeight:600, color:B.text }}>{a.nombre}</div>
+                <div style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", marginTop:2 }}>{a.tipo} · {a.zona}</div>
               </div>
-              <div style={{ fontSize:12, padding:"2px 8px", borderRadius:20, alignSelf:"flex-start",
+              <div style={{ fontSize: mobile ? 13 : 12, padding: mobile ? "3px 10px" : "2px 8px", borderRadius:20, alignSelf:"flex-start",
                 background: a.estado === "Alquilado" ? `${B.ok}18` : `${B.warm}18`,
                 color: a.estado === "Alquilado" ? B.ok : B.warm }}>
                 {a.estado}
               </div>
             </div>
             {a.precioARS && (
-              <div style={{ fontSize:14, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif", marginBottom:4 }}>
+              <div style={{ fontSize: mobile ? 15 : 14, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif", marginBottom: mobile ? 6 : 4 }}>
                 ARS {a.precioARS.toLocaleString()}/mes
               </div>
             )}
-            <div style={{ fontSize:11, color:B.muted }}>{a.tipoAlq}</div>
-            {a.info && <div style={{ fontSize:12, color:B.dim, marginTop:5, fontStyle:"italic" }}>{a.info}</div>}
+            <div style={{ fontSize: mobile ? 12 : 11, color:B.muted }}>{a.tipoAlq}</div>
+            {a.info && <div style={{ fontSize: mobile ? 13 : 12, color:B.dim, marginTop: mobile ? 8 : 5, fontStyle:"italic" }}>{a.info}</div>}
           </div>
         ))}
         {rentals.length === 0 && (
-          <div style={{ textAlign:"center", padding:"40px", color:B.muted }}>Sin alquileres registrados</div>
+          <div style={{ textAlign:"center", padding: mobile ? "50px 20px" : "40px", color:B.muted, fontSize: mobile ? 14 : 13 }}>Sin alquileres registrados</div>
         )}
       </div>
     </div>
@@ -556,6 +569,7 @@ function AlquileresView({ rentals = [] }) {
 }
  
 export default function Propiedades({ properties, rentals = [], leads = [], supabase, updateProperty, deleteProperty }) {
+  const mobile = useIsMobile(768);
   const [tab, setTab] = useState("venta"); // "venta" | "alquiler"
   const [ft, setFt] = useState("Todos");
   const [q,  setQ]  = useState("");
@@ -577,7 +591,7 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
   const resto      = filtered.filter(p => (!p.categoria || p.categoria === "normal") && !isRetasado(p));
  
   const ch = act => ({
-    padding: "4px 10px", borderRadius: 20, fontSize: 11, cursor: "pointer",
+    padding: mobile ? "6px 12px" : "4px 10px", borderRadius: 20, fontSize: mobile ? 12 : 11, cursor: "pointer",
     border: "1px solid " + (act ? B.accentL : B.border),
     background: act ? B.accentL + "18" : "transparent",
     color: act ? B.accentL : "#8AAECC",
@@ -586,32 +600,32 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
   return (
     <div style={{ overflowX: "hidden" }}>
       {/* Header */}
-      <div style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+      <div style={{ marginBottom: mobile ? 14 : 16, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: mobile ? 10 : 10 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: B.text, margin: 0, fontFamily: "Georgia,serif" }}>
+          <h1 style={{ fontSize: mobile ? 18 : 20, fontWeight: 700, color: B.text, margin: 0, fontFamily: "Georgia,serif" }}>
             {tab === "venta" ? "Propiedades en venta" : "Alquileres"}
           </h1>
-          <p style={{ fontSize: 12, color: "#8AAECC", margin: "3px 0 0" }}>
+          <p style={{ fontSize: mobile ? 11 : 12, color: "#8AAECC", margin: "3px 0 0" }}>
             {tab === "venta" ? `${filtered.length} de ${properties.length} propiedades` : `${rentals.length} propiedades en gestión`}
           </p>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <div style={{ display:"flex", alignItems:"center", gap: mobile ? 8 : 10, flexWrap: mobile ? "wrap" : "nowrap", width: mobile ? "100%" : "auto" }}>
           {tab === "venta" && (
             <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar..."
-              style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid " + B.border,
-                background: B.card, color: B.text, fontSize: 12, outline: "none", width: 180 }} />
+              style={{ padding: mobile ? "8px 12px" : "7px 12px", borderRadius: 8, border: "1px solid " + B.border,
+                background: B.card, color: B.text, fontSize: mobile ? 13 : 12, outline: "none", width: mobile ? "100%" : 180, flex: mobile ? 1 : "none", order: mobile ? 1 : 0 }} />
           )}
           {/* Switch Venta / Alquiler */}
-          <div style={{ display:"flex", background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:3 }}>
+          <div style={{ display:"flex", background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:3, flexShrink:0 }}>
             {[
               { id:"venta",    label:"🏠 Venta",    count: properties.length },
               { id:"alquiler", label:"🔑 Alquiler",  count: rentals.length },
             ].map(t => (
               <button key={t.id} onClick={() => setTab(t.id)}
-                style={{ padding:"5px 14px", borderRadius:7, cursor:"pointer", fontSize:12, fontWeight:600, border:"none",
+                style={{ padding: mobile ? "7px 14px" : "5px 14px", borderRadius:7, cursor:"pointer", fontSize: mobile ? 13 : 12, fontWeight:600, border:"none",
                   background: tab === t.id ? B.accent : "transparent",
                   color: tab === t.id ? "#fff" : "#8AAECC" }}>
-                {t.label} <span style={{ opacity:0.7, fontSize:10 }}>({t.count})</span>
+                {t.label} <span style={{ opacity:0.7, fontSize: mobile ? 11 : 10 }}>({t.count})</span>
               </button>
             ))}
           </div>
@@ -620,7 +634,7 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
  
       {/* Filtros tipo — solo en venta */}
       {tab === "venta" && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 20 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 6 : 5, marginBottom: mobile ? 16 : 20 }}>
           {tipos.map(t => <button key={t} onClick={() => setFt(t)} style={ch(ft === t)}>{t}</button>)}
         </div>
       )}
@@ -635,7 +649,7 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
           <Seccion titulo="Compartidas por colegas" color="#9B6DC8" props={colegas} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
           <Seccion titulo="Sin categoría" color="#4A6A90" props={resto} leads={leads} supabase={supabase} updateProperty={updateProperty} deleteProperty={deleteProperty} />
           {filtered.length === 0 && (
-            <div style={{ textAlign: "center", padding: "40px", color: "#8AAECC" }}>Sin propiedades</div>
+            <div style={{ textAlign: "center", padding: mobile ? "50px 20px" : "40px", color: "#8AAECC", fontSize: mobile ? 14 : 13 }}>Sin propiedades</div>
           )}
         </>
       ) : (
