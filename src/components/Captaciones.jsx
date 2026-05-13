@@ -5,6 +5,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import { B, AG } from "../data/constants.js";
 
+function useIsMobile(breakpoint = 768) {
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+  useEffect(() => {
+    const handler = () => setW(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return w < breakpoint;
+}
+
 async function nominatim(dir) {
   if (!dir) return { lat: null, lng: null };
   const query = encodeURIComponent(dir + ", Mar del Plata, Buenos Aires, Argentina");
@@ -155,6 +165,7 @@ async function analizarConIA(texto) {
 }
 
 function MapaCaptaciones({ items }) {
+  const mobile = useIsMobile(768);
   const mapRef   = useRef(null);
   const leafRef  = useRef(null);
   const marksRef = useRef([]);
@@ -210,14 +221,14 @@ function MapaCaptaciones({ items }) {
   const conCoords = items.filter(i => i.lat && i.lng);
   return (
     <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, overflow:"hidden" }}>
-      <div style={{ padding:"10px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-        <span style={{ fontSize:12, fontWeight:700, color:B.accentL }}>📍 Mapa de captaciones</span>
-        <span style={{ fontSize:11, color:"#4A6A90" }}>{conCoords.length} con ubicación</span>
+      <div style={{ padding: mobile ? "12px 14px" : "10px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap: mobile ? "wrap" : "nowrap", gap: mobile ? 4 : 0 }}>
+        <span style={{ fontSize: mobile ? 13 : 12, fontWeight:700, color:B.accentL }}>📍 Mapa de captaciones</span>
+        <span style={{ fontSize: mobile ? 12 : 11, color:"#4A6A90" }}>{conCoords.length} con ubicación</span>
       </div>
       {conCoords.length === 0 ? (
-        <div style={{ padding:"24px", textAlign:"center", color:"#4A6A90", fontSize:12 }}>Las captaciones con dirección aparecerán aquí</div>
+        <div style={{ padding: mobile ? "30px 20px" : "24px", textAlign:"center", color:"#4A6A90", fontSize: mobile ? 13 : 12 }}>Las captaciones con dirección aparecerán aquí</div>
       ) : (
-        <div ref={mapRef} style={{ height:300 }} />
+        <div ref={mapRef} style={{ height: mobile ? 250 : 300 }} />
       )}
       <style>{`.leaflet-container{background:${B.bg}!important}.leaflet-tile{filter:brightness(0.85) saturate(0.7) hue-rotate(200deg)}.leaflet-control-zoom a{background:${B.card}!important;color:${B.accentL}!important;border-color:${B.border}!important}.leaflet-control-attribution{background:rgba(7,14,28,0.8)!important;color:#4A6A90!important;font-size:9px}.leaflet-popup-content-wrapper{background:#0F1E35;border:1px solid #1E3A5F;color:#C8D8E8;border-radius:8px}.leaflet-popup-tip{background:#0F1E35}`}</style>
     </div>
@@ -231,6 +242,7 @@ const TC = {
   propia:     { label:"🟡 Propia",     bg:"#E8A830", border:"solid" },
 };
 function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
+  const mobile = useIsMobile(768);
   const [open,    setOpen]    = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving,  setSaving]  = useState(false);
@@ -275,116 +287,116 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
     setSaving(false);
   }
 
-  const inp = { width:"100%", background:B.bg, border:"1px solid "+B.border, borderRadius:6, padding:"6px 9px", color:B.text, fontSize:12, outline:"none", boxSizing:"border-box" };
+  const inp = { width:"100%", background:B.bg, border:"1px solid "+B.border, borderRadius:6, padding: mobile ? "8px 10px" : "6px 9px", color:B.text, fontSize: mobile ? 13 : 12, outline:"none", boxSizing:"border-box" };
   const fmtFecha = iso => new Date(iso).toLocaleDateString("es-AR",{ day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" });
 
   return (
-    <div style={{ background:B.card, border:`1px solid ${open?borderColor:B.border}`, borderLeft:`3px solid ${borderColor}`, borderRadius:10 }}>
-      <div onClick={() => !editing && setOpen(o=>!o)} style={{ padding:"11px 13px", cursor:editing?"default":"pointer" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5, flexWrap:"wrap" }}>
-          {item.tipo && <span style={{ fontSize:11, padding:"1px 7px", borderRadius:12, background:B.accentL+"18", color:B.accentL }}>{item.tipo}</span>}
-          {item.operacion && <span style={{ fontSize:11, padding:"1px 7px", borderRadius:12, background:"#4A6A9020", color:"#8AAECC" }}>{item.operacion}</span>}
-          {agObj && <span style={{ fontSize:10, padding:"1px 5px", borderRadius:3, background:agObj.bg, color:agObj.c, fontWeight:600 }}>{agObj.n}</span>}
-          {esCompartida && <span style={{ fontSize:10, padding:"1px 7px", borderRadius:12, background:"#9B6DC820", color:"#9B6DC8", border:"1px solid #9B6DC840", fontWeight:600 }}>🤝 {item.inmobiliaria}</span>}
-          {tcObj && <span style={{ fontSize:10, padding:"1px 7px", borderRadius:12, background:tcObj.bg+"22", color:tcObj.bg, border:`1px solid ${tcObj.bg}50`, fontWeight:700 }}>{tcObj.label}</span>}
-          {item.lat && <span style={{ fontSize:10, color:"#2E9E6A" }}>📍</span>}
-          {expirada && <span style={{ fontSize:10, padding:"2px 7px", borderRadius:8, background:"rgba(204,34,51,0.2)", color:"#CC2233", fontWeight:700 }}>🔴 Expirada</span>}
-          {proxExpira && <span style={{ fontSize:10, padding:"2px 7px", borderRadius:8, background:"rgba(232,168,48,0.2)", color:"#E8A830", fontWeight:700 }}>⏰ {21-diasVida}d</span>}
-          <span style={{ fontSize:11, color:"#4A6A90", marginLeft:"auto" }}>{fmtFecha(item.created_at)}</span>
-          <span style={{ fontSize:12, color:B.accentL }}>{open?"▲":"▼"}</span>
+    <div style={{ background:B.card, border:`1px solid ${open?borderColor:B.border}`, borderLeft:`3px solid ${borderColor}`, borderRadius: mobile ? 12 : 10 }}>
+      <div onClick={() => !editing && setOpen(o=>!o)} style={{ padding: mobile ? "13px" : "11px 13px", cursor:editing?"default":"pointer" }}>
+        <div style={{ display:"flex", alignItems:"center", gap: mobile ? 5 : 6, marginBottom: mobile ? 6 : 5, flexWrap:"wrap" }}>
+          {item.tipo && <span style={{ fontSize: mobile ? 12 : 11, padding: mobile ? "2px 8px" : "1px 7px", borderRadius:12, background:B.accentL+"18", color:B.accentL }}>{item.tipo}</span>}
+          {item.operacion && <span style={{ fontSize: mobile ? 12 : 11, padding: mobile ? "2px 8px" : "1px 7px", borderRadius:12, background:"#4A6A9020", color:"#8AAECC" }}>{item.operacion}</span>}
+          {agObj && <span style={{ fontSize: mobile ? 11 : 10, padding: mobile ? "2px 6px" : "1px 5px", borderRadius:3, background:agObj.bg, color:agObj.c, fontWeight:600 }}>{agObj.n}</span>}
+          {esCompartida && <span style={{ fontSize: mobile ? 11 : 10, padding: mobile ? "2px 8px" : "1px 7px", borderRadius:12, background:"#9B6DC820", color:"#9B6DC8", border:"1px solid #9B6DC840", fontWeight:600 }}>🤝 {item.inmobiliaria}</span>}
+          {tcObj && <span style={{ fontSize: mobile ? 11 : 10, padding: mobile ? "2px 8px" : "1px 7px", borderRadius:12, background:tcObj.bg+"22", color:tcObj.bg, border:`1px solid ${tcObj.bg}50`, fontWeight:700 }}>{tcObj.label}</span>}
+          {item.lat && <span style={{ fontSize: mobile ? 11 : 10, color:"#2E9E6A" }}>📍</span>}
+          {expirada && <span style={{ fontSize: mobile ? 11 : 10, padding: mobile ? "3px 8px" : "2px 7px", borderRadius:8, background:"rgba(204,34,51,0.2)", color:"#CC2233", fontWeight:700 }}>🔴 Expirada</span>}
+          {proxExpira && <span style={{ fontSize: mobile ? 11 : 10, padding: mobile ? "3px 8px" : "2px 7px", borderRadius:8, background:"rgba(232,168,48,0.2)", color:"#E8A830", fontWeight:700 }}>⏰ {21-diasVida}d</span>}
+          <span style={{ fontSize: mobile ? 12 : 11, color:"#4A6A90", marginLeft:"auto" }}>{fmtFecha(item.created_at)}</span>
+          <span style={{ fontSize: mobile ? 13 : 12, color:B.accentL }}>{open?"▲":"▼"}</span>
         </div>
-        {(item.zona||item.direccion) && <div style={{ fontSize:12, color:"#8AAECC", marginBottom:4 }}>{[item.zona,item.direccion].filter(Boolean).join(" · ")}</div>}
-        <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-          {item.precio && <span style={{ fontSize:15, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif" }}>USD {Number(item.precio).toLocaleString()}</span>}
-          {chips.map((c,i) => <span key={i} style={{ fontSize:10, padding:"1px 7px", borderRadius:10, background:"rgba(42,91,173,0.15)", color:"#8AAECC", border:"1px solid #1E3A5F" }}>{c}</span>)}
+        {(item.zona||item.direccion) && <div style={{ fontSize: mobile ? 13 : 12, color:"#8AAECC", marginBottom: mobile ? 6 : 4 }}>{[item.zona,item.direccion].filter(Boolean).join(" · ")}</div>}
+        <div style={{ display:"flex", alignItems:"center", gap: mobile ? 6 : 8, flexWrap:"wrap" }}>
+          {item.precio && <span style={{ fontSize: mobile ? 16 : 15, fontWeight:700, color:B.accentL, fontFamily:"Georgia,serif" }}>USD {Number(item.precio).toLocaleString()}</span>}
+          {chips.map((c,i) => <span key={i} style={{ fontSize: mobile ? 11 : 10, padding: mobile ? "2px 8px" : "1px 7px", borderRadius:10, background:"rgba(42,91,173,0.15)", color:"#8AAECC", border:"1px solid #1E3A5F" }}>{c}</span>)}
         </div>
         {(item.nombre_propietario||item.telefono) && (
-          <div style={{ fontSize:11, color:"#6A8AAE", marginTop:3 }}>
+          <div style={{ fontSize: mobile ? 12 : 11, color:"#6A8AAE", marginTop: mobile ? 5 : 3 }}>
             {item.nombre_propietario && <span>👤 {item.nombre_propietario}</span>}
             {item.telefono && <span style={{ marginLeft:8 }}>📞 {item.telefono}</span>}
           </div>
         )}
         {!item.nombre_propietario && !item.telefono && (
-          <div style={{ fontSize:10, color:B.hot, marginTop:3 }}>⚠ Sin contacto — agregá nombre y teléfono</div>
+          <div style={{ fontSize: mobile ? 11 : 10, color:B.hot, marginTop: mobile ? 5 : 3 }}>⚠ Sin contacto — agregá nombre y teléfono</div>
         )}
       </div>
 
       {open && !editing && (
-        <div onClick={e=>e.stopPropagation()} style={{ borderTop:`1px solid ${B.border}`, padding:"11px 13px", background:"rgba(10,21,37,0.4)", display:"flex", flexDirection:"column", gap:8 }}>
+        <div onClick={e=>e.stopPropagation()} style={{ borderTop:`1px solid ${B.border}`, padding: mobile ? "13px" : "11px 13px", background:"rgba(10,21,37,0.4)", display:"flex", flexDirection:"column", gap: mobile ? 10 : 8 }}>
           {item.nombre_propietario && (
-            <div style={{ fontSize:12, color:"#8AAECC" }}>
+            <div style={{ fontSize: mobile ? 13 : 12, color:"#8AAECC" }}>
               👤 {item.nombre_propietario}
-              {item.telefono && <a href={`https://wa.me/${item.telefono.replace(/\D/g,"")}`} target="_blank" style={{ marginLeft:8, color:"#2E9E6A", textDecoration:"none", fontSize:11 }}>💬 {item.telefono}</a>}
+              {item.telefono && <a href={`https://wa.me/${item.telefono.replace(/\D/g,"")}`} target="_blank" style={{ marginLeft:8, color:"#2E9E6A", textDecoration:"none", fontSize: mobile ? 12 : 11 }}>💬 {item.telefono}</a>}
             </div>
           )}
-          {item.caracts && <div style={{ fontSize:12, color:"#8AAECC" }}>✅ {item.caracts}</div>}
-          {item.nota && <div style={{ fontSize:11, color:"#6A8AAE", fontStyle:"italic" }}>"{item.nota}"</div>}
-          {item.nota_interna && <div style={{ fontSize:12, color:"#8AAECC", background:"rgba(42,91,173,0.08)", borderRadius:6, padding:"6px 9px", borderLeft:`2px solid ${B.accentL}` }}>📝 {item.nota_interna}</div>}
-          {item.url && <a href={item.url} target="_blank" style={{ fontSize:11, color:B.accentL, textDecoration:"none" }}>🔗 Ver en portal</a>}
-          {item.contenido && <div style={{ fontSize:10, color:"#4A6A90", lineHeight:1.5, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{item.contenido}</div>}
-          <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:4 }}>
-            <button onClick={()=>setEditing(true)} style={{ flex:1, padding:"7px", borderRadius:7, cursor:"pointer", background:B.accent+"22", border:`1px solid ${B.accentL}60`, color:B.accentL, fontSize:12, fontWeight:600 }}>✏️ Editar</button>
-            <button onClick={()=>onConvertir(item)} style={{ flex:1, padding:"7px", borderRadius:7, cursor:"pointer", background:"#2E9E6A18", border:"1px solid #2E9E6A40", color:"#2E9E6A", fontSize:12, fontWeight:600 }}>✓ Convertida</button>
-            <button onClick={()=>onEliminar(item)} style={{ padding:"7px 12px", borderRadius:7, cursor:"pointer", background:"transparent", border:`1px solid ${B.hot}40`, color:B.hot, fontSize:12 }}>🗑</button>
+          {item.caracts && <div style={{ fontSize: mobile ? 13 : 12, color:"#8AAECC" }}>✅ {item.caracts}</div>}
+          {item.nota && <div style={{ fontSize: mobile ? 12 : 11, color:"#6A8AAE", fontStyle:"italic" }}>"{item.nota}"</div>}
+          {item.nota_interna && <div style={{ fontSize: mobile ? 13 : 12, color:"#8AAECC", background:"rgba(42,91,173,0.08)", borderRadius:6, padding: mobile ? "8px 10px" : "6px 9px", borderLeft:`2px solid ${B.accentL}` }}>📝 {item.nota_interna}</div>}
+          {item.url && <a href={item.url} target="_blank" style={{ fontSize: mobile ? 12 : 11, color:B.accentL, textDecoration:"none" }}>🔗 Ver en portal</a>}
+          {item.contenido && <div style={{ fontSize: mobile ? 11 : 10, color:"#4A6A90", lineHeight:1.5, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{item.contenido}</div>}
+          <div style={{ display:"flex", gap: mobile ? 8 : 6, flexWrap:"wrap", marginTop: mobile ? 6 : 4 }}>
+            <button onClick={()=>setEditing(true)} style={{ flex:1, padding: mobile ? "9px" : "7px", borderRadius:7, cursor:"pointer", background:B.accent+"22", border:`1px solid ${B.accentL}60`, color:B.accentL, fontSize: mobile ? 13 : 12, fontWeight:600 }}>✏️ Editar</button>
+            <button onClick={()=>onConvertir(item)} style={{ flex:1, padding: mobile ? "9px" : "7px", borderRadius:7, cursor:"pointer", background:"#2E9E6A18", border:"1px solid #2E9E6A40", color:"#2E9E6A", fontSize: mobile ? 13 : 12, fontWeight:600 }}>✓ Convertida</button>
+            <button onClick={()=>onEliminar(item)} style={{ padding: mobile ? "9px 14px" : "7px 12px", borderRadius:7, cursor:"pointer", background:"transparent", border:`1px solid ${B.hot}40`, color:B.hot, fontSize: mobile ? 13 : 12 }}>🗑</button>
           </div>
         </div>
       )}
 
       {editing && (
-        <div style={{ borderTop:`1px solid ${B.accentL}40`, padding:"11px 13px", background:"rgba(10,21,37,0.6)", display:"flex", flexDirection:"column", gap:7 }}>
-          <div style={{ fontSize:11, fontWeight:700, color:B.accentL, marginBottom:2 }}>Editando captación</div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO</label>
+        <div style={{ borderTop:`1px solid ${B.accentL}40`, padding: mobile ? "13px" : "11px 13px", background:"rgba(10,21,37,0.6)", display:"flex", flexDirection:"column", gap: mobile ? 9 : 7 }}>
+          <div style={{ fontSize: mobile ? 12 : 11, fontWeight:700, color:B.accentL, marginBottom:2 }}>Editando captación</div>
+          <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 8 : 6 }}>
+            <div><label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO</label>
               <select value={form.tipo} onChange={e=>setForm(f=>({...f,tipo:e.target.value}))} style={inp}>
                 <option value="">Sin tipo</option>
                 {["Departamento","Casa","PH","Dúplex","Local","Terreno","Otro"].map(t=><option key={t}>{t}</option>)}
               </select></div>
-          <div style={{gridColumn:"1/-1"}}><label style={{ fontSize:10, color:"#E8A830", display:"block", marginBottom:2 }}>★ TIPO CAPTACIÓN (obligatorio)</label>
+          <div style={{gridColumn: mobile ? "auto" : "1/-1"}}><label style={{ fontSize: mobile ? 11 : 10, color:"#E8A830", display:"block", marginBottom:2 }}>★ TIPO CAPTACIÓN (obligatorio)</label>
               <select value={form.tipo_captacion} onChange={e=>setForm(f=>({...f,tipo_captacion:e.target.value}))} style={{...inp, borderColor:form.tipo_captacion?TC[form.tipo_captacion]?.bg:"#E8A830"}}>
                 <option value="">— Seleccioná —</option>
                 <option value="propia">🟡 Propia — tu cartera</option>
                 <option value="honorarios">🟢 Honorarios — pedís la llave</option>
                 <option value="colega">🔴 Colega — él tiene la llave</option>
               </select></div>
-            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>OPERACIÓN</label>
+            <div><label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:2 }}>OPERACIÓN</label>
               <select value={form.operacion} onChange={e=>setForm(f=>({...f,operacion:e.target.value}))} style={inp}>
                 <option value="venta">Venta</option><option value="alquiler">Alquiler</option>
               </select></div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>ZONA</label><input value={form.zona} onChange={e=>setForm(f=>({...f,zona:e.target.value}))} style={inp} /></div>
-            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>DIRECCIÓN</label><input value={form.direccion} onChange={e=>setForm(f=>({...f,direccion:e.target.value}))} style={inp} /></div>
+          <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 8 : 6 }}>
+            <div><label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:2 }}>ZONA</label><input value={form.zona} onChange={e=>setForm(f=>({...f,zona:e.target.value}))} style={inp} /></div>
+            <div><label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:2 }}>DIRECCIÓN</label><input value={form.direccion} onChange={e=>setForm(f=>({...f,direccion:e.target.value}))} style={inp} /></div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
-            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>PRECIO USD</label><input type="number" value={form.precio} onChange={e=>setForm(f=>({...f,precio:e.target.value}))} style={inp} /></div>
-            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>AMBIENTES</label><input type="number" value={form.ambientes} onChange={e=>setForm(f=>({...f,ambientes:e.target.value}))} style={inp} /></div>
-            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>M²</label><input type="number" value={form.m2tot} onChange={e=>setForm(f=>({...f,m2tot:e.target.value}))} style={inp} /></div>
+          <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr 1fr", gap: mobile ? 8 : 6 }}>
+            <div><label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:2 }}>PRECIO USD</label><input type="number" value={form.precio} onChange={e=>setForm(f=>({...f,precio:e.target.value}))} style={inp} /></div>
+            <div><label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:2 }}>AMBIENTES</label><input type="number" value={form.ambientes} onChange={e=>setForm(f=>({...f,ambientes:e.target.value}))} style={inp} /></div>
+            <div><label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:2 }}>M²</label><input type="number" value={form.m2tot} onChange={e=>setForm(f=>({...f,m2tot:e.target.value}))} style={inp} /></div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>COCHERA</label>
+          <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 8 : 6 }}>
+            <div><label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:2 }}>COCHERA</label>
               <select value={form.cochera} onChange={e=>setForm(f=>({...f,cochera:e.target.value}))} style={inp}>
                 <option value="">Sin datos</option><option value="si">Con cochera</option><option value="no">Sin cochera</option>
               </select></div>
-            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>AGENTE</label>
+            <div><label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:2 }}>AGENTE</label>
               <select value={form.ag} onChange={e=>setForm(f=>({...f,ag:e.target.value}))} style={inp}>
                 <option value="">Sin agente</option>
                 {Object.entries(AG).map(([k,v])=><option key={k} value={k}>{v.n}</option>)}
               </select></div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>PROPIETARIO</label><input value={form.nombre_propietario} onChange={e=>setForm(f=>({...f,nombre_propietario:e.target.value}))} style={inp} /></div>
-            <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>TELÉFONO</label><input value={form.telefono} onChange={e=>setForm(f=>({...f,telefono:e.target.value}))} style={inp} /></div>
+          <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 8 : 6 }}>
+            <div><label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:2 }}>PROPIETARIO</label><input value={form.nombre_propietario} onChange={e=>setForm(f=>({...f,nombre_propietario:e.target.value}))} style={inp} /></div>
+            <div><label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:2 }}>TELÉFONO</label><input value={form.telefono} onChange={e=>setForm(f=>({...f,telefono:e.target.value}))} style={inp} /></div>
           </div>
-          <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>CARACTERÍSTICAS</label><input value={form.caracts} onChange={e=>setForm(f=>({...f,caracts:e.target.value}))} style={inp} /></div>
-          <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>NOTA</label><input value={form.nota} onChange={e=>setForm(f=>({...f,nota:e.target.value}))} style={inp} /></div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-            <div><label style={{ fontSize:10, color:"#9B6DC8", display:"block", marginBottom:2 }}>🤝 INMOBILIARIA</label><input value={form.inmobiliaria} onChange={e=>setForm(f=>({...f,inmobiliaria:e.target.value}))} placeholder="ej: RE/MAX..." style={{...inp,borderColor:form.inmobiliaria?"#9B6DC8":B.border}} /></div>
-            <div><label style={{ fontSize:10, color:"#4A8ABE", display:"block", marginBottom:2 }}>🔗 LINK</label><input value={form.url} onChange={e=>setForm(f=>({...f,url:e.target.value}))} placeholder="https://..." style={{...inp,borderColor:form.url?"#4A8ABE":B.border}} /></div>
+          <div><label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:2 }}>CARACTERÍSTICAS</label><input value={form.caracts} onChange={e=>setForm(f=>({...f,caracts:e.target.value}))} style={inp} /></div>
+          <div><label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:2 }}>NOTA</label><input value={form.nota} onChange={e=>setForm(f=>({...f,nota:e.target.value}))} style={inp} /></div>
+          <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 8 : 6 }}>
+            <div><label style={{ fontSize: mobile ? 11 : 10, color:"#9B6DC8", display:"block", marginBottom:2 }}>🤝 INMOBILIARIA</label><input value={form.inmobiliaria} onChange={e=>setForm(f=>({...f,inmobiliaria:e.target.value}))} placeholder="ej: RE/MAX..." style={{...inp,borderColor:form.inmobiliaria?"#9B6DC8":B.border}} /></div>
+            <div><label style={{ fontSize: mobile ? 11 : 10, color:"#4A8ABE", display:"block", marginBottom:2 }}>🔗 LINK</label><input value={form.url} onChange={e=>setForm(f=>({...f,url:e.target.value}))} placeholder="https://..." style={{...inp,borderColor:form.url?"#4A8ABE":B.border}} /></div>
           </div>
-          <div><label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:2 }}>📝 NOTA INTERNA</label><input value={form.nota_interna} onChange={e=>setForm(f=>({...f,nota_interna:e.target.value}))} style={inp} /></div>
-          <div style={{ display:"flex", gap:7, marginTop:4 }}>
-            <button onClick={guardarEdicion} disabled={saving} style={{ flex:1, padding:"8px", borderRadius:7, cursor:saving?"default":"pointer", background:saving?B.border:B.accent, border:`1px solid ${saving?B.border:B.accentL}`, color:saving?"#8AAECC":"#fff", fontSize:12, fontWeight:700 }}>{saving?"Guardando...":"Guardar"}</button>
-            <button onClick={()=>setEditing(false)} style={{ padding:"8px 14px", borderRadius:7, cursor:"pointer", background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:12 }}>Cancelar</button>
+          <div><label style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", display:"block", marginBottom:2 }}>📝 NOTA INTERNA</label><input value={form.nota_interna} onChange={e=>setForm(f=>({...f,nota_interna:e.target.value}))} style={inp} /></div>
+          <div style={{ display:"flex", gap: mobile ? 10 : 7, marginTop:4 }}>
+            <button onClick={guardarEdicion} disabled={saving} style={{ flex:1, padding: mobile ? "10px" : "8px", borderRadius:7, cursor:saving?"default":"pointer", background:saving?B.border:B.accent, border:`1px solid ${saving?B.border:B.accentL}`, color:saving?"#8AAECC":"#fff", fontSize: mobile ? 13 : 12, fontWeight:700 }}>{saving?"Guardando...":"Guardar"}</button>
+            <button onClick={()=>setEditing(false)} style={{ padding: mobile ? "10px 16px" : "8px 14px", borderRadius:7, cursor:"pointer", background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize: mobile ? 13 : 12 }}>Cancelar</button>
           </div>
         </div>
       )}
@@ -393,6 +405,7 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
 }
 
 export default function Captaciones({ supabase }) {
+  const mobile = useIsMobile(768);
   const [items,       setItems]       = useState([]);
   const [input,       setInput]       = useState("");
   const [ag,          setAg]          = useState("");
@@ -499,7 +512,7 @@ inmobiliaria:get("inmobiliaria")||null,
     setItems(p=>p.filter(i=>i.id!==item.id));
   }
 
-  const inpS = { width:"100%", background:B.card, border:`1px solid ${B.border}`, borderRadius:7, padding:"7px 10px", color:B.text, fontSize:12, outline:"none", boxSizing:"border-box" };
+  const inpS = { width:"100%", background:B.card, border:`1px solid ${B.border}`, borderRadius:7, padding: mobile ? "9px 12px" : "7px 10px", color:B.text, fontSize: mobile ? 13 : 12, outline:"none", boxSizing:"border-box" };
   const conUbicacion = items.filter(i=>i.lat&&i.lng).length;
 
   const CAMPOS_DEF = [
@@ -517,18 +530,18 @@ inmobiliaria:get("inmobiliaria")||null,
   ];
 
   return (
-    <div style={{ overflowY:"auto", maxWidth:700, display:"flex", flexDirection:"column", gap:14 }}>
+    <div style={{ overflowY:"auto", maxWidth: mobile ? "100%" : 700, display:"flex", flexDirection:"column", gap: mobile ? 12 : 14 }}>
 
       {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:8 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap: mobile ? "wrap" : "nowrap", gap: mobile ? 8 : 8 }}>
         <div>
-          <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Captación rápida</h1>
-          <p style={{ fontSize:12, color:"#8AAECC", margin:"3px 0 0" }}>Pegá texto, link o WhatsApp — la IA extrae todo</p>
+          <h1 style={{ fontSize: mobile ? 18 : 20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Captación rápida</h1>
+          <p style={{ fontSize: mobile ? 11 : 12, color:"#8AAECC", margin:"3px 0 0" }}>Pegá texto, link o WhatsApp — la IA extrae todo</p>
         </div>
-        <div style={{ display:"flex", gap:4, background:B.card, borderRadius:8, padding:3, border:`1px solid ${B.border}` }}>
+        <div style={{ display:"flex", gap:4, background:B.card, borderRadius:8, padding:3, border:`1px solid ${B.border}`, width: mobile ? "100%" : "auto", justifyContent: mobile ? "space-between" : "flex-start" }}>
           {["cards","mapa"].map(v => (
             <button key={v} onClick={()=>setVistaActiva(v)}
-              style={{ padding:"5px 14px", borderRadius:6, cursor:"pointer", fontSize:11, fontWeight:600,
+              style={{ flex: mobile ? 1 : "none", padding: mobile ? "7px 14px" : "5px 14px", borderRadius:6, cursor:"pointer", fontSize: mobile ? 12 : 11, fontWeight:600,
                 background:vistaActiva===v?B.accent:"transparent",
                 color:vistaActiva===v?"#fff":"#8AAECC", border:"none" }}>
               {v==="cards"?`📋 Cards (${items.length})`:`📍 Mapa (${conUbicacion})`}
@@ -538,55 +551,55 @@ inmobiliaria:get("inmobiliaria")||null,
       </div>
 
       {/* Input */}
-      <div style={{ background:B.card, border:`1px solid ${B.accentL}40`, borderRadius:12, padding:14, display:"flex", flexDirection:"column", gap:10 }}>
+      <div style={{ background:B.card, border:`1px solid ${B.accentL}40`, borderRadius:12, padding: mobile ? 12 : 14, display:"flex", flexDirection:"column", gap: mobile ? 10 : 10 }}>
         <textarea value={input} onChange={e=>{ setInput(e.target.value); setCampos(null); setCompletos({}); }}
           placeholder="Pegá acá el texto de WhatsApp, descripción del portal, dirección y precio... lo que tengas"
           rows={5} style={{ ...inpS, resize:"none", lineHeight:1.6 }} />
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+        <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 10 : 8 }}>
           <div>
-            <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:3 }}>AGENTE</label>
+            <label style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", display:"block", marginBottom:3 }}>AGENTE</label>
             <select value={ag} onChange={e=>setAg(e.target.value)} style={inpS}>
               <option value="">Sin especificar</option>
               {Object.entries(AG).map(([k,v])=><option key={k} value={k}>{v.n}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:3 }}>NOTA RÁPIDA</label>
+            <label style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", display:"block", marginBottom:3 }}>NOTA RÁPIDA</label>
             <input value={nota} onChange={e=>setNota(e.target.value)} style={inpS} placeholder="ej: paga honorarios" />
           </div>
         </div>
         <div>
-          <label style={{ fontSize:11, color:"#E8A830", display:"block", marginBottom:3 }}>★ TIPO CAPTACIÓN — obligatorio</label>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
+          <label style={{ fontSize: mobile ? 12 : 11, color:"#E8A830", display:"block", marginBottom:3 }}>★ TIPO CAPTACIÓN — obligatorio</label>
+          <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr 1fr", gap: mobile ? 8 : 6 }}>
             {[
               { v:"propia",     label:"🟡 Propia",     desc:"Tu cartera" },
               { v:"honorarios", label:"🟢 Honorarios",  desc:"Pedís la llave" },
               { v:"colega",     label:"🔴 Colega",      desc:"Él tiene la llave" },
             ].map(({ v, label, desc }) => (
               <button key={v} onClick={()=>setTipoCap(v)}
-                style={{ padding:"8px 6px", borderRadius:8, cursor:"pointer", textAlign:"center",
+                style={{ padding: mobile ? "10px 8px" : "8px 6px", borderRadius:8, cursor:"pointer", textAlign:"center",
                   background: tipoCap===v ? TC[v].bg+"22" : "transparent",
                   border: `2px solid ${tipoCap===v ? TC[v].bg : B.border}`,
                   color: tipoCap===v ? TC[v].bg : "#8AAECC" }}>
-                <div style={{ fontSize:12, fontWeight:700 }}>{label}</div>
-                <div style={{ fontSize:10, opacity:0.7 }}>{desc}</div>
+                <div style={{ fontSize: mobile ? 13 : 12, fontWeight:700 }}>{label}</div>
+                <div style={{ fontSize: mobile ? 11 : 10, opacity:0.7 }}>{desc}</div>
               </button>
             ))}
           </div>
         </div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+        <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 10 : 8 }}>
           <button onClick={analizarLocal} disabled={!input.trim()}
-            style={{ padding:11, borderRadius:9, cursor:input.trim()?"pointer":"default",
+            style={{ padding: mobile ? 13 : 11, borderRadius:9, cursor:input.trim()?"pointer":"default",
               background:input.trim()?"#1E3A5F":B.border,
               border:`1px solid ${input.trim()?B.accentL:B.border}`,
-              color:input.trim()?B.accentL:"#8AAECC", fontSize:13, fontWeight:700 }}>
+              color:input.trim()?B.accentL:"#8AAECC", fontSize: mobile ? 14 : 13, fontWeight:700 }}>
             📋 Analizar
           </button>
           <button onClick={analizar} disabled={analizando||!input.trim()}
-            style={{ padding:11, borderRadius:9, cursor:input.trim()&&!analizando?"pointer":"default",
+            style={{ padding: mobile ? 13 : 11, borderRadius:9, cursor:input.trim()&&!analizando?"pointer":"default",
               background:input.trim()&&!analizando?B.accent:B.border,
               border:`1px solid ${input.trim()&&!analizando?B.accentL:B.border}`,
-              color:input.trim()&&!analizando?"#fff":"#8AAECC", fontSize:13, fontWeight:700 }}>
+              color:input.trim()&&!analizando?"#fff":"#8AAECC", fontSize: mobile ? 14 : 13, fontWeight:700 }}>
             {analizando?"✨ Analizando...":"✨ Analizar con IA"}
           </button>
         </div>
@@ -594,20 +607,20 @@ inmobiliaria:get("inmobiliaria")||null,
 
       {/* Resultado IA */}
       {campos && (
-        <div style={{ background:B.card, border:`1px solid ${B.accentL}40`, borderRadius:12, padding:14, display:"flex", flexDirection:"column", gap:8 }}>
-          <div style={{ fontSize:11, fontWeight:700, color:B.accentL, letterSpacing:"0.8px" }}>DATOS DETECTADOS — editá lo que haga falta</div>
+        <div style={{ background:B.card, border:`1px solid ${B.accentL}40`, borderRadius:12, padding: mobile ? 12 : 14, display:"flex", flexDirection:"column", gap: mobile ? 10 : 8 }}>
+          <div style={{ fontSize: mobile ? 12 : 11, fontWeight:700, color:B.accentL, letterSpacing:"0.8px" }}>DATOS DETECTADOS — editá lo que haga falta</div>
           {campos.fuera_de_mdp && (
-            <div style={{ padding:"8px 12px", borderRadius:8, background:"rgba(232,100,80,0.15)", border:"1px solid rgba(232,100,80,0.4)", fontSize:12, color:"#E86450" }}>
+            <div style={{ padding: mobile ? "10px 14px" : "8px 12px", borderRadius:8, background:"rgba(232,100,80,0.15)", border:"1px solid rgba(232,100,80,0.4)", fontSize: mobile ? 13 : 12, color:"#E86450" }}>
               ⚠ Parece ser de <strong>{campos.ciudad_detectada||"otra ciudad"}</strong>. ¿Guardás igual?
             </div>
           )}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+          <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 10 : 8 }}>
             {CAMPOS_DEF.filter(f=>!f.full&&(f.type==="select"||["precio","ambientes","m2tot"].includes(f.k)===false)).slice(0,2).map(({ k, label, type, opts }) => {
               const val = completos[k]!==undefined?completos[k]:(campos[k]||"");
               const detected = !!campos[k];
               return (
                 <div key={k}>
-                  <label style={{ fontSize:10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}{label.toUpperCase()}</label>
+                  <label style={{ fontSize: mobile ? 11 : 10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}{label.toUpperCase()}</label>
                   <select value={val} onChange={e=>setCompletos(p=>({...p,[k]:e.target.value}))} style={inpS}>
                     {opts.map(o=><option key={o} value={o}>{o||"—"}</option>)}
                   </select>
@@ -622,21 +635,21 @@ inmobiliaria:get("inmobiliaria")||null,
             const detected = !!campos[k];
             return (
               <div key={k}>
-                <label style={{ fontSize:10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}{def.label.toUpperCase()}</label>
+                <label style={{ fontSize: mobile ? 11 : 10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}{def.label.toUpperCase()}</label>
                 <input value={val} onChange={e=>setCompletos(p=>({...p,[k]:e.target.value}))}
                   placeholder={def.placeholder||""} style={{...inpS,borderColor:detected?"#2E9E6A40":inpS.border}} />
               </div>
             );
           })}
           {/* Precio, ambientes, m2 — 3 cols */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+          <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr 1fr", gap: mobile ? 10 : 8 }}>
             {["precio","ambientes","m2tot"].map(k => {
               const def = CAMPOS_DEF.find(f=>f.k===k);
               const val = completos[k]!==undefined?completos[k]:(campos[k]||"");
               const detected = !!campos[k];
               return (
                 <div key={k}>
-                  <label style={{ fontSize:10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}{def.label.toUpperCase()}</label>
+                  <label style={{ fontSize: mobile ? 11 : 10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}{def.label.toUpperCase()}</label>
                   <input type="number" value={val} onChange={e=>setCompletos(p=>({...p,[k]:e.target.value}))}
                     placeholder={def.placeholder||""} style={{...inpS,borderColor:detected?"#2E9E6A40":inpS.border}} />
                 </div>
@@ -645,20 +658,20 @@ inmobiliaria:get("inmobiliaria")||null,
           </div>
           {/* Cochera select */}
           <div>
-            <label style={{ fontSize:10, color:campos.cochera?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{campos.cochera?"✓ ":""}COCHERA</label>
+            <label style={{ fontSize: mobile ? 11 : 10, color:campos.cochera?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{campos.cochera?"✓ ":""}COCHERA</label>
             <select value={completos.cochera!==undefined?completos.cochera:(campos.cochera||"")} onChange={e=>setCompletos(p=>({...p,cochera:e.target.value}))} style={inpS}>
               <option value="">Sin datos</option><option value="si">Con cochera</option><option value="no">Sin cochera</option>
             </select>
           </div>
           {/* Propietario y teléfono */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+          <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 10 : 8 }}>
             {["nombre_propietario","telefono"].map(k => {
               const def = CAMPOS_DEF.find(f=>f.k===k);
               const val = completos[k]!==undefined?completos[k]:(campos[k]||"");
               const detected = !!campos[k];
               return (
                 <div key={k}>
-                  <label style={{ fontSize:10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}{def.label.toUpperCase()}</label>
+                  <label style={{ fontSize: mobile ? 11 : 10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}{def.label.toUpperCase()}</label>
                   <input value={val} onChange={e=>setCompletos(p=>({...p,[k]:e.target.value}))}
                     style={{...inpS,borderColor:detected?"#2E9E6A40":inpS.border}} />
                 </div>
@@ -671,7 +684,7 @@ inmobiliaria:get("inmobiliaria")||null,
             const detected = !!campos.caracts;
             return (
               <div>
-                <label style={{ fontSize:10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}CARACTERÍSTICAS</label>
+                <label style={{ fontSize: mobile ? 11 : 10, color:detected?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{detected?"✓ ":""}CARACTERÍSTICAS</label>
                 <input value={val} onChange={e=>setCompletos(p=>({...p,caracts:e.target.value}))}
                   placeholder="ej: luminoso, 1er piso, balcón..." style={{...inpS,borderColor:detected?"#2E9E6A40":inpS.border}} />
               </div>
@@ -682,16 +695,16 @@ inmobiliaria:get("inmobiliaria")||null,
             const val = completos.url!==undefined?completos.url:(campos.url||"");
             return (
               <div>
-                <label style={{ fontSize:10, color:"#4A8ABE", display:"block", marginBottom:2 }}>🔗 LINK DEL PORTAL (opcional)</label>
+                <label style={{ fontSize: mobile ? 11 : 10, color:"#4A8ABE", display:"block", marginBottom:2 }}>🔗 LINK DEL PORTAL (opcional)</label>
                 <input value={val} onChange={e=>setCompletos(p=>({...p,url:e.target.value}))}
                   placeholder="https://zonaprop.com.ar/..." style={{...inpS, borderColor:val?"#4A8ABE40":inpS.border}} />
               </div>
             );
           })()}
           <button onClick={guardar} disabled={guardando}
-            style={{ width:"100%", padding:10, borderRadius:9, cursor:guardando?"default":"pointer",
+            style={{ width:"100%", padding: mobile ? 12 : 10, borderRadius:9, cursor:guardando?"default":"pointer",
               background:guardando?B.border:"#2E9E6A", border:`1px solid ${guardando?B.border:"#2E9E6A"}`,
-              color:guardando?"#8AAECC":"#fff", fontSize:13, fontWeight:700, marginTop:4 }}>
+              color:guardando?"#8AAECC":"#fff", fontSize: mobile ? 14 : 13, fontWeight:700, marginTop:4 }}>
             {guardando?"Guardando...":"📌 Guardar captación"}
           </button>
         </div>
@@ -702,9 +715,9 @@ inmobiliaria:get("inmobiliaria")||null,
         <MapaCaptaciones items={items} />
       ) : (
         <>
-          <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px" }}>{items.length} CAPTACIONES PENDIENTES</div>
-          {!loaded && <div style={{ textAlign:"center", color:"#8AAECC", fontSize:12 }}>Cargando...</div>}
-          {loaded && items.length===0 && <div style={{ textAlign:"center", padding:"30px 0", color:"#8AAECC", fontSize:12 }}>Sin captaciones pendientes</div>}
+          <div style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px" }}>{items.length} CAPTACIONES PENDIENTES</div>
+          {!loaded && <div style={{ textAlign:"center", color:"#8AAECC", fontSize: mobile ? 13 : 12 }}>Cargando...</div>}
+          {loaded && items.length===0 && <div style={{ textAlign:"center", padding: mobile ? "40px 0" : "30px 0", color:"#8AAECC", fontSize: mobile ? 13 : 12 }}>Sin captaciones pendientes</div>}
           {items.map(item => (
             <CaptacionCard key={item.id} item={item} supabase={supabase}
               onConvertir={convertir} onEliminar={setConfirmDel}
@@ -715,13 +728,13 @@ inmobiliaria:get("inmobiliaria")||null,
 
       {/* Modal eliminar */}
       {confirmDel && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999 }} onClick={()=>setConfirmDel(null)}>
-          <div style={{ background:B.sidebar, border:`1px solid ${B.hot}50`, borderRadius:14, padding:"28px 32px", maxWidth:360, width:"90%" }} onClick={e=>e.stopPropagation()}>
-            <div style={{ fontSize:14, fontWeight:700, color:B.text, marginBottom:6 }}>¿Eliminar captación?</div>
-            <div style={{ fontSize:12, color:"#8AAECC", marginBottom:20 }}>Esta acción no se puede deshacer.</div>
-            <div style={{ display:"flex", gap:10 }}>
-              <button onClick={()=>setConfirmDel(null)} style={{ flex:1, padding:10, borderRadius:8, cursor:"pointer", background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:12 }}>Cancelar</button>
-              <button onClick={eliminar} style={{ flex:1, padding:10, borderRadius:8, cursor:"pointer", background:B.hot, border:"none", color:"#fff", fontSize:12, fontWeight:700 }}>Eliminar</button>
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999, padding: mobile ? 16 : 20 }} onClick={()=>setConfirmDel(null)}>
+          <div style={{ background:B.sidebar, border:`1px solid ${B.hot}50`, borderRadius:14, padding: mobile ? "24px 20px" : "28px 32px", maxWidth:360, width:"90%" }} onClick={e=>e.stopPropagation()}>
+            <div style={{ fontSize: mobile ? 15 : 14, fontWeight:700, color:B.text, marginBottom: mobile ? 8 : 6 }}>¿Eliminar captación?</div>
+            <div style={{ fontSize: mobile ? 13 : 12, color:"#8AAECC", marginBottom: mobile ? 16 : 20 }}>Esta acción no se puede deshacer.</div>
+            <div style={{ display:"flex", gap: mobile ? 12 : 10 }}>
+              <button onClick={()=>setConfirmDel(null)} style={{ flex:1, padding: mobile ? 12 : 10, borderRadius:8, cursor:"pointer", background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize: mobile ? 13 : 12 }}>Cancelar</button>
+              <button onClick={eliminar} style={{ flex:1, padding: mobile ? 12 : 10, borderRadius:8, cursor:"pointer", background:B.hot, border:"none", color:"#fff", fontSize: mobile ? 13 : 12, fontWeight:700 }}>Eliminar</button>
             </div>
           </div>
         </div>

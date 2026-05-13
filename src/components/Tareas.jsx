@@ -5,6 +5,16 @@
 import React, { useState, useEffect } from "react";
 import { B, AG } from "../data/constants.js";
 
+function useIsMobile(breakpoint = 768) {
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+  useEffect(() => {
+    const handler = () => setW(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return w < breakpoint;
+}
+
 const PRIO = {
   urgente:   { label: "Urgente",   color: "#CC2233" },
   importante:{ label: "Importante",color: "#E8A830" },
@@ -35,6 +45,7 @@ function fechaColor(dateStr) {
 }
 
 export default function Tareas({ supabase }) {
+  const mobile = useIsMobile(768);
   const [tareas,    setTareas]    = useState([]);
   const [loaded,    setLoaded]    = useState(false);
   const [input,     setInput]     = useState("");
@@ -105,43 +116,43 @@ export default function Tareas({ supabase }) {
 
   const inp = {
     background: B.card, border: "1px solid " + B.border, borderRadius: 7,
-    padding: "7px 10px", color: B.text, fontSize: 12, outline: "none",
+    padding: mobile ? "9px 12px" : "7px 10px", color: B.text, fontSize: mobile ? 13 : 12, outline: "none",
   };
 
   const DIAS = ["Lu","Ma","Mi","Ju","Vi","Sa","Do"];
 
   return (
-    <div style={{ background: B.sidebar, border: "1px solid " + B.border, borderRadius: 14, padding: 16 }}>
+    <div style={{ background: B.sidebar, border: "1px solid " + B.border, borderRadius: mobile ? 12 : 14, padding: mobile ? 14 : 16 }}>
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "#8AAECC", letterSpacing: "1px", textTransform: "uppercase" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: mobile ? 12 : 14, flexWrap: mobile ? "wrap" : "nowrap", gap: mobile ? 8 : 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: mobile ? 8 : 10, flexWrap:"wrap" }}>
+          <span style={{ fontSize: mobile ? 13 : 12, fontWeight: 600, color: "#8AAECC", letterSpacing: "1px", textTransform: "uppercase" }}>
             📋 Tareas
           </span>
           {tareasFiltradas.length > 0 && (
-            <span style={{ fontSize: 11, background: B.accentL + "20", color: B.accentL,
-              padding: "1px 7px", borderRadius: 8, fontWeight: 600 }}>
+            <span style={{ fontSize: mobile ? 12 : 11, background: B.accentL + "20", color: B.accentL,
+              padding: mobile ? "2px 8px" : "1px 7px", borderRadius: 8, fontWeight: 600 }}>
               {tareasFiltradas.length}
             </span>
           )}
           {tareasVencidas.length > 0 && (
-            <span style={{ fontSize: 11, background: "#CC223320", color: "#CC2233",
-              padding: "1px 7px", borderRadius: 8, fontWeight: 600 }}>
+            <span style={{ fontSize: mobile ? 12 : 11, background: "#CC223320", color: "#CC2233",
+              padding: mobile ? "2px 8px" : "1px 7px", borderRadius: 8, fontWeight: 600 }}>
               {tareasVencidas.length} vencida{tareasVencidas.length > 1 ? "s" : ""}
             </span>
           )}
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", gap: mobile ? 8 : 6 }}>
           <button onClick={() => setModoAgenda(false)}
-            style={{ padding: "3px 10px", borderRadius: 6, fontSize: 11, cursor: "pointer",
+            style={{ padding: mobile ? "5px 12px" : "3px 10px", borderRadius: 6, fontSize: mobile ? 12 : 11, cursor: "pointer",
               background: !modoAgenda ? B.accentL + "20" : "transparent",
               border: "1px solid " + (!modoAgenda ? B.accentL : B.border),
               color: !modoAgenda ? B.accentL : "#8AAECC" }}>
             Lista
           </button>
           <button onClick={() => setModoAgenda(true)}
-            style={{ padding: "3px 10px", borderRadius: 6, fontSize: 11, cursor: "pointer",
+            style={{ padding: mobile ? "5px 12px" : "3px 10px", borderRadius: 6, fontSize: mobile ? 12 : 11, cursor: "pointer",
               background: modoAgenda ? B.accentL + "20" : "transparent",
               border: "1px solid " + (modoAgenda ? B.accentL : B.border),
               color: modoAgenda ? B.accentL : "#8AAECC" }}>
@@ -151,8 +162,8 @@ export default function Tareas({ supabase }) {
       </div>
 
       {/* Input nueva tarea */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 14,
-        background: B.card, borderRadius: 10, padding: 12, border: "1px solid " + B.border }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 8 : 7, marginBottom: mobile ? 12 : 14,
+        background: B.card, borderRadius: 10, padding: mobile ? 10 : 12, border: "1px solid " + B.border }}>
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
@@ -160,25 +171,25 @@ export default function Tareas({ supabase }) {
           placeholder="Nueva tarea... (Enter para guardar)"
           style={{ ...inp, width: "100%", boxSizing: "border-box" }}
         />
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: mobile ? 8 : 6, flexWrap: "wrap", flexDirection: mobile ? "column" : "row" }}>
           <select value={prio} onChange={e => setPrio(e.target.value)}
-            style={{ ...inp, flex: 1, minWidth: 120 }}>
+            style={{ ...inp, flex: mobile ? 1 : 1, minWidth: mobile ? "100%" : 120 }}>
             <option value="urgente">🔴 Urgente</option>
             <option value="importante">🟡 Importante</option>
             <option value="normal">⚪ Normal</option>
           </select>
           <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
-            style={{ ...inp, flex: 1, minWidth: 130, colorScheme: "dark" }} />
+            style={{ ...inp, flex: mobile ? 1 : 1, minWidth: mobile ? "100%" : 130, colorScheme: "dark" }} />
           <select value={ag} onChange={e => setAg(e.target.value)}
-            style={{ ...inp, flex: 1, minWidth: 100 }}>
+            style={{ ...inp, flex: mobile ? 1 : 1, minWidth: mobile ? "100%" : 100 }}>
             <option value="">Sin agente</option>
             {Object.entries(AG).map(([k, v]) => <option key={k} value={k}>{v.n}</option>)}
           </select>
           <button onClick={agregar} disabled={!input.trim() || saving}
-            style={{ padding: "7px 14px", borderRadius: 7, cursor: input.trim() ? "pointer" : "default",
+            style={{ padding: mobile ? "9px 16px" : "7px 14px", borderRadius: 7, cursor: input.trim() ? "pointer" : "default",
               background: input.trim() ? B.accent : "transparent",
               border: "1px solid " + (input.trim() ? B.accentL : B.border),
-              color: input.trim() ? "#fff" : "#8AAECC", fontSize: 12, fontWeight: 700 }}>
+              color: input.trim() ? "#fff" : "#8AAECC", fontSize: mobile ? 13 : 12, fontWeight: 700 }}>
             {saving ? "..." : "+ Añadir"}
           </button>
         </div>
@@ -186,10 +197,10 @@ export default function Tareas({ supabase }) {
 
       {/* Filtro agente */}
       {tareas.length > 0 && (
-        <div style={{ display: "flex", gap: 5, marginBottom: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: mobile ? 6 : 5, marginBottom: mobile ? 10 : 12, flexWrap: "wrap" }}>
           {["Todos", ...Object.keys(AG)].map(k => (
             <button key={k} onClick={() => setVistaAg(k)}
-              style={{ padding: "3px 9px", borderRadius: 12, fontSize: 11, cursor: "pointer",
+              style={{ padding: mobile ? "5px 11px" : "3px 9px", borderRadius: 12, fontSize: mobile ? 12 : 11, cursor: "pointer",
                 background: vistaAg === k ? (AG[k]?.bg || B.accentL + "20") : "transparent",
                 border: "1px solid " + (vistaAg === k ? (AG[k]?.c || B.accentL) : B.border),
                 color: vistaAg === k ? (AG[k]?.c || B.accentL) : "#8AAECC" }}>
@@ -199,7 +210,7 @@ export default function Tareas({ supabase }) {
         </div>
       )}
 
-      {!loaded && <div style={{ fontSize: 12, color: "#8AAECC", textAlign: "center", padding: "12px 0" }}>Cargando...</div>}
+      {!loaded && <div style={{ fontSize: mobile ? 13 : 12, color: "#8AAECC", textAlign: "center", padding: mobile ? "14px 0" : "12px 0" }}>Cargando...</div>}
 
       {/* Vista Lista */}
       {loaded && !modoAgenda && (
@@ -232,26 +243,26 @@ export default function Tareas({ supabase }) {
 
       {/* Vista Agenda Semanal */}
       {loaded && modoAgenda && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
+        <div style={{ display: mobile ? "flex" : "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: mobile ? 8 : 6, overflowX: mobile ? "auto" : "visible", paddingBottom: mobile ? 8 : 0 }}>
           {semana.map((dia, i) => {
             const isHoy = dia.toDateString() === hoy.toDateString();
             const tareasDia = tareasDelDia(dia);
             const fechaStr = dia.toISOString().slice(0, 10);
             return (
-              <div key={i} style={{ minHeight: 80 }}>
-                <div style={{ textAlign: "center", fontSize: 11, fontWeight: isHoy ? 700 : 400,
-                  color: isHoy ? B.accentL : "#6A8AAE", marginBottom: 5,
+              <div key={i} style={{ minHeight: mobile ? 60 : 80, minWidth: mobile ? 100 : "auto", flex: mobile ? "0 0 100px" : "auto" }}>
+                <div style={{ textAlign: "center", fontSize: mobile ? 12 : 11, fontWeight: isHoy ? 700 : 400,
+                  color: isHoy ? B.accentL : "#6A8AAE", marginBottom: mobile ? 6 : 5,
                   background: isHoy ? B.accentL + "15" : "transparent",
-                  borderRadius: 6, padding: "3px 0" }}>
+                  borderRadius: 6, padding: mobile ? "5px 0" : "3px 0" }}>
                   <div>{DIAS[i]}</div>
-                  <div style={{ fontSize: 13 }}>{dia.getDate()}</div>
+                  <div style={{ fontSize: mobile ? 14 : 13 }}>{dia.getDate()}</div>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 4 : 3 }}>
                   {tareasDia.map(t => (
                     <div key={t.id}
                       onClick={() => completar(t.id)}
                       title={t.titulo}
-                      style={{ fontSize: 10, padding: "3px 5px", borderRadius: 4,
+                      style={{ fontSize: mobile ? 11 : 10, padding: mobile ? "4px 6px" : "3px 5px", borderRadius: 4,
                         background: PRIO[t.prioridad]?.color + "20",
                         border: "1px solid " + PRIO[t.prioridad]?.color + "40",
                         color: PRIO[t.prioridad]?.color,
@@ -261,7 +272,7 @@ export default function Tareas({ supabase }) {
                     </div>
                   ))}
                   {tareasDia.length === 0 && (
-                    <div style={{ height: 4, borderRadius: 2, background: B.border, opacity: 0.3 }} />
+                    <div style={{ height: mobile ? 6 : 4, borderRadius: 2, background: B.border, opacity: 0.3 }} />
                   )}
                 </div>
               </div>
@@ -274,33 +285,34 @@ export default function Tareas({ supabase }) {
 }
 
 function TareaItem({ t, onCompletar }) {
+  const mobile = useIsMobile(768);
   const agObj = AG[t.ag];
   const prioData = PRIO[t.prioridad] || PRIO.normal;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px",
-      background: B.card, borderRadius: 9, border: "1px solid " + B.border,
+    <div style={{ display: "flex", alignItems: "center", gap: mobile ? 12 : 10, padding: mobile ? "11px 14px" : "9px 12px",
+      background: B.card, borderRadius: mobile ? 10 : 9, border: "1px solid " + B.border,
       borderLeft: "3px solid " + prioData.color }}>
       <button onClick={() => onCompletar(t.id)}
-        style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid " + prioData.color,
+        style={{ width: mobile ? 22 : 18, height: mobile ? 22 : 18, borderRadius: "50%", border: "2px solid " + prioData.color,
           background: "transparent", cursor: "pointer", flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "transparent",
+        <div style={{ width: mobile ? 10 : 8, height: mobile ? 10 : 8, borderRadius: "50%", background: "transparent",
           transition: "background .15s" }}
           onMouseOver={e => e.target.style.background = prioData.color}
           onMouseOut={e => e.target.style.background = "transparent"} />
       </button>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, color: B.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div style={{ fontSize: mobile ? 14 : 13, color: B.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {t.titulo}
         </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 2, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: mobile ? 10 : 8, marginTop: mobile ? 3 : 2, alignItems: "center", flexWrap:"wrap" }}>
           {t.fecha && (
-            <span style={{ fontSize: 11, color: fechaColor(t.fecha), fontWeight: 600 }}>
+            <span style={{ fontSize: mobile ? 12 : 11, color: fechaColor(t.fecha), fontWeight: 600 }}>
               {fmtFecha(t.fecha)}
             </span>
           )}
           {agObj && (
-            <span style={{ fontSize: 10, padding: "1px 5px", borderRadius: 4,
+            <span style={{ fontSize: mobile ? 11 : 10, padding: mobile ? "2px 6px" : "1px 5px", borderRadius: 4,
               background: agObj.bg, color: agObj.c, fontWeight: 600 }}>
               {agObj.n}
             </span>

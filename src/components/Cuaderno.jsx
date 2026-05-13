@@ -5,7 +5,18 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { B, AG } from "../data/constants.js";
 
+function useIsMobile(breakpoint = 768) {
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+  useEffect(() => {
+    const handler = () => setW(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return w < breakpoint;
+}
+
 function MicBtn({ onTranscript, small }) {
+  const mobile = useIsMobile(768);
   const [escuchando, setEscuchando] = useState(false);
   const [nivel,      setNivel]      = useState([0,0,0,0,0]);
   const reconRef   = useRef(null);
@@ -52,17 +63,17 @@ function MicBtn({ onTranscript, small }) {
   }
 
   const heights = [14,22,30,22,14];
-  const sz = small ? 36 : 44;
+  const sz = (small || mobile) ? 40 : 44;
 
   return (
     <button onClick={toggleMic}
-      style={{ width:sz, height:small?32:36, borderRadius:8, cursor:"pointer", flexShrink:0,
+      style={{ width:sz, height:small?36:40, borderRadius:8, cursor:"pointer", flexShrink:0,
         background: escuchando?"rgba(204,34,51,0.15)":"rgba(42,91,173,0.12)",
         border:`1px solid ${escuchando?"#CC2233":B.border}`,
         display:"flex", alignItems:"center", justifyContent:"center", gap:2, transition:"all 0.2s" }}>
       {escuchando
         ? nivel.map((n,i) => <div key={i} style={{ width:3, borderRadius:2, height:heights[i]*(0.3+n*0.7)+"px", background:"#CC2233", transition:"height 0.08s ease", minHeight:3 }} />)
-        : <span style={{ fontSize:small?13:16 }}>🎙</span>}
+        : <span style={{ fontSize:small?14:17 }}>🎙</span>}
     </button>
   );
 }
@@ -476,6 +487,7 @@ function PanelNota({ nota, supabase, notas, onUpdate, onDelete }) {
 
 // ── Módulo principal ──────────────────────────────────────────
 export default function Cuaderno({ leads, properties, rentals, captaciones, supabase, onConsumo }) {
+  const mobile = useIsMobile(768);
   const [notas,       setNotas]       = useState([]);
   const [loaded,      setLoaded]      = useState(false);
   const [selectedNota,setSelectedNota]= useState(null);
@@ -483,13 +495,6 @@ export default function Cuaderno({ leads, properties, rentals, captaciones, supa
   const [creandoNota, setCreandoNota] = useState(false);
   const [formNota,    setFormNota]    = useState({ titulo:"", tipo:"idea", contenido:"" });
   const [saving,      setSaving]      = useState(false);
-  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
-  React.useEffect(() => {
-    const handler = () => setW(window.innerWidth);
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
-  }, []);
-  const mobile = w < 768;
 
   useEffect(() => {
     if (!supabase) return;
@@ -527,16 +532,16 @@ export default function Cuaderno({ leads, properties, rentals, captaciones, supa
     setSelectedNota(null);
   }
 
-  const inp = { background:"rgba(10,21,37,0.6)", border:`1px solid ${B.border}`, borderRadius:7, padding:"7px 10px", color:B.text, fontSize:12, outline:"none", width:"100%", boxSizing:"border-box" };
+  const inp = { background:"rgba(10,21,37,0.6)", border:`1px solid ${B.border}`, borderRadius:7, padding: mobile ? "9px 12px" : "7px 10px", color:B.text, fontSize: mobile ? 13 : 12, outline:"none", width:"100%", boxSizing:"border-box" };
 
   return (
     <div style={{ height:"100%", display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
       {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
+      <div style={{ display:"flex", alignItems:"center", gap: mobile ? 8 : 10, padding: mobile ? "8px 12px" : "10px 16px", borderBottom:`1px solid ${B.border}`, flexShrink:0, flexWrap: mobile ? "wrap" : "nowrap" }}>
         <div style={{ flex:1 }}>
-          <span style={{ fontSize:16, fontWeight:700, color:B.text, fontFamily:"Georgia,serif" }}>Cuaderno</span>
-          <span style={{ fontSize:11, color:"#4A6A90", marginLeft:8 }}>{notas.length} notas</span>
+          <span style={{ fontSize: mobile ? 15 : 16, fontWeight:700, color:B.text, fontFamily:"Georgia,serif" }}>Cuaderno</span>
+          <span style={{ fontSize: mobile ? 10 : 11, color:"#4A6A90", marginLeft:8 }}>{notas.length} notas</span>
         </div>
 
         {/* Toggle vista */}
@@ -546,7 +551,7 @@ export default function Cuaderno({ leads, properties, rentals, captaciones, supa
             { id:"lista", label:"📋 Lista" },
           ].map(v => (
             <button key={v.id} onClick={()=>setVistaActiva(v.id)}
-              style={{ padding:"4px 12px", borderRadius:6, cursor:"pointer", fontSize:11, fontWeight:600, border:"none",
+              style={{ padding: mobile ? "5px 12px" : "4px 12px", borderRadius:6, cursor:"pointer", fontSize: mobile ? 12 : 11, fontWeight:600, border:"none",
                 background:vistaActiva===v.id?B.accent:"transparent",
                 color:vistaActiva===v.id?"#fff":"#8AAECC" }}>
               {v.label}
@@ -555,20 +560,20 @@ export default function Cuaderno({ leads, properties, rentals, captaciones, supa
         </div>
 
         <button onClick={()=>setCreandoNota(true)}
-          style={{ padding:"6px 14px", borderRadius:8, cursor:"pointer",
-            background:"#2E9E6A", border:"none", color:"#fff", fontSize:11, fontWeight:700 }}>
+          style={{ padding: mobile ? "7px 14px" : "6px 14px", borderRadius:8, cursor:"pointer",
+            background:"#2E9E6A", border:"none", color:"#fff", fontSize: mobile ? 12 : 11, fontWeight:700 }}>
           + Nota
         </button>
       </div>
 
       {/* Modal nueva nota */}
       {creandoNota && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999 }}
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999, padding: mobile ? 16 : 20 }}
           onClick={()=>setCreandoNota(false)}>
-          <div style={{ background:B.sidebar, border:`1px solid ${B.accentL}40`, borderRadius:14, padding:24, width:400 }}
+          <div style={{ background:B.sidebar, border:`1px solid ${B.accentL}40`, borderRadius:14, padding: mobile ? "20px 16px" : 24, width: mobile ? "90%" : 400 }}
             onClick={e=>e.stopPropagation()}>
-            <div style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:16 }}>Nueva nota</div>
-            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            <div style={{ fontSize: mobile ? 14 : 13, fontWeight:700, color:B.text, marginBottom: mobile ? 12 : 16 }}>Nueva nota</div>
+            <div style={{ display:"flex", flexDirection:"column", gap: mobile ? 8 : 10 }}>
               <input value={formNota.titulo} onChange={e=>setFormNota(f=>({...f,titulo:e.target.value}))}
                 placeholder="Título" autoFocus style={inp} />
               <select value={formNota.tipo} onChange={e=>setFormNota(f=>({...f,tipo:e.target.value}))} style={inp}>
@@ -577,15 +582,15 @@ export default function Cuaderno({ leads, properties, rentals, captaciones, supa
               <textarea value={formNota.contenido} onChange={e=>setFormNota(f=>({...f,contenido:e.target.value}))}
                 placeholder="Contenido (opcional)" rows={4}
                 style={{ ...inp, resize:"none", lineHeight:1.6 }} />
-              <div style={{ display:"flex", gap:8 }}>
+              <div style={{ display:"flex", gap: mobile ? 10 : 8 }}>
                 <button onClick={()=>crearNota()} disabled={saving||!formNota.titulo.trim()}
-                  style={{ flex:1, padding:"9px", borderRadius:8, cursor:saving?"default":"pointer",
-                    background:saving?B.border:"#2E9E6A", border:"none", color:"#fff", fontSize:12, fontWeight:700 }}>
+                  style={{ flex:1, padding: mobile ? "10px" : "9px", borderRadius:8, cursor:saving?"default":"pointer",
+                    background:saving?B.border:"#2E9E6A", border:"none", color:"#fff", fontSize: mobile ? 13 : 12, fontWeight:700 }}>
                   {saving?"Guardando...":"Crear nota"}
                 </button>
                 <button onClick={()=>setCreandoNota(false)}
-                  style={{ padding:"9px 16px", borderRadius:8, cursor:"pointer",
-                    background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:12 }}>
+                  style={{ padding: mobile ? "10px 16px" : "9px 16px", borderRadius:8, cursor:"pointer",
+                    background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize: mobile ? 13 : 12 }}>
                   Cancelar
                 </button>
               </div>
@@ -658,27 +663,27 @@ export default function Cuaderno({ leads, properties, rentals, captaciones, supa
         {/* Vista lista */}
         {vistaActiva === "lista" && (
           <div style={{ flex:1, display:"flex", overflow:"hidden" }}>
-            <div style={{ flex:1, overflowY:"auto", padding:16, display:"flex", flexDirection:"column", gap:6 }}>
-              {notas.length === 0 && <div style={{ textAlign:"center", color:"#4A6A90", fontSize:12, paddingTop:40 }}>Sin notas aún — creá una con el botón + Nota</div>}
+            <div style={{ flex:1, overflowY:"auto", padding: mobile ? 12 : 16, display:"flex", flexDirection:"column", gap:6 }}>
+              {notas.length === 0 && <div style={{ textAlign:"center", color:"#4A6A90", fontSize: mobile ? 13 : 12, paddingTop: mobile ? 50 : 40 }}>Sin notas aún — creá una con el botón + Nota</div>}
               {Object.entries(TIPOS).map(([tipo, info]) => {
                 const grupo = notas.filter(n => (n.tipo||"idea") === tipo);
                 if (!grupo.length) return null;
                 return (
-                  <div key={tipo} style={{ marginBottom:8 }}>
-                    <div style={{ fontSize:10, color:info.color, fontWeight:700, letterSpacing:"1px", marginBottom:6 }}>
+                  <div key={tipo} style={{ marginBottom: mobile ? 10 : 8 }}>
+                    <div style={{ fontSize: mobile ? 11 : 10, color:info.color, fontWeight:700, letterSpacing:"1px", marginBottom: mobile ? 8 : 6 }}>
                       {info.icono} {info.label.toUpperCase()} — {grupo.length}
                     </div>
                     {grupo.map(n => {
                       const t = TIPOS[n.tipo||"idea"] || TIPOS.idea;
                       return (
                         <div key={n.id} onClick={()=>{ setSelectedNota(n); }}
-                          style={{ padding:"9px 12px", borderRadius:8, cursor:"pointer", marginBottom:4,
+                          style={{ padding: mobile ? "11px 14px" : "9px 12px", borderRadius:8, cursor:"pointer", marginBottom:4,
                             background: selectedNota?.id===n.id ? t.color+"15" : "rgba(15,30,53,0.5)",
                             border:`1px solid ${selectedNota?.id===n.id?t.color:B.border}`,
                             borderLeft:`3px solid ${t.color}` }}>
-                          <div style={{ fontSize:12, fontWeight:600, color:B.text }}>{n.titulo}</div>
-                          {n.contenido && <div style={{ fontSize:11, color:"#6A8AAE", marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.contenido}</div>}
-                          <div style={{ fontSize:10, color:"#4A6A90", marginTop:3 }}>
+                          <div style={{ fontSize: mobile ? 13 : 12, fontWeight:600, color:B.text }}>{n.titulo}</div>
+                          {n.contenido && <div style={{ fontSize: mobile ? 12 : 11, color:"#6A8AAE", marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.contenido}</div>}
+                          <div style={{ fontSize: mobile ? 11 : 10, color:"#4A6A90", marginTop: mobile ? 4 : 3 }}>
                             {new Date(n.created_at).toLocaleDateString("es-AR",{ day:"numeric", month:"short" })}
                             {(n.tags||[]).map(tag => <span key={tag} style={{ marginLeft:6, color:"#4A6A90" }}>#{tag}</span>)}
                           </div>
@@ -691,9 +696,9 @@ export default function Cuaderno({ leads, properties, rentals, captaciones, supa
               {/* Notas sin tipo válido */}
               {notas.filter(n => !TIPOS[n.tipo||"idea"]).map(n => (
                 <div key={n.id} onClick={()=>setSelectedNota(n)}
-                  style={{ padding:"9px 12px", borderRadius:8, cursor:"pointer", marginBottom:4,
+                  style={{ padding: mobile ? "11px 14px" : "9px 12px", borderRadius:8, cursor:"pointer", marginBottom:4,
                     background:"rgba(15,30,53,0.5)", border:`1px solid ${B.border}`, borderLeft:`3px solid #4A6A90` }}>
-                  <div style={{ fontSize:12, fontWeight:600, color:B.text }}>{n.titulo}</div>
+                  <div style={{ fontSize: mobile ? 13 : 12, fontWeight:600, color:B.text }}>{n.titulo}</div>
                 </div>
               ))}
             </div>

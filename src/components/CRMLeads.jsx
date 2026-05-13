@@ -1,9 +1,19 @@
 // ══════════════════════════════════════════════════════════════
 // ALBA CRM — CRM LEADS (diseño card, filtros scoring/agente/perfil)
 // ══════════════════════════════════════════════════════════════
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { B, AG, genMsgBusqueda, ETAPAS, ECOL, scoreLead, matchLeadProps, genMsgWhatsApp } from "../data/constants.js";
 import { BuscadorPanel } from "./Buscador.jsx";
+
+function useIsMobile(breakpoint = 768) {
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+  useEffect(() => {
+    const handler = () => setW(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return w < breakpoint;
+}
  
 const TIPOS_OP   = ["Compra","Alquiler","Inversión","Alquiler / Compra"];
 const TIPOS_PROP = ["Depto","Casa","PH","Casa / PH","Dúplex","Local","Terreno","Otro"];
@@ -121,6 +131,7 @@ function InversorNota({ lead, onGuardar }) {
 }
  
 export default function CRMLeads({ leads, updateLead, deleteLead, properties, captaciones, supabase }) {
+  const mobile = useIsMobile(768);
   const [pagina, setPagina] = useState("compradores");
   const [fs,  setFs]  = useState("Todos");
   const [fa,  setFa]  = useState("Todos");
@@ -323,32 +334,32 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
   const leadsActivos = pagina === "compradores" ? filt : filtInversores;
  
   return (
-    <div style={{ maxWidth:800 }}>
+    <div style={{ maxWidth: mobile ? "100%" : 800 }}>
       {/* Header */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>CRM Leads</h1>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: mobile ? 12 : 16, flexWrap: mobile ? "wrap" : "nowrap", gap: mobile ? 8 : 0 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+          <h1 style={{ fontSize: mobile ? 18 : 20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>CRM Leads</h1>
           {matchesNuevos > 0 && (
             <button onClick={marcarMatchesVistos}
-              style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px", borderRadius:8,
+              style={{ display:"flex", alignItems:"center", gap:4, padding: mobile ? "6px 12px" : "4px 10px", borderRadius:8,
                 background:"rgba(232,168,48,0.15)", border:"1px solid rgba(232,168,48,0.4)",
-                color:"#E8A830", fontSize:11, fontWeight:700, cursor:"pointer" }}>
+                color:"#E8A830", fontSize: mobile ? 12 : 11, fontWeight:700, cursor:"pointer" }}>
               🔔 {matchesNuevos} match{matchesNuevos>1?"es":""} nuevo{matchesNuevos>1?"s":""}
             </button>
           )}
         </div>
-        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+        <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
           <button onClick={() => setShowMail(m => !m)}
-            style={{ padding:"5px 12px", borderRadius:8, cursor:"pointer", fontSize:12, fontWeight:600,
+            style={{ padding: mobile ? "7px 14px" : "5px 12px", borderRadius:8, cursor:"pointer", fontSize: mobile ? 13 : 12, fontWeight:600,
               background: showMail ? B.accent : "rgba(42,91,173,0.12)",
               border:`1px solid ${showMail ? B.accentL : B.border}`,
               color: showMail ? "#fff" : B.accentL }}>
             ✉ Mail pedidos
           </button>
           <button onClick={() => setMostrarPerdidos(p => !p)}
-            style={{ fontSize:12, color:mostrarPerdidos?B.hot:B.dim, cursor:"pointer",
+            style={{ fontSize: mobile ? 13 : 12, color:mostrarPerdidos?B.hot:B.dim, cursor:"pointer",
               background:"transparent", border:`1px solid ${mostrarPerdidos?B.hot:B.border}`,
-              borderRadius:6, padding:"4px 10px" }}>
+              borderRadius:6, padding: mobile ? "6px 12px" : "4px 10px" }}>
             {mostrarPerdidos ? "Ocultar archivados" : `Archivados (${perdidosCount})`}
           </button>
         </div>
@@ -356,23 +367,23 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
  
       {/* Panel mail */}
       {showMail && (
-        <div style={{ background:"rgba(10,21,37,0.95)", border:`1px solid ${B.accentL}40`, borderRadius:12, overflow:"hidden", marginBottom:14 }}>
-          <div style={{ padding:"10px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <span style={{ fontSize:11, fontWeight:700, color:B.accentL }}>✉ MAIL DE PEDIDOS — {activos.filter(l=>l.dias<=7).length} búsquedas activas</span>
-            <div style={{ display:"flex", gap:6 }}>
+        <div style={{ background:"rgba(10,21,37,0.95)", border:`1px solid ${B.accentL}40`, borderRadius:12, overflow:"hidden", marginBottom: mobile ? 12 : 14 }}>
+          <div style={{ padding: mobile ? "12px 14px" : "10px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap: mobile ? "wrap" : "nowrap", gap: mobile ? 8 : 0 }}>
+            <span style={{ fontSize: mobile ? 12 : 11, fontWeight:700, color:B.accentL }}>✉ MAIL DE PEDIDOS — {activos.filter(l=>l.dias<=7).length} búsquedas activas</span>
+            <div style={{ display:"flex", gap: mobile ? 8 : 6 }}>
               <button onClick={copiarMail}
-                style={{ padding:"4px 12px", borderRadius:7, cursor:"pointer",
-                  background: mailCopiado ? "#2E9E6A" : B.accent, border:"none", color:"#fff", fontSize:11, fontWeight:700 }}>
+                style={{ padding: mobile ? "6px 14px" : "4px 12px", borderRadius:7, cursor:"pointer",
+                  background: mailCopiado ? "#2E9E6A" : B.accent, border:"none", color:"#fff", fontSize: mobile ? 12 : 11, fontWeight:700 }}>
                 {mailCopiado ? "✓ Copiado" : "Copiar"}
               </button>
               <a href={`mailto:?subject=Pedidos%20Alba%20Inversiones&body=${encodeURIComponent(generarMail())}`}
-                style={{ padding:"4px 12px", borderRadius:7, background:"transparent", border:`1px solid ${B.border}`,
-                  color:"#8AAECC", fontSize:11, fontWeight:600, textDecoration:"none" }}>
+                style={{ padding: mobile ? "6px 14px" : "4px 12px", borderRadius:7, background:"transparent", border:`1px solid ${B.border}`,
+                  color:"#8AAECC", fontSize: mobile ? 12 : 11, fontWeight:600, textDecoration:"none" }}>
                 Abrir en mail
               </a>
             </div>
           </div>
-          <pre style={{ margin:0, padding:"12px 16px", fontSize:12, color:"#C8D8E8", lineHeight:1.7,
+          <pre style={{ margin:0, padding: mobile ? "14px" : "12px 16px", fontSize: mobile ? 13 : 12, color:"#C8D8E8", lineHeight:1.7,
             whiteSpace:"pre-wrap", fontFamily:"-apple-system,sans-serif", maxHeight:320, overflowY:"auto" }}>
             {generarMail()}
           </pre>
@@ -381,50 +392,50 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
  
       {/* Tabs */}
       <div style={{ display:"flex", gap:4, background:B.card, borderRadius:10, padding:4,
-        border:`1px solid ${B.border}`, marginBottom:14, width:"fit-content" }}>
+        border:`1px solid ${B.border}`, marginBottom: mobile ? 12 : 14, width: mobile ? "100%" : "fit-content" }}>
         {[
           { id:"compradores", label:`🏠 Compradores`, count:filt.length },
           { id:"inversores",  label:`💼 Inversores`,  count:filtInversores.length, color:"#9B6DC8" },
         ].map(t => (
           <button key={t.id} onClick={()=>setPagina(t.id)}
-            style={{ padding:"6px 16px", borderRadius:7, cursor:"pointer", fontSize:12, fontWeight:600, border:"none",
+            style={{ flex: mobile ? 1 : "none", padding: mobile ? "8px 16px" : "6px 16px", borderRadius:7, cursor:"pointer", fontSize: mobile ? 13 : 12, fontWeight:600, border:"none",
               background: pagina===t.id ? (t.color||B.accent) : "transparent",
               color: pagina===t.id ? "#fff" : "#8AAECC" }}>
-            {t.label} <span style={{ opacity:0.7, fontSize:10 }}>({t.count})</span>
+            {t.label} <span style={{ opacity:0.7, fontSize: mobile ? 11 : 10 }}>({t.count})</span>
           </button>
         ))}
       </div>
  
       {/* Filtros */}
       <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12,
-        padding:"14px 16px", marginBottom:16 }}>
+        padding: mobile ? "12px 14px" : "14px 16px", marginBottom: mobile ? 12 : 16 }}>
         <input placeholder="Buscar nombre, zona o teléfono..."
           value={q} onChange={e => setQ(e.target.value)}
           style={{ width:"100%", background:"transparent", border:`1px solid ${B.border}`,
-            borderRadius:8, padding:"8px 12px", color:B.text, fontSize:12,
+            borderRadius:8, padding: mobile ? "10px 12px" : "8px 12px", color:B.text, fontSize: mobile ? 13 : 12,
             marginBottom:10, outline:"none", boxSizing:"border-box" }} />
-        <div style={{ display:"flex", flexWrap:"wrap", gap:12 }}>
-          <div style={{ display:"flex", gap:4, alignItems:"center" }}>
-            <span style={{ fontSize:11, color:B.muted }}>TEMP</span>
+        <div style={{ display:"flex", flexWrap:"wrap", gap: mobile ? 10 : 12, flexDirection: mobile ? "column" : "row" }}>
+          <div style={{ display:"flex", gap:4, alignItems:"center", flexWrap:"wrap" }}>
+            <span style={{ fontSize: mobile ? 12 : 11, color:B.muted }}>TEMP</span>
             {["Todos","Caliente","Tibio","Frío"].map(s => (
               <button key={s} onClick={() => setFs(s)}
-                style={chip(fs===s, s==="Caliente"?B.hot:s==="Tibio"?B.warm:B.muted)}>{s}</button>
+                style={{...chip(fs===s, s==="Caliente"?B.hot:s==="Tibio"?B.warm:B.muted), padding: mobile ? "6px 12px" : "4px 11px", fontSize: mobile ? 12 : 11}}>{s}</button>
             ))}
           </div>
-          <div style={{ display:"flex", gap:4, alignItems:"center" }}>
-            <span style={{ fontSize:11, color:B.muted }}>AGENTE</span>
+          <div style={{ display:"flex", gap:4, alignItems:"center", flexWrap:"wrap" }}>
+            <span style={{ fontSize: mobile ? 12 : 11, color:B.muted }}>AGENTE</span>
             {["Todos","C","A","F","L","Sin asignar"].map(a => (
               <button key={a} onClick={() => setFa(a)}
-                style={chip(fa===a, a==="Sin asignar"?B.hot:a!=="Todos"?AG[a]?.c:B.accentL)}>
+                style={{...chip(fa===a, a==="Sin asignar"?B.hot:a!=="Todos"?AG[a]?.c:B.accentL), padding: mobile ? "6px 12px" : "4px 11px", fontSize: mobile ? 12 : 11}}>
                 {a==="Todos"?"Todos":a==="Sin asignar"?"—":AG[a]?.n}
               </button>
             ))}
           </div>
-          <div style={{ display:"flex", gap:4, alignItems:"center" }}>
-            <span style={{ fontSize:11, color:B.muted }}>PERFIL</span>
+          <div style={{ display:"flex", gap:4, alignItems:"center", flexWrap:"wrap" }}>
+            <span style={{ fontSize: mobile ? 12 : 11, color:B.muted }}>PERFIL</span>
             {["Todos","Comprador","Inversor"].map(o => (
               <button key={o} onClick={() => setFop(o)}
-                style={chip(fop===o, o==="Inversor"?"#9B6DC8":B.accentL)}>{o}</button>
+                style={{...chip(fop===o, o==="Inversor"?"#9B6DC8":B.accentL), padding: mobile ? "6px 12px" : "4px 11px", fontSize: mobile ? 12 : 11}}>{o}</button>
             ))}
           </div>
         </div>
@@ -436,12 +447,12 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
         { titulo:"🟡 TIBIOS",    color:B.warm, leads: leadsActivos.filter(l => { const s = scoreLead(l).label; return s.includes("Tibio") && l.etapa !== "Negociación"; }) },
         { titulo:"⚪ FRÍOS",     color:B.dim,  leads: leadsActivos.filter(l => { const s = scoreLead(l).label; return s.includes("Frío"); }) },
       ].filter(g => g.leads.length > 0).map(grupo => (
-        <div key={grupo.titulo} style={{ marginBottom:16 }}>
-          <div style={{ fontSize:11, fontWeight:700, color:grupo.color, letterSpacing:"1.5px",
-            marginBottom:8, paddingLeft:4 }}>
+        <div key={grupo.titulo} style={{ marginBottom: mobile ? 14 : 16 }}>
+          <div style={{ fontSize: mobile ? 12 : 11, fontWeight:700, color:grupo.color, letterSpacing:"1.5px",
+            marginBottom: mobile ? 10 : 8, paddingLeft:4 }}>
             {grupo.titulo} <span style={{ fontWeight:400, color:B.muted }}>({grupo.leads.length})</span>
           </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap: mobile ? 10 : 8 }}>
             {grupo.leads.map(lead => {
               const s    = scoreLead(lead);
               const ag   = AG[lead.ag];
@@ -458,17 +469,17 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
                   borderRadius:12, overflow:"hidden", transition:"border-color .15s" }}>
  
                   {/* Cabecera */}
-                  <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px",
-                    cursor:"pointer" }} onClick={() => setExp(open ? null : lead.id)}>
+                  <div style={{ display:"flex", alignItems:"center", gap: mobile ? 8 : 10, padding: mobile ? "14px 16px" : "12px 16px",
+                    cursor:"pointer", flexWrap: mobile ? "wrap" : "nowrap" }} onClick={() => setExp(open ? null : lead.id)}>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
-                        <span style={{ fontSize:13, fontWeight:700, color:B.text }}>{lead.nombre}</span>
-                        {esInv && <span style={{ fontSize:11, padding:"1px 6px", borderRadius:10,
+                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3, flexWrap:"wrap" }}>
+                        <span style={{ fontSize: mobile ? 14 : 13, fontWeight:700, color:B.text }}>{lead.nombre}</span>
+                        {esInv && <span style={{ fontSize: mobile ? 12 : 11, padding:"1px 6px", borderRadius:10,
                           background:"#9B6DC822", color:"#9B6DC8", fontWeight:700 }}>💼 INV</span>}
-                        {ag && <span style={{ fontSize:11, padding:"1px 5px", borderRadius:3,
+                        {ag && <span style={{ fontSize: mobile ? 12 : 11, padding:"1px 5px", borderRadius:3,
                           background:ag.bg||"#4A6A90", color:ag.c, fontWeight:700 }}>{ag.n}</span>}
                       </div>
-                      <div style={{ fontSize:12, color:"#8AAECC", display:"flex", gap:10, flexWrap:"wrap" }}>
+                      <div style={{ fontSize: mobile ? 13 : 12, color:"#8AAECC", display:"flex", gap:10, flexWrap:"wrap" }}>
                         {lead.zona && <span>📍 {lead.zona}</span>}
                         {lead.tipo && <span>{lead.tipo}</span>}
                         {lead.presup && <span style={{ color:B.accentL, fontFamily:"Georgia,serif", fontWeight:700 }}>
@@ -480,15 +491,15 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
                       <div style={{ display:"flex", gap:2 }}>
                         {[1,2,3,4,5].map(n => (
                           <span key={n} onClick={e => { e.stopPropagation(); setScore(lead.id, n); }}
-                            style={{ cursor:"pointer", fontSize:13, color:n<=stars?"#F4C642":B.dim }}>★</span>
+                            style={{ cursor:"pointer", fontSize: mobile ? 15 : 13, color:n<=stars?"#F4C642":B.dim }}>★</span>
                         ))}
                       </div>
-                      <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-                        <span style={{ fontSize:11, padding:"2px 8px", borderRadius:4,
+                      <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
+                        <span style={{ fontSize: mobile ? 12 : 11, padding: mobile ? "3px 9px" : "2px 8px", borderRadius:4,
                           background:`${ec}18`, color:ec }}>{lead.etapa}</span>
-                        <span style={{ fontSize:11, padding:"2px 8px", borderRadius:4,
+                        <span style={{ fontSize: mobile ? 12 : 11, padding: mobile ? "3px 9px" : "2px 8px", borderRadius:4,
                           background:s.bg, color:s.c }}>{s.label}</span>
-                        <span style={{ fontSize:11, color:lead.dias>7?B.hot:lead.dias>3?B.warm:B.ok }}>
+                        <span style={{ fontSize: mobile ? 12 : 11, color:lead.dias>7?B.hot:lead.dias>3?B.warm:B.ok }}>
                           {lead.dias}d
                         </span>
                       </div>
@@ -497,84 +508,84 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
  
                   {/* Panel expandido */}
                   {open && (
-                    <div style={{ padding:"0 16px 16px", borderTop:`1px solid ${B.border}` }}>
+                    <div style={{ padding: mobile ? "0 14px 14px" : "0 16px 16px", borderTop:`1px solid ${B.border}` }}>
                       {isEd ? (
                         <div style={{ paddingTop:12, display:"flex", flexDirection:"column", gap:8 }}>
                           <div style={{ fontSize:11, fontWeight:700, color:B.accentL }}>✏️ Editando</div>
-                          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                          <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap:8 }}>
                             {[
                               ["NOMBRE","nombre","text"],["TELÉFONO","tel","text"],
                               ["ZONA","zona","text"],["PRESUPUESTO USD","presup","number"],
                               ["ORIGEN","origen","text"],["PRÓXIMA ACCIÓN","proxAccion","text"],
                             ].map(([label, key, type]) => (
                               <div key={key}>
-                                <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>{label}</label>
+                                <label style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", display:"block", marginBottom:2 }}>{label}</label>
                                 <input type={type} value={editData[key]}
-                                  onChange={e => setEditData(d => ({...d, [key]:e.target.value}))} style={inp} />
+                                  onChange={e => setEditData(d => ({...d, [key]:e.target.value}))} style={{...inp, padding: mobile ? "8px 10px" : "6px 9px", fontSize: mobile ? 13 : 11}} />
                               </div>
                             ))}
                             <div>
-                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO OP.</label>
-                              <select value={editData.op} onChange={e=>setEditData(d=>({...d,op:e.target.value}))} style={inp}>
+                              <label style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO OP.</label>
+                              <select value={editData.op} onChange={e=>setEditData(d=>({...d,op:e.target.value}))} style={{...inp, padding: mobile ? "8px 10px" : "6px 9px", fontSize: mobile ? 13 : 11}}>
                                 {TIPOS_OP.map(t=><option key={t}>{t}</option>)}
                               </select>
                             </div>
                             <div>
-                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO PROP.</label>
-                              <select value={editData.tipo} onChange={e=>setEditData(d=>({...d,tipo:e.target.value}))} style={inp}>
+                              <label style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", display:"block", marginBottom:2 }}>TIPO PROP.</label>
+                              <select value={editData.tipo} onChange={e=>setEditData(d=>({...d,tipo:e.target.value}))} style={{...inp, padding: mobile ? "8px 10px" : "6px 9px", fontSize: mobile ? 13 : 11}}>
                                 {TIPOS_PROP.map(t=><option key={t}>{t}</option>)}
                               </select>
                             </div>
                           </div>
                           <div>
-                            <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>NOTA</label>
+                            <label style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", display:"block", marginBottom:2 }}>NOTA</label>
                             <textarea value={editData.nota} onChange={e=>setEditData(d=>({...d,nota:e.target.value}))}
-                              rows={3} style={{ ...inp, resize:"none" }} />
+                              rows={3} style={{ ...inp, resize:"none", padding: mobile ? "8px 10px" : "6px 9px", fontSize: mobile ? 13 : 11 }} />
                           </div>
-                          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
+                          <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr 1fr", gap:6 }}>
                             <div>
-                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>COCHERA</label>
-                              <select value={editData.cochera||""} onChange={e=>setEditData(d=>({...d,cochera:e.target.value}))} style={inp}>
+                              <label style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", display:"block", marginBottom:2 }}>COCHERA</label>
+                              <select value={editData.cochera||""} onChange={e=>setEditData(d=>({...d,cochera:e.target.value}))} style={{...inp, padding: mobile ? "8px 10px" : "6px 9px", fontSize: mobile ? 13 : 11}}>
                                 <option value="">Indistinto</option><option value="si">Sí</option><option value="no">No</option>
                               </select>
                             </div>
                             <div>
-                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>PATIO</label>
-                              <select value={editData.patio||""} onChange={e=>setEditData(d=>({...d,patio:e.target.value}))} style={inp}>
+                              <label style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", display:"block", marginBottom:2 }}>PATIO</label>
+                              <select value={editData.patio||""} onChange={e=>setEditData(d=>({...d,patio:e.target.value}))} style={{...inp, padding: mobile ? "8px 10px" : "6px 9px", fontSize: mobile ? 13 : 11}}>
                                 <option value="">Indistinto</option><option value="si">Sí</option><option value="no">No</option>
                               </select>
                             </div>
                             <div>
-                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>CRÉDITO</label>
-                              <select value={editData.credito||""} onChange={e=>setEditData(d=>({...d,credito:e.target.value}))} style={inp}>
+                              <label style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", display:"block", marginBottom:2 }}>CRÉDITO</label>
+                              <select value={editData.credito||""} onChange={e=>setEditData(d=>({...d,credito:e.target.value}))} style={{...inp, padding: mobile ? "8px 10px" : "6px 9px", fontSize: mobile ? 13 : 11}}>
                                 <option value="">Sin info</option><option value="si">Aprobado</option><option value="no">No tiene</option>
                               </select>
                             </div>
                             <div>
-                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>AMBIENTES</label>
-                              <input value={editData.ambientes||""} onChange={e=>setEditData(d=>({...d,ambientes:e.target.value}))} style={inp} placeholder="ej: 2" />
+                              <label style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", display:"block", marginBottom:2 }}>AMBIENTES</label>
+                              <input value={editData.ambientes||""} onChange={e=>setEditData(d=>({...d,ambientes:e.target.value}))} style={{...inp, padding: mobile ? "8px 10px" : "6px 9px", fontSize: mobile ? 13 : 11}} placeholder="ej: 2" />
                             </div>
                             <div>
-                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>M² MÍN.</label>
-                              <input type="number" value={editData.m2min||""} onChange={e=>setEditData(d=>({...d,m2min:e.target.value}))} style={inp} placeholder="ej: 50" />
+                              <label style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", display:"block", marginBottom:2 }}>M² MÍN.</label>
+                              <input type="number" value={editData.m2min||""} onChange={e=>setEditData(d=>({...d,m2min:e.target.value}))} style={{...inp, padding: mobile ? "8px 10px" : "6px 9px", fontSize: mobile ? 13 : 11}} placeholder="ej: 50" />
                             </div>
                             <div>
-                              <label style={{ fontSize:11, color:"#8AAECC", display:"block", marginBottom:2 }}>BALCÓN</label>
-                              <select value={editData.balcon||""} onChange={e=>setEditData(d=>({...d,balcon:e.target.value}))} style={inp}>
+                              <label style={{ fontSize: mobile ? 12 : 11, color:"#8AAECC", display:"block", marginBottom:2 }}>BALCÓN</label>
+                              <select value={editData.balcon||""} onChange={e=>setEditData(d=>({...d,balcon:e.target.value}))} style={{...inp, padding: mobile ? "8px 10px" : "6px 9px", fontSize: mobile ? 13 : 11}}>
                                 <option value="">Indistinto</option><option value="si">Sí</option><option value="no">No</option>
                               </select>
                             </div>
                           </div>
-                          <div style={{ display:"flex", gap:8 }}>
+                          <div style={{ display:"flex", gap: mobile ? 10 : 8 }}>
                             <button onClick={() => saveEdit(lead.id)} disabled={saving}
-                              style={{ flex:1, padding:"8px", borderRadius:7, cursor:"pointer",
+                              style={{ flex:1, padding: mobile ? "10px" : "8px", borderRadius:7, cursor:"pointer",
                                 background:saving?B.border:B.accent, border:`1px solid ${saving?B.border:B.accentL}`,
-                                color:saving?B.muted:"#fff", fontSize:12, fontWeight:700 }}>
+                                color:saving?B.muted:"#fff", fontSize: mobile ? 13 : 12, fontWeight:700 }}>
                               {saving?"Guardando...":"✓ Guardar"}
                             </button>
                             <button onClick={() => setEditing(null)}
-                              style={{ padding:"8px 14px", borderRadius:7, cursor:"pointer",
-                                background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:12 }}>
+                              style={{ padding: mobile ? "10px 16px" : "8px 14px", borderRadius:7, cursor:"pointer",
+                                background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize: mobile ? 13 : 12 }}>
                               Cancelar
                             </button>
                           </div>
@@ -582,11 +593,11 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
                       ) : (
                         <div style={{ paddingTop:12 }}>
                           {/* Etapa */}
-                          <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
-                            <span style={{ fontSize:11, color:B.dim, alignSelf:"center" }}>ETAPA</span>
+                          <div style={{ display:"flex", gap: mobile ? 6 : 5, flexWrap:"wrap", marginBottom: mobile ? 12 : 10 }}>
+                            <span style={{ fontSize: mobile ? 12 : 11, color:B.dim, alignSelf:"center" }}>ETAPA</span>
                             {ETAPAS.map(e => (
                               <button key={e} onClick={() => setEtapa(lead.id, e)}
-                                style={{ padding:"3px 9px", borderRadius:12, cursor:"pointer", fontSize:12,
+                                style={{ padding: mobile ? "5px 11px" : "3px 9px", borderRadius:12, cursor:"pointer", fontSize: mobile ? 13 : 12,
                                   border:`1px solid ${lead.etapa===e?(ECOL[e]||B.dim):B.border}`,
                                   background:lead.etapa===e?`${ECOL[e]||B.dim}22`:"transparent",
                                   color:lead.etapa===e?(ECOL[e]||B.dim):B.muted, fontWeight:lead.etapa===e?700:400 }}>
@@ -596,11 +607,11 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
                           </div>
  
                           {/* Agente */}
-                          <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
-                            <span style={{ fontSize:11, color:B.dim, alignSelf:"center" }}>AGENTE</span>
+                          <div style={{ display:"flex", gap: mobile ? 6 : 5, flexWrap:"wrap", marginBottom: mobile ? 12 : 10 }}>
+                            <span style={{ fontSize: mobile ? 12 : 11, color:B.dim, alignSelf:"center" }}>AGENTE</span>
                             {Object.entries(AG).map(([k,v]) => (
                               <button key={k} onClick={() => setAgente(lead.id, k)}
-                                style={{ padding:"3px 9px", borderRadius:12, cursor:"pointer", fontSize:12,
+                                style={{ padding: mobile ? "5px 11px" : "3px 9px", borderRadius:12, cursor:"pointer", fontSize: mobile ? 13 : 12,
                                   border:`1px solid ${lead.ag===k?v.c:B.border}`,
                                   background:lead.ag===k?`${v.c}22`:"transparent",
                                   color:lead.ag===k?v.c:B.muted, fontWeight:lead.ag===k?700:400 }}>
@@ -623,9 +634,9 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
                             ].filter(Boolean);
                             if (!tags.length) return null;
                             return (
-                              <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:10 }}>
+                              <div style={{ display:"flex", flexWrap:"wrap", gap: mobile ? 6 : 5, marginBottom: mobile ? 12 : 10 }}>
                                 {tags.map((tag, i) => (
-                                  <span key={i} style={{ fontSize:11, padding:"3px 9px", borderRadius:10,
+                                  <span key={i} style={{ fontSize: mobile ? 12 : 11, padding: mobile ? "4px 10px" : "3px 9px", borderRadius:10,
                                     background: tag.color + "18", color: tag.color,
                                     border:`1px solid ${tag.color}40`, fontWeight:500 }}>
                                     {tag.label}
@@ -637,24 +648,24 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
  
                           {/* Nota */}
                           {lead.nota && (
-                            <div style={{ fontSize:11, color:B.dim, background:B.bg, borderRadius:6,
-                              padding:"8px 10px", marginBottom:10, lineHeight:1.6,
+                            <div style={{ fontSize: mobile ? 12 : 11, color:B.dim, background:B.bg, borderRadius:6,
+                              padding: mobile ? "10px 12px" : "8px 10px", marginBottom: mobile ? 12 : 10, lineHeight:1.6,
                               whiteSpace:"pre-wrap", maxHeight:80, overflow:"auto" }}>
                               {lead.nota}
                             </div>
                           )}
  
                           {/* Nueva nota */}
-                          <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+                          <div style={{ display:"flex", gap: mobile ? 8 : 6, marginBottom: mobile ? 12 : 10, flexDirection: mobile ? "column" : "row" }}>
                             <input placeholder="Nota rápida... (Enter para guardar)"
                               value={notaEdit[lead.id]||""}
                               onChange={e => setNotaEdit(p=>({...p,[lead.id]:e.target.value}))}
                               onKeyDown={e => e.key==="Enter" && guardarNota(lead)}
                               style={{ flex:1, background:B.bg, border:`1px solid ${B.border}`,
-                                borderRadius:6, padding:"6px 10px", color:B.text, fontSize:11, outline:"none" }} />
+                                borderRadius:6, padding: mobile ? "8px 12px" : "6px 10px", color:B.text, fontSize: mobile ? 13 : 11, outline:"none" }} />
                             <button onClick={() => guardarNota(lead)}
-                              style={{ padding:"6px 12px", borderRadius:6, background:`${B.accentL}18`,
-                                border:`1px solid ${B.accentL}40`, color:B.accentL, fontSize:11, cursor:"pointer" }}>
+                              style={{ padding: mobile ? "8px 14px" : "6px 12px", borderRadius:6, background:`${B.accentL}18`,
+                                border:`1px solid ${B.accentL}40`, color:B.accentL, fontSize: mobile ? 13 : 11, cursor:"pointer" }}>
                               + Nota
                             </button>
                           </div>
@@ -729,17 +740,17 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
                           )}
  
                           {/* Switch Inversor */}
-                          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8,
-                            padding:"7px 10px", borderRadius:8,
+                          <div style={{ display:"flex", alignItems:"center", gap: mobile ? 10 : 8, marginBottom: mobile ? 10 : 8,
+                            padding: mobile ? "9px 12px" : "7px 10px", borderRadius:8,
                             background: lead.inversor ? "rgba(155,109,200,0.1)" : "rgba(42,91,173,0.05)",
                             border: `1px solid ${lead.inversor ? "#9B6DC840" : B.border}` }}>
                             <button onClick={()=>toggleInversor(lead)}
-                              style={{ width:36, height:20, borderRadius:10, cursor:"pointer", border:"none", position:"relative", flexShrink:0,
+                              style={{ width: mobile ? 42 : 36, height: mobile ? 24 : 20, borderRadius: mobile ? 12 : 10, cursor:"pointer", border:"none", position:"relative", flexShrink:0,
                                 background: lead.inversor ? "#9B6DC8" : "#2A3A5A" }}>
-                              <div style={{ position:"absolute", top:2, left: lead.inversor ? 18 : 2, width:16, height:16,
+                              <div style={{ position:"absolute", top: mobile ? 3 : 2, left: lead.inversor ? (mobile ? 22 : 18) : 2, width: mobile ? 18 : 16, height: mobile ? 18 : 16,
                                 borderRadius:"50%", background:"#fff", transition:"left 0.2s", boxShadow:"0 1px 3px rgba(0,0,0,0.3)" }} />
                             </button>
-                            <span style={{ fontSize:11, color: lead.inversor ? "#9B6DC8" : "#8AAECC", fontWeight:600 }}>
+                            <span style={{ fontSize: mobile ? 12 : 11, color: lead.inversor ? "#9B6DC8" : "#8AAECC", fontWeight:600 }}>
                               💼 Inversor
                             </span>
                             {lead.inversor && (
@@ -748,35 +759,35 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
                           </div>
  
                           {/* Acciones */}
-                          <div style={{ display:"flex", gap:7, flexWrap:"wrap" }}>
+                          <div style={{ display:"flex", gap: mobile ? 8 : 7, flexWrap:"wrap" }}>
                             <button onClick={() => contacteHoy(lead.id)}
-                              style={{ padding:"5px 12px", borderRadius:6, background:`${B.ok}18`,
-                                border:`1px solid ${B.ok}40`, color:B.ok, fontSize:12, cursor:"pointer", fontWeight:600 }}>
+                              style={{ padding: mobile ? "7px 14px" : "5px 12px", borderRadius:6, background:`${B.ok}18`,
+                                border:`1px solid ${B.ok}40`, color:B.ok, fontSize: mobile ? 13 : 12, cursor:"pointer", fontWeight:600 }}>
                               ✅ Contacté hoy
                             </button>
                             {lead.tel && (
                               <a href={`https://wa.me/${lead.tel.replace(/\D/g,"")}`} target="_blank" rel="noreferrer"
-                                style={{ padding:"5px 12px", borderRadius:6, background:"rgba(37,211,102,0.1)",
+                                style={{ padding: mobile ? "7px 14px" : "5px 12px", borderRadius:6, background:"rgba(37,211,102,0.1)",
                                   border:"1px solid rgba(37,211,102,0.25)", color:"#25D366",
-                                  fontSize:12, textDecoration:"none", fontWeight:600 }}>
+                                  fontSize: mobile ? 13 : 12, textDecoration:"none", fontWeight:600 }}>
                                 💬 WA
                               </a>
                             )}
                             {lead.tel && (
                               <a href={`tel:${lead.tel}`}
-                                style={{ padding:"5px 12px", borderRadius:6, background:`${B.ok}18`,
-                                  border:`1px solid ${B.ok}40`, color:B.ok, fontSize:12, textDecoration:"none", fontWeight:600 }}>
+                                style={{ padding: mobile ? "7px 14px" : "5px 12px", borderRadius:6, background:`${B.ok}18`,
+                                  border:`1px solid ${B.ok}40`, color:B.ok, fontSize: mobile ? 13 : 12, textDecoration:"none", fontWeight:600 }}>
                                 📞 Llamar
                               </a>
                             )}
                             <button onClick={() => startEdit(lead)}
-                              style={{ padding:"5px 12px", borderRadius:6, background:`${B.accentL}12`,
-                                border:`1px solid ${B.accentL}30`, color:B.accentL, fontSize:12, cursor:"pointer", fontWeight:600 }}>
+                              style={{ padding: mobile ? "7px 14px" : "5px 12px", borderRadius:6, background:`${B.accentL}12`,
+                                border:`1px solid ${B.accentL}30`, color:B.accentL, fontSize: mobile ? 13 : 12, cursor:"pointer", fontWeight:600 }}>
                               ✏️ Editar
                             </button>
                             <button
                               onClick={e => { e.stopPropagation(); setBuscandoId(b => b === lead.id ? null : lead.id); }}
-                              style={{ padding:"5px 12px", borderRadius:6, fontSize:12, cursor:"pointer", fontWeight:600,
+                              style={{ padding: mobile ? "7px 14px" : "5px 12px", borderRadius:6, fontSize: mobile ? 13 : 12, cursor:"pointer", fontWeight:600,
                                 background: buscandoId === lead.id ? `${B.accentL}25` : `${B.accentL}12`,
                                 border:`1px solid ${buscandoId === lead.id ? B.accentL : B.accentL+"30"}`,
                                 color:B.accentL }}>
@@ -857,7 +868,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
       ))}
  
       {leadsActivos.length === 0 && (
-        <div style={{ textAlign:"center", padding:"40px", color:"#8AAECC", fontSize:13 }}>Sin resultados</div>
+        <div style={{ textAlign:"center", padding: mobile ? "50px 20px" : "40px", color:"#8AAECC", fontSize: mobile ? 14 : 13 }}>Sin resultados</div>
       )}
  
       {/* Modal eliminar */}
