@@ -15,6 +15,7 @@ import MapaPage from "./pages/MapaPage.jsx";
 import FlyerPage from "./pages/FlyerPage.jsx";
 import CaptacionesPage from "./pages/CaptacionesPage.jsx";
 import CaptacionZonasPage from "./pages/CaptacionZonasPage.jsx";
+import AlquileresPage from "./pages/AlquileresPage.jsx";
 
 export default function App() {
   const { user } = useAppContext();
@@ -44,6 +45,7 @@ export default function App() {
         <Route path="/flyer" element={<FlyerPage />} />
         <Route path="/captaciones" element={<CaptacionesPage />} />
         <Route path="/zonas" element={<CaptacionZonasPage />} />
+        <Route path="/alquileres" element={<AlquileresPage />} />
       </Route>
     </Routes>
   );
