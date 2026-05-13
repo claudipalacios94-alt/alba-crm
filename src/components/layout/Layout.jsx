@@ -6,6 +6,7 @@ import Modal from "../../modals/Modal.jsx";
 import QuickAddLead from "../../modals/QuickAddLead.jsx";
 import QuickAddProp from "../../modals/QuickAddProp.jsx";
 import { useAppContext } from "../../context/SupabaseContext.jsx";
+import AIFloatingChat from "../AIFloatingChat.jsx";
 
 const FULL_HEIGHT = ["kanban", "mapa", "flyer", "captaciones", "zonas", "cuaderno"];
 
@@ -101,6 +102,8 @@ export default function Layout() {
           <QuickAddProp onClose={() => setModal(null)} onAdd={handleAddProp} />
         </Modal>
       )}
+
+      <AIFloatingChat />
     </div>
   );
 }

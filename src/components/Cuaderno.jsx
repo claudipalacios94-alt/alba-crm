@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════
 // ALBA CRM — CUADERNO INTELIGENTE
-// Grafo visual de notas + Asistente Alba integrado
+// Grafo visual de notas
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { B, AG } from "../data/constants.js";
@@ -374,157 +374,8 @@ function Grafo({ notas, onSelectNota, selectedId }) {
   );
 }
 
-// ── Chat Asistente ────────────────────────────────────────────
-function AsistenteChat({ leads, properties, rentals, captaciones, supabase, onNotaCreada, onConsumo }) {
-  const [mensajes,  setMensajes]  = useState([]);
-  const [input,     setInput]     = useState("");
-  const [loading,   setLoading]   = useState(false);
-  const chatRef = useRef(null);
-
-  // mic handled by MicBtn component
-
-  useEffect(() => {
-    if (!supabase) return;
-    const hoy = new Date().toISOString().slice(0,10);
-    supabase.from("briefing_chat").select("*")
-      .gte("created_at", hoy + "T00:00:00")
-      .order("created_at", { ascending: true })
-      .limit(20)
-      .then(({ data }) => {
-        if (data?.length) setMensajes(data.map(d => ({ role:d.role, content:d.content })));
-      });
-  }, []);
-
-  useEffect(() => {
-    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
-  }, [mensajes]);
-
-  function buildContexto() {
-    const hoy = new Date().toLocaleDateString("es-AR", { weekday:"long", day:"numeric", month:"long" });
-    const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
-    const calientes = activos.filter(l => l.dias <= 3).slice(0, 8);
-    const negociacion = activos.filter(l => l.etapa === "Negociación");
-    const caps = (captaciones||[]).slice(0,30);
-    const capResumen = caps.map(c=>`${c.tipo||"Prop"} ${c.zona||"?"} USD${c.precio||"?"} [${c.tipo_captacion||"?"}]${c.direccion?" dir:"+c.direccion:""}${c.nombre_propietario?" prop:"+c.nombre_propietario:""}`).join(" | ");
-    const propsResumen = (properties||[]).slice(0,10).map(p=>`${p.tipo||"Prop"} ${p.zona||"?"} USD${p.precio||"?"}`).join(" | ");
-    const rentResumen = (rentals||[]).slice(0,5).map(r=>`${r.tipo||"Prop"} ${r.zona||"?"} $${r.precio||"?"}/mes`).join(" | ");
-    return `Hoy es ${hoy}. Sos el asistente de Claudi de Alba Inversiones, Mar del Plata.
-LEADS negociación: ${negociacion.map(l=>`${l.nombre} ${l.zona} USD${l.presup||"?"}`).join(", ")||"ninguno"}
-LEADS calientes: ${calientes.map(l=>`${l.nombre}(${l.dias}d,${l.etapa},${l.zona})`).join(" | ")}
-PROPIEDADES en venta (${(properties||[]).length}): ${propsResumen||"ninguna"}
-ALQUILERES (${(rentals||[]).length}): ${rentResumen||"ninguno"}
-CAPTACIONES pendientes (${caps.length}): ${capResumen||"ninguna"}
-REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos, preguntás antes. Si el usuario comparte algo importante, sugerís guardarlo como nota: [NOTA: título | tipo | contenido breve]`;
-  }
-
-  async function guardarMensaje(role, content) {
-    if (!supabase) return;
-    await supabase.from("briefing_chat").insert([{ role, content }]);
-  }
-
-  async function enviar(texto) {
-    if (!texto.trim() || loading) return;
-    const nuevosMensajes = [...mensajes, { role:"user", content:texto }];
-    setMensajes(nuevosMensajes);
-    setInput("");
-    setLoading(true);
-    await guardarMensaje("user", texto);
-
-    const historial = nuevosMensajes.slice(-10).map(m => ({ role:m.role, content:m.content }));
-
-    try {
-      const res = await fetch("/api/claude", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 600,
-          system: buildContexto(),
-          messages: historial,
-        })
-      });
-      const data = await res.json();
-      const respuesta = data.content?.[0]?.text || "Sin respuesta";
-
-      // Detectar si la IA sugiere crear una nota
-      const notaMatch = respuesta.match(/\[NOTA:\s*([^|]+)\|\s*([^|]+)\|\s*([^\]]+)\]/);
-      if (notaMatch && onNotaCreada) {
-        const [, titulo, tipo, contenido] = notaMatch;
-        onNotaCreada({
-          titulo: titulo.trim(),
-          tipo: tipo.trim().toLowerCase(),
-          contenido: contenido.trim(),
-        });
-      }
-
-      const respuestaLimpia = respuesta.replace(/\[NOTA:[^\]]+\]/g, "").trim();
-      setMensajes(p => [...p, { role:"assistant", content:respuestaLimpia }]);
-      await guardarMensaje("assistant", respuestaLimpia);
-    } catch(e) {
-      setMensajes(p => [...p, { role:"assistant", content:"Error al conectar." }]);
-    }
-    setLoading(false);
-  }
-
-  const inp = {
-    flex:1, background:"rgba(10,21,37,0.6)", border:`1px solid ${B.border}`,
-    borderRadius:8, padding:"8px 12px", color:B.text, fontSize:12, outline:"none",
-  };
-
-  return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100%" }}>
-      <div style={{ fontSize:10, color:B.accentL, fontWeight:700, letterSpacing:"1px", padding:"10px 14px", borderBottom:`1px solid ${B.border}` }}>
-        ✨ ASISTENTE ALBA
-      </div>
-      <div ref={chatRef} style={{ flex:1, overflowY:"auto", padding:"12px 14px", display:"flex", flexDirection:"column", gap:8 }}>
-        {mensajes.length === 0 && (
-          <div style={{ fontSize:12, color:"#4A6A90", fontStyle:"italic" }}>
-            Contame ideas, pensamientos, novedades de leads... Lo importante lo guardo como nota en el grafo.
-          </div>
-        )}
-        {mensajes.map((m, i) => (
-          <div key={i} style={{ display:"flex", justifyContent:m.role==="user"?"flex-end":"flex-start" }}>
-            <div style={{
-              maxWidth:"88%", padding:"7px 11px",
-              borderRadius: m.role==="user" ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
-              background: m.role==="user" ? B.accent : "rgba(42,91,173,0.12)",
-              border: m.role==="user" ? "none" : `1px solid ${B.border}`,
-              fontSize:12, color: m.role==="user" ? "#fff" : "#C8D8E8",
-              lineHeight:1.6, whiteSpace:"pre-wrap",
-            }}>
-              {m.content}
-            </div>
-          </div>
-        ))}
-        {loading && (
-          <div style={{ display:"flex", justifyContent:"flex-start" }}>
-            <div style={{ padding:"7px 11px", borderRadius:"12px 12px 12px 2px",
-              background:"rgba(42,91,173,0.12)", border:`1px solid ${B.border}`,
-              fontSize:12, color:"#4A6A90", fontStyle:"italic" }}>
-              Pensando...
-            </div>
-          </div>
-        )}
-      </div>
-      <div style={{ padding:"10px 14px", borderTop:`1px solid ${B.border}`, display:"flex", gap:8 }}>
-        <input value={input} onChange={e=>setInput(e.target.value)}
-          onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); enviar(input); } }}
-          placeholder="Escribí o dictá... (Enter para enviar)"
-          style={inp} />
-        <MicBtn onTranscript={t=>setInput(p=>p?p+" "+t:t)} small />
-        <button onClick={()=>enviar(input)} disabled={loading||!input.trim()}
-          style={{ padding:"8px 14px", borderRadius:8, cursor:loading||!input.trim()?"default":"pointer",
-            background:loading||!input.trim()?B.border:B.accent, border:"none",
-            color:"#fff", fontSize:13, fontWeight:700 }}>
-          →
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ── Panel nota seleccionada ───────────────────────────────────
-function PanelNota({ nota, supabase, notas, onUpdate, onDelete, onLink }) {
+function PanelNota({ nota, supabase, notas, onUpdate, onDelete }) {
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState({ titulo:nota.titulo, contenido:nota.contenido||"", tipo:nota.tipo||"idea", tags:"" });
   const [saving, setSaving] = useState(false);
@@ -535,7 +386,6 @@ function PanelNota({ nota, supabase, notas, onUpdate, onDelete, onLink }) {
   }, [nota.id]);
 
   const tipo = TIPOS[nota.tipo] || TIPOS.idea;
-  const linksNotas = (nota.links||[]).map(id => notas.find(n=>n.id===id)).filter(Boolean);
 
   async function guardar() {
     setSaving(true);
@@ -562,7 +412,6 @@ function PanelNota({ nota, supabase, notas, onUpdate, onDelete, onLink }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", overflowY:"auto" }}>
       <div style={{ padding:"10px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
-        <span style={{ fontSize:16 }}>{tipo.icono}</span>
         <span style={{ fontSize:13, fontWeight:700, color:tipo.color, flex:1 }}>{nota.titulo}</span>
         <button onClick={()=>setEditando(e=>!e)}
           style={{ fontSize:10, padding:"3px 10px", borderRadius:5, cursor:"pointer",
@@ -573,7 +422,7 @@ function PanelNota({ nota, supabase, notas, onUpdate, onDelete, onLink }) {
         <button onClick={eliminar}
           style={{ fontSize:10, padding:"3px 8px", borderRadius:5, cursor:"pointer",
             background:"transparent", border:`1px solid ${B.hot}40`, color:B.hot }}>
-          🗑
+          X
         </button>
       </div>
 
@@ -581,13 +430,13 @@ function PanelNota({ nota, supabase, notas, onUpdate, onDelete, onLink }) {
         {editando ? (
           <>
             <div>
-              <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:3 }}>TÍTULO</label>
+              <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:3 }}>TITULO</label>
               <input value={form.titulo} onChange={e=>setForm(f=>({...f,titulo:e.target.value}))} style={inp} />
             </div>
             <div>
               <label style={{ fontSize:10, color:"#8AAECC", display:"block", marginBottom:3 }}>TIPO</label>
               <select value={form.tipo} onChange={e=>setForm(f=>({...f,tipo:e.target.value}))} style={inp}>
-                {Object.entries(TIPOS).map(([k,v])=><option key={k} value={k}>{v.icono} {v.label}</option>)}
+                {Object.entries(TIPOS).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
               </select>
             </div>
             <div>
@@ -609,7 +458,7 @@ function PanelNota({ nota, supabase, notas, onUpdate, onDelete, onLink }) {
         ) : (
           <>
             <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-              <span style={{ fontSize:10, padding:"2px 8px", borderRadius:10, background:tipo.color+"20", color:tipo.color, border:`1px solid ${tipo.color}40` }}>{tipo.icono} {tipo.label}</span>
+              <span style={{ fontSize:10, padding:"2px 8px", borderRadius:10, background:tipo.color+"20", color:tipo.color, border:`1px solid ${tipo.color}40` }}>{tipo.label}</span>
               {(nota.tags||[]).map(t=><span key={t} style={{ fontSize:10, padding:"2px 8px", borderRadius:10, background:"rgba(42,91,173,0.15)", color:"#8AAECC", border:`1px solid ${B.border}` }}>#{t}</span>)}
             </div>
             {nota.contenido && (
@@ -619,21 +468,6 @@ function PanelNota({ nota, supabase, notas, onUpdate, onDelete, onLink }) {
               {new Date(nota.created_at).toLocaleDateString("es-AR", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })}
             </div>
           </>
-        )}
-
-        {/* Notas conectadas */}
-        {linksNotas.length > 0 && (
-          <div>
-            <div style={{ fontSize:10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom:6 }}>CONECTADO CON</div>
-            {linksNotas.map(n => {
-              const t = TIPOS[n.tipo]||TIPOS.idea;
-              return (
-                <div key={n.id} style={{ fontSize:11, color:t.color, marginBottom:3 }}>
-                  {t.icono} {n.titulo}
-                </div>
-              );
-            })}
-          </div>
         )}
       </div>
     </div>
@@ -645,10 +479,17 @@ export default function Cuaderno({ leads, properties, rentals, captaciones, supa
   const [notas,       setNotas]       = useState([]);
   const [loaded,      setLoaded]      = useState(false);
   const [selectedNota,setSelectedNota]= useState(null);
-  const [vistaActiva, setVistaActiva] = useState("grafo"); // grafo | asistente | lista
+  const [vistaActiva, setVistaActiva] = useState("grafo");
   const [creandoNota, setCreandoNota] = useState(false);
   const [formNota,    setFormNota]    = useState({ titulo:"", tipo:"idea", contenido:"" });
   const [saving,      setSaving]      = useState(false);
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+  React.useEffect(() => {
+    const handler = () => setW(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  const mobile = w < 768;
 
   useEffect(() => {
     if (!supabase) return;
@@ -776,17 +617,40 @@ export default function Cuaderno({ leads, properties, rentals, captaciones, supa
               )}
             </div>
 
-            {/* Panel derecho — nota seleccionada o asistente */}
-            <div style={{ width:300, borderLeft:`1px solid ${B.border}`, background:B.card, flexShrink:0, display:"flex", flexDirection:"column" }}>
-              {selectedNota ? (
-                <PanelNota nota={selectedNota} supabase={supabase} notas={notas}
-                  onUpdate={updateNota} onDelete={deleteNota} />
-              ) : (
-                <AsistenteChat leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase}
-                  onNotaCreada={data => crearNota(data)} onConsumo={onConsumo} />
-              )}
-            </div>
+            {/* Panel derecho — solo desktop */}
+            {!mobile && (
+              <div style={{ width:300, borderLeft:`1px solid ${B.border}`, background:B.card, flexShrink:0, display:"flex", flexDirection:"column" }}>
+                {selectedNota ? (
+                  <PanelNota nota={selectedNota} supabase={supabase} notas={notas}
+                    onUpdate={updateNota} onDelete={deleteNota} />
+                ) : (
+                  <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, padding:24 }}>
+                    <div style={{ fontSize:12, color:"#4A6A90", textAlign:"center" }}>Seleccioná una nota para ver el detalle</div>
+                  </div>
+                )}
+              </div>
+            )}
           </>
+        )}
+
+        {/* Mobile: overlay para nota seleccionada */}
+        {mobile && selectedNota && (
+          <div style={{ position:"fixed", inset:0, background:B.bg, zIndex:100, display:"flex", flexDirection:"column" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
+              <button onClick={()=>setSelectedNota(null)}
+                style={{ width:32, height:32, borderRadius:8, background:"transparent", border:`1px solid ${B.border}`,
+                  cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8AAECC" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+                </svg>
+              </button>
+              <span style={{ fontSize:13, fontWeight:700, color:B.text, flex:1 }}>{selectedNota.titulo}</span>
+            </div>
+            <div style={{ flex:1, overflow:"hidden" }}>
+              <PanelNota nota={selectedNota} supabase={supabase} notas={notas}
+                onUpdate={updateNota} onDelete={(id) => { deleteNota(id); setSelectedNota(null); }} />
+            </div>
+          </div>
         )}
 
 
@@ -833,8 +697,8 @@ export default function Cuaderno({ leads, properties, rentals, captaciones, supa
                 </div>
               ))}
             </div>
-            {/* Panel detalle en lista */}
-            {selectedNota && (
+            {/* Panel detalle en lista — solo desktop */}
+            {!mobile && selectedNota && (
               <div style={{ width:300, borderLeft:`1px solid ${B.border}`, background:B.card, flexShrink:0 }}>
                 <PanelNota nota={selectedNota} supabase={supabase} notas={notas}
                   onUpdate={updateNota} onDelete={deleteNota} />
