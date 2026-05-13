@@ -2,8 +2,18 @@
 // ALBA CRM — BUSCADOR ARGENPROP
 // Genera links directos a Argenprop por lead — sin API, sin costo
 // ══════════════════════════════════════════════════════════════
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { B, AG } from "../data/constants.js";
+ 
+function useIsMobile(breakpoint = 768) {
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+  useEffect(() => {
+    const handler = () => setW(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return w < breakpoint;
+}
  
 // ── Mapeo de zonas a slugs de Argenprop ──────────────────────
 const ZONA_SLUG = {
@@ -76,12 +86,12 @@ function buildArgenPropUrl(tipo, zona, presup, operacion) {
   return url;
 }
  
-function ZonaBtn({ label, url, color }) {
+function ZonaBtn({ label, url, color, mobile }) {
   return (
     <a href={url} target="_blank" rel="noreferrer"
-      style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 12px", borderRadius:8,
+      style={{ display:"flex", alignItems:"center", gap: mobile ? 6 : 6, padding: mobile ? "8px 12px" : "7px 12px", borderRadius:8,
         background: color + "12", border:`1px solid ${color}40`,
-        color, fontSize:11, fontWeight:600, textDecoration:"none", whiteSpace:"nowrap" }}>
+        color, fontSize: mobile ? 12 : 11, fontWeight:600, textDecoration:"none", whiteSpace:"nowrap" }}>
       📍 {label}
     </a>
   );
@@ -101,7 +111,7 @@ function separarZonas(zonaStr) {
 }
  
 // ── Panel reutilizable — usado en CRMLeads ───────────────────
-export function BuscadorPanel({ lead }) {
+export function BuscadorPanel({ lead, mobile }) {
   const zona = lead.zona?.toLowerCase() || "";
   const alts = ZONAS_ALT[zona] || [];
   const zonasRaw = separarZonas(lead.zona);
@@ -118,39 +128,40 @@ export function BuscadorPanel({ lead }) {
     : [];
  
   return (
-    <div style={{ background:B.bg, border:`1px solid ${B.accentL}30`, borderRadius:10,
-      padding:"12px 14px", display:"flex", flexDirection:"column", gap:10 }}>
+    <div style={{ background:B.bg, border:`1px solid ${B.accentL}30`, borderRadius: mobile ? 8 : 10,
+      padding: mobile ? "10px 12px" : "12px 14px", display:"flex", flexDirection:"column", gap: mobile ? 8 : 10 }}>
  
-      <div style={{ fontSize:10, color:B.accentL, fontWeight:700, letterSpacing:"0.8px" }}>
+      <div style={{ fontSize: mobile ? 11 : 10, color:B.accentL, fontWeight:700, letterSpacing:"0.8px" }}>
         🔍 BUSCAR EN ARGENPROP
       </div>
  
       {urlsZonas.length > 0 && (
         <div>
-          <div style={{ fontSize:10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom:6 }}>
+          <div style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom: mobile ? 5 : 6 }}>
             {urlsZonas.length > 1 ? "ZONAS DEL LEAD" : "ZONA PRINCIPAL"}
           </div>
-          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-            {urlsZonas.map((z,i) => <ZonaBtn key={i} label={z.label} url={z.url} color={B.accentL} />)}
+          <div style={{ display:"flex", gap: mobile ? 6 : 6, flexWrap:"wrap" }}>
+            {urlsZonas.map((z,i) => <ZonaBtn key={i} label={z.label} url={z.url} color={B.accentL} mobile={mobile} />)}
           </div>
         </div>
       )}
  
       {urlsAlt.length > 0 && (
         <div>
-          <div style={{ fontSize:10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom:6 }}>ZONAS ALTERNATIVAS</div>
-          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-            {urlsAlt.map((z,i) => <ZonaBtn key={i} label={z.label} url={z.url} color="#8AAECC" />)}
+          <div style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom: mobile ? 5 : 6 }}>ZONAS ALTERNATIVAS</div>
+          <div style={{ display:"flex", gap: mobile ? 6 : 6, flexWrap:"wrap" }}>
+            {urlsAlt.map((z,i) => <ZonaBtn key={i} label={z.label} url={z.url} color="#8AAECC" mobile={mobile} />)}
           </div>
         </div>
       )}
  
       <div>
-        <div style={{ fontSize:10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom:6 }}>TODA MDP</div>
+        <div style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom: mobile ? 5 : 6 }}>TODA MDP</div>
         <ZonaBtn
           label="Ver todo Mar del Plata"
           url={buildArgenPropUrl(lead.tipo, "mar-del-plata", lead.presup, lead.op).replace("/mar-del-plata/mar-del-plata/", "/mar-del-plata/")}
           color="#4A6A90"
+          mobile={mobile}
         />
       </div>
     </div>
@@ -158,6 +169,7 @@ export function BuscadorPanel({ lead }) {
 }
  
 function LeadBuscador({ lead }) {
+  const mobile = useIsMobile(768);
   const [open, setOpen] = useState(false);
   const ag = AG[lead.ag];
   const zona = lead.zona?.toLowerCase() || "";
@@ -178,49 +190,50 @@ function LeadBuscador({ lead }) {
   const urgColor = lead.dias <= 2 ? B.hot : lead.dias <= 5 ? B.warm : B.accentL;
  
   return (
-    <div style={{ background:B.card, border:`1px solid ${urgColor}30`, borderLeft:`3px solid ${urgColor}`, borderRadius:10 }}>
-      <div onClick={()=>setOpen(o=>!o)} style={{ padding:"11px 14px", cursor:"pointer" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap" }}>
-          <span style={{ fontSize:13, fontWeight:700, color:B.text }}>{lead.nombre}</span>
-          {ag && <span style={{ fontSize:10, padding:"1px 6px", borderRadius:3, background:ag.bg, color:ag.c, fontWeight:600 }}>{ag.n}</span>}
-          <span style={{ fontSize:10, color:urgColor, fontWeight:600, marginLeft:"auto" }}>
+    <div style={{ background:B.card, border:`1px solid ${urgColor}30`, borderLeft:`3px solid ${urgColor}`, borderRadius: mobile ? 10 : 10 }}>
+      <div onClick={()=>setOpen(o=>!o)} style={{ padding: mobile ? "12px 14px" : "11px 14px", cursor:"pointer" }}>
+        <div style={{ display:"flex", alignItems:"center", gap: mobile ? 6 : 8, marginBottom: mobile ? 5 : 4, flexWrap:"wrap" }}>
+          <span style={{ fontSize: mobile ? 14 : 13, fontWeight:700, color:B.text }}>{lead.nombre}</span>
+          {ag && <span style={{ fontSize: mobile ? 11 : 10, padding: mobile ? "2px 7px" : "1px 6px", borderRadius:3, background:ag.bg, color:ag.c, fontWeight:600 }}>{ag.n}</span>}
+          <span style={{ fontSize: mobile ? 11 : 10, color:urgColor, fontWeight:600, marginLeft:"auto" }}>
             {lead.dias === 0 ? "Hoy" : `${lead.dias}d`}
           </span>
-          <span style={{ fontSize:11, color:B.accentL }}>{open?"▲":"▼"}</span>
+          <span style={{ fontSize: mobile ? 12 : 11, color:B.accentL }}>{open?"▲":"▼"}</span>
         </div>
-        <div style={{ fontSize:12, color:"#8AAECC" }}>
+        <div style={{ fontSize: mobile ? 13 : 12, color:"#8AAECC" }}>
           {lead.tipo} · {lead.zona} · {lead.presup ? `USD ${lead.presup.toLocaleString()}` : "Sin precio"}
         </div>
       </div>
  
       {open && (
-        <div style={{ borderTop:`1px solid ${B.border}`, padding:"12px 14px", display:"flex", flexDirection:"column", gap:10 }}>
+        <div style={{ borderTop:`1px solid ${B.border}`, padding: mobile ? "10px 14px" : "12px 14px", display:"flex", flexDirection:"column", gap: mobile ? 8 : 10 }}>
           <div>
-            <div style={{ fontSize:10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom:6 }}>
+            <div style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom: mobile ? 5 : 6 }}>
               {urlsZonas.length > 1 ? "ZONAS DEL LEAD" : "ZONA PRINCIPAL"}
             </div>
-            <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-              {urlsZonas.map((z,i) => <ZonaBtn key={i} label={z.label} url={z.url} color={B.accentL} />)}
+            <div style={{ display:"flex", gap: mobile ? 6 : 6, flexWrap:"wrap" }}>
+              {urlsZonas.map((z,i) => <ZonaBtn key={i} label={z.label} url={z.url} color={B.accentL} mobile={mobile} />)}
             </div>
           </div>
           {urlsAlt.length > 0 && (
             <div>
-              <div style={{ fontSize:10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom:6 }}>ZONAS ALTERNATIVAS</div>
-              <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                {urlsAlt.map((z,i) => <ZonaBtn key={i} label={z.label} url={z.url} color="#8AAECC" />)}
+              <div style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom: mobile ? 5 : 6 }}>ZONAS ALTERNATIVAS</div>
+              <div style={{ display:"flex", gap: mobile ? 6 : 6, flexWrap:"wrap" }}>
+                {urlsAlt.map((z,i) => <ZonaBtn key={i} label={z.label} url={z.url} color="#8AAECC" mobile={mobile} />)}
               </div>
             </div>
           )}
           <div>
-            <div style={{ fontSize:10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom:6 }}>BÚSQUEDA AMPLIA — TODA MDP</div>
+            <div style={{ fontSize: mobile ? 11 : 10, color:"#8AAECC", fontWeight:600, letterSpacing:"0.8px", marginBottom: mobile ? 5 : 6 }}>BÚSQUEDA AMPLIA — TODA MDP</div>
             <ZonaBtn
               label="Ver todo Mar del Plata"
               url={buildArgenPropUrl(lead.tipo, "mar-del-plata", lead.presup, lead.op).replace("/mar-del-plata/mar-del-plata/", "/mar-del-plata/")}
               color="#4A6A90"
+              mobile={mobile}
             />
           </div>
           {lead.nota && (
-            <div style={{ fontSize:11, color:"#6A8AAE", fontStyle:"italic", borderLeft:`2px solid ${B.border}`, paddingLeft:8 }}>
+            <div style={{ fontSize: mobile ? 12 : 11, color:"#6A8AAE", fontStyle:"italic", borderLeft:`2px solid ${B.border}`, paddingLeft:8 }}>
               {lead.nota.slice(0, 120)}{lead.nota.length > 120 ? "..." : ""}
             </div>
           )}
@@ -231,6 +244,7 @@ function LeadBuscador({ lead }) {
 }
  
 export default function Buscador({ leads }) {
+  const mobile = useIsMobile(768);
   const [filtro, setFiltro] = useState("");
  
   const activos = leads
@@ -276,41 +290,41 @@ export default function Buscador({ leads }) {
   }
  
   return (
-    <div style={{ maxWidth:680, display:"flex", flexDirection:"column", gap:14 }}>
-      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10 }}>
+    <div style={{ maxWidth: mobile ? "100%" : 680, display:"flex", flexDirection:"column", gap: mobile ? 12 : 14 }}>
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap: mobile ? 8 : 10, flexWrap: mobile ? "wrap" : "nowrap" }}>
         <div>
-          <h1 style={{ fontSize:20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Buscador Argenprop</h1>
-          <p style={{ fontSize:12, color:"#8AAECC", margin:"3px 0 0" }}>Links directos por lead — abrís Argenprop con los filtros ya cargados</p>
+          <h1 style={{ fontSize: mobile ? 18 : 20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Buscador Argenprop</h1>
+          <p style={{ fontSize: mobile ? 11 : 12, color:"#8AAECC", margin:"3px 0 0" }}>Links directos por lead — abrís Argenprop con los filtros ya cargados</p>
         </div>
         <button onClick={()=>setShowMail(m=>!m)}
-          style={{ padding:"8px 14px", borderRadius:9, cursor:"pointer", whiteSpace:"nowrap", flexShrink:0,
+          style={{ padding: mobile ? "8px 14px" : "8px 14px", borderRadius:9, cursor:"pointer", whiteSpace:"nowrap", flexShrink:0,
             background: showMail ? B.accent : "rgba(42,91,173,0.12)",
             border:`1px solid ${showMail ? B.accentL : B.border}`,
-            color: showMail ? "#fff" : B.accentL, fontSize:12, fontWeight:600 }}>
+            color: showMail ? "#fff" : B.accentL, fontSize: mobile ? 13 : 12, fontWeight:600 }}>
           ✉ Mail de pedidos
         </button>
       </div>
  
       {showMail && (
-        <div style={{ background:"rgba(10,21,37,0.95)", border:`1px solid ${B.accentL}40`, borderRadius:12, overflow:"hidden" }}>
-          <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <span style={{ fontSize:11, fontWeight:700, color:B.accentL, letterSpacing:"0.8px" }}>✉ MAIL DE PEDIDOS — {activos.filter(l=>l.dias<=7).length} búsquedas activas</span>
-            <div style={{ display:"flex", gap:6 }}>
+        <div style={{ background:"rgba(10,21,37,0.95)", border:`1px solid ${B.accentL}40`, borderRadius: mobile ? 10 : 12, overflow:"hidden" }}>
+          <div style={{ padding: mobile ? "10px 12px" : "12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap: mobile ? "wrap" : "nowrap", gap: mobile ? 6 : 0 }}>
+            <span style={{ fontSize: mobile ? 12 : 11, fontWeight:700, color:B.accentL, letterSpacing:"0.8px" }}>✉ MAIL DE PEDIDOS — {activos.filter(l=>l.dias<=7).length} búsquedas activas</span>
+            <div style={{ display:"flex", gap: mobile ? 8 : 6 }}>
               <button onClick={copiarMail}
-                style={{ padding:"5px 14px", borderRadius:7, cursor:"pointer",
+                style={{ padding: mobile ? "6px 14px" : "5px 14px", borderRadius:7, cursor:"pointer",
                   background: mailCopiado ? "#2E9E6A" : B.accent,
-                  border:"none", color:"#fff", fontSize:11, fontWeight:700 }}>
+                  border:"none", color:"#fff", fontSize: mobile ? 12 : 11, fontWeight:700 }}>
                 {mailCopiado ? "✓ Copiado" : "Copiar"}
               </button>
               <a href={`mailto:?subject=Pedidos%20Alba%20Inversiones&body=${encodeURIComponent(generarMail())}`}
-                style={{ padding:"5px 14px", borderRadius:7, cursor:"pointer",
+                style={{ padding: mobile ? "6px 14px" : "5px 14px", borderRadius:7, cursor:"pointer",
                   background:"transparent", border:`1px solid ${B.border}`,
-                  color:"#8AAECC", fontSize:11, fontWeight:600, textDecoration:"none" }}>
+                  color:"#8AAECC", fontSize: mobile ? 12 : 11, fontWeight:600, textDecoration:"none" }}>
                 Abrir en mail
               </a>
             </div>
           </div>
-          <pre style={{ margin:0, padding:"14px 16px", fontSize:12, color:"#C8D8E8", lineHeight:1.7,
+          <pre style={{ margin:0, padding: mobile ? "12px" : "14px 16px", fontSize: mobile ? 13 : 12, color:"#C8D8E8", lineHeight:1.7,
             whiteSpace:"pre-wrap", fontFamily:"-apple-system, sans-serif", maxHeight:400, overflowY:"auto" }}>
             {generarMail()}
           </pre>
@@ -319,35 +333,35 @@ export default function Buscador({ leads }) {
  
       <input value={filtro} onChange={e=>setFiltro(e.target.value)}
         placeholder="Filtrar por nombre o zona..."
-        style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:8, padding:"8px 12px",
-          color:B.text, fontSize:12, outline:"none" }} />
+        style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:8, padding: mobile ? "10px 12px" : "8px 12px",
+          color:B.text, fontSize: mobile ? 13 : 12, outline:"none" }} />
  
       {calientes.length > 0 && (
         <div>
-          <div style={{ fontSize:10, color:B.hot, fontWeight:700, letterSpacing:"1px", marginBottom:8 }}>🔴 CALIENTES — {calientes.length}</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+          <div style={{ fontSize: mobile ? 11 : 10, color:B.hot, fontWeight:700, letterSpacing:"1px", marginBottom: mobile ? 8 : 8 }}>🔴 CALIENTES — {calientes.length}</div>
+          <div style={{ display:"flex", flexDirection:"column", gap: mobile ? 8 : 6 }}>
             {calientes.map(l => <LeadBuscador key={l.id} lead={l} />)}
           </div>
         </div>
       )}
       {tibios.length > 0 && (
         <div>
-          <div style={{ fontSize:10, color:B.warm, fontWeight:700, letterSpacing:"1px", marginBottom:8 }}>🟡 TIBIOS — {tibios.length}</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+          <div style={{ fontSize: mobile ? 11 : 10, color:B.warm, fontWeight:700, letterSpacing:"1px", marginBottom: mobile ? 8 : 8 }}>🟡 TIBIOS — {tibios.length}</div>
+          <div style={{ display:"flex", flexDirection:"column", gap: mobile ? 8 : 6 }}>
             {tibios.map(l => <LeadBuscador key={l.id} lead={l} />)}
           </div>
         </div>
       )}
       {frios.length > 0 && (
         <div>
-          <div style={{ fontSize:10, color:B.accentL, fontWeight:700, letterSpacing:"1px", marginBottom:8 }}>🔵 FRÍOS — {frios.length}</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+          <div style={{ fontSize: mobile ? 11 : 10, color:B.accentL, fontWeight:700, letterSpacing:"1px", marginBottom: mobile ? 8 : 8 }}>🔵 FRÍOS — {frios.length}</div>
+          <div style={{ display:"flex", flexDirection:"column", gap: mobile ? 8 : 6 }}>
             {frios.map(l => <LeadBuscador key={l.id} lead={l} />)}
           </div>
         </div>
       )}
       {filtrados.length === 0 && (
-        <div style={{ textAlign:"center", padding:"30px 0", color:"#4A6A90", fontSize:12 }}>
+        <div style={{ textAlign:"center", padding: mobile ? "40px 0" : "30px 0", color:"#4A6A90", fontSize: mobile ? 13 : 12 }}>
           Sin leads con zona y presupuesto definidos
         </div>
       )}

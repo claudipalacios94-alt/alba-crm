@@ -112,6 +112,55 @@ async function nominatim(dir) {
   return null;
 }
 
+// ── Panel de lista (reutilizable en desktop y mobile) ─────────
+function PanelLista({ propiedades, captaciones, filtroTipo, q, capas, withCoordsFn, sel, setSel, leafRef }) {
+  const propsList = capas.propiedades
+    ? propiedades.map(withCoordsFn).filter(p => p.lat && p.lng)
+        .filter(p => filtroTipo === "Todos" || p.tipo === filtroTipo)
+        .filter(p => !q || ((p.dir || "") + (p.zona || "")).toLowerCase().includes(q.toLowerCase()))
+    : [];
+
+  const capsList = capas.captaciones
+    ? captaciones.filter(c => c.lat && c.lng)
+    : [];
+
+  return (
+    <>
+      {propsList.map(p => {
+        const catColor = CAT_COLOR[p.categoria || "normal"];
+        const isSel = sel?.id === p.id && sel?._tipo === "propiedad";
+        return (
+          <div key={p.id} onClick={() => { setSel({ ...p, _tipo: "propiedad" }); leafRef.current?.setView([p.lat, p.lng], 16); }}
+            style={{ background: isSel ? B.accent + "18" : B.card,
+              border: `1.5px solid ${isSel ? B.accentL : B.border}`,
+              borderLeft: `3px solid ${catColor}`, borderRadius: 9, padding: "9px 11px", cursor: "pointer", flexShrink: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: B.text }}>{p.tipo}</div>
+            <div style={{ fontSize: 11, color: "#8AAECC" }}>{p.zona}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif", marginTop: 2 }}>
+              {p.precio ? "USD " + Number(p.precio).toLocaleString() : "—"}
+            </div>
+          </div>
+        );
+      })}
+
+      {capsList.map(cap => {
+        const isSel = sel?.id === cap.id && sel?._tipo === "captacion";
+        return (
+          <div key={cap.id} onClick={() => { setSel({ ...cap, _tipo: "captacion" }); leafRef.current?.setView([cap.lat, cap.lng], 16); }}
+            style={{ background: isSel ? "#CC223318" : B.card,
+              border: `1.5px solid ${isSel ? "#CC2233" : B.border}`,
+              borderLeft: "3px solid #CC2233", borderRadius: 9, padding: "9px 11px",
+              cursor: "pointer", flexShrink: 0, borderStyle: "dashed" }}>
+            <div style={{ fontSize: 11, color: "#CC2233", fontWeight: 600 }}>Captacion</div>
+            <div style={{ fontSize: 11, color: "#8AAECC" }}>{cap.zona || cap.direccion || "Sin dirección"}</div>
+            {cap.precio && <div style={{ fontSize: 13, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif", marginTop: 2 }}>USD {Number(cap.precio).toLocaleString()}</div>}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 export default function Mapa({ properties, leads = [], updateProperty, supabase, flyers = [] }) {
   const mapRef   = useRef(null);
   const leafRef  = useRef(null);
@@ -126,9 +175,17 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase,
   const [sel,         setSel]         = useState(null);
   const [notaRapida,  setNotaRapida]  = useState("");
   const [guardandoNota, setGuardandoNota] = useState(false);
-  const [mostrados,    setMostrados]    = useState(new Set()); // 'leadId-propId'
+  const [mostrados,    setMostrados]    = useState(new Set());
   const [capas,       setCapas]       = useState({ propiedades: true, captaciones: true });
   const [filtroTipo,  setFiltroTipo]  = useState("Todos");
+  const [panelOpen,   setPanelOpen]   = useState(false);
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+  React.useEffect(() => {
+    const handler = () => setW(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  const mobile = w < 768;
 
   // ── Cargar captaciones ─────────────────────────────────────
   useEffect(() => {
@@ -294,15 +351,15 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase,
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 10, flexShrink: 0 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: B.text, margin: 0, fontFamily: "Georgia,serif" }}>Mapa Alba</h1>
-          <p style={{ fontSize: 12, color: "#8AAECC", margin: "3px 0 0" }}>
-            {conCoords} propiedades · {capConCoords} captaciones · Mar del Plata
+          <h1 style={{ fontSize: mobile ? 16 : 20, fontWeight: 700, color: B.text, margin: 0, fontFamily: "Georgia,serif" }}>Mapa Alba</h1>
+          <p style={{ fontSize: mobile ? 10 : 12, color: "#8AAECC", margin: "3px 0 0" }}>
+            {conCoords} propiedades · {capConCoords} captaciones
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar dirección, zona..."
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar..."
             style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid " + B.border,
-              background: B.card, color: B.text, fontSize: 12, outline: "none", width: 190 }} />
+              background: B.card, color: B.text, fontSize: 12, outline: "none", width: mobile ? 140 : 190 }} />
           {geocoding && (
             <div style={{ fontSize: 11, color: B.accentL, background: B.accentL + "15",
               border: "1px solid " + B.accentL + "40", borderRadius: 8, padding: "5px 10px" }}>
@@ -316,43 +373,45 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase,
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, flexShrink: 0, alignItems: "center" }}>
         {/* Toggle capas */}
         <button onClick={() => setCapas(c => ({ ...c, propiedades: !c.propiedades }))}
-          style={{ ...chip(capas.propiedades), display: "flex", alignItems: "center", gap: 5 }}>
+          style={{ ...chip(capas.propiedades), display: "flex", alignItems: "center", gap: 5, fontSize: mobile ? 10 : 11, padding: mobile ? "3px 8px" : "4px 10px" }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: capas.propiedades ? B.accentL : "#4A6A90" }} />
-          Propiedades ({conCoords})
+          Props ({conCoords})
         </button>
         <button onClick={() => setCapas(c => ({ ...c, captaciones: !c.captaciones }))}
-          style={{ ...chip(capas.captaciones), display: "flex", alignItems: "center", gap: 5 }}>
+          style={{ ...chip(capas.captaciones), display: "flex", alignItems: "center", gap: 5, fontSize: mobile ? 10 : 11, padding: mobile ? "3px 8px" : "4px 10px" }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: capas.captaciones ? "#CC2233" : "#4A6A90" }} />
-          Captaciones ({capConCoords})
+          Caps ({capConCoords})
         </button>
 
         <div style={{ width: 1, height: 16, background: B.border, margin: "0 4px" }} />
 
         {/* Filtro tipo */}
-        {tipos.map(t => <button key={t} onClick={() => setFiltroTipo(t)} style={chip(filtroTipo === t)}>{t}</button>)}
+        {tipos.map(t => <button key={t} onClick={() => setFiltroTipo(t)} style={{ ...chip(filtroTipo === t), fontSize: mobile ? 10 : 11, padding: mobile ? "3px 8px" : "4px 10px" }}>{t}</button>)}
       </div>
 
-      {/* Leyenda */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 10, flexShrink: 0, flexWrap: "wrap", alignItems: "center" }}>
-        {Object.entries(CAT_COLOR).map(([k, c]) => (
-          <div key={k} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: c }} />
-            <span style={{ fontSize: 11, color: "#8AAECC" }}>
-              {k === "hon3" ? "Hon. 3%" : k === "hon6" ? "Hon. 6%" : k === "normal" ? "Cartera" : k.charAt(0).toUpperCase() + k.slice(1)}
-            </span>
-          </div>
-        ))}
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            <span style={{ fontSize:10, color:"#CC2233" }}>🔴 Colega</span>
-            <span style={{ fontSize:10, color:"#2E9E6A" }}>🟢 Honor.</span>
-            <span style={{ fontSize:10, color:"#E8A830" }}>🟡 Propia</span>
+      {/* Leyenda — solo desktop */}
+      {!mobile && (
+        <div style={{ display: "flex", gap: 12, marginBottom: 10, flexShrink: 0, flexWrap: "wrap", alignItems: "center" }}>
+          {Object.entries(CAT_COLOR).map(([k, c]) => (
+            <div key={k} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <div style={{ width: 7, height: 7, borderRadius: "50%", background: c }} />
+              <span style={{ fontSize: 11, color: "#8AAECC" }}>
+                {k === "hon3" ? "Hon. 3%" : k === "hon6" ? "Hon. 6%" : k === "normal" ? "Cartera" : k.charAt(0).toUpperCase() + k.slice(1)}
+              </span>
+            </div>
+          ))}
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+              <span style={{ fontSize:10, color:"#CC2233" }}>Colega</span>
+              <span style={{ fontSize:10, color:"#2E9E6A" }}>Honor.</span>
+              <span style={{ fontSize:10, color:"#E8A830" }}>Propia</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Mapa + lista */}
-      <div style={{ flex: 1, display: "flex", gap: 12, minHeight: 0 }}>
+      <div style={{ flex: 1, display: "flex", gap: 12, minHeight: 0, position: "relative" }}>
 
         {/* Mapa */}
         <div style={{ flex: 1, borderRadius: 12, overflow: "hidden", border: `1px solid ${B.border}`, position: "relative" }}>
@@ -367,45 +426,52 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase,
           <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
         </div>
 
-        {/* Lista lateral */}
-        <div style={{ width: 220, flexShrink: 0, display: "flex", flexDirection: "column", gap: 6,
-          overflowY: "auto", scrollbarWidth: "thin", scrollbarColor: `${B.border} transparent` }}>
+        {/* Boton toggle panel — solo movil */}
+        {mobile && (
+          <button onClick={() => setPanelOpen(o => !o)}
+            style={{ position: "absolute", top: 12, right: 12, zIndex: 50, width: 40, height: 40,
+              borderRadius: 10, background: B.card, border: `1px solid ${B.border}`,
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round">
+              {panelOpen
+                ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>
+                : <><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></>
+              }
+            </svg>
+          </button>
+        )}
 
-          {capas.propiedades && properties.map(withCoords).filter(p => p.lat && p.lng)
-            .filter(p => filtroTipo === "Todos" || p.tipo === filtroTipo)
-            .filter(p => !q || ((p.dir || "") + (p.zona || "")).toLowerCase().includes(q.toLowerCase()))
-            .map(p => {
-              const catColor = CAT_COLOR[p.categoria || "normal"];
-              const isSel = sel?.id === p.id && sel?._tipo === "propiedad";
-              return (
-                <div key={p.id} onClick={() => { setSel({ ...p, _tipo: "propiedad" }); leafRef.current?.setView([p.lat, p.lng], 16); }}
-                  style={{ background: isSel ? B.accent + "18" : B.card,
-                    border: `1.5px solid ${isSel ? B.accentL : B.border}`,
-                    borderLeft: `3px solid ${catColor}`, borderRadius: 9, padding: "9px 11px", cursor: "pointer", flexShrink: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: B.text }}>{p.tipo}</div>
-                  <div style={{ fontSize: 11, color: "#8AAECC" }}>{p.zona}</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif", marginTop: 2 }}>
-                    {p.precio ? "USD " + Number(p.precio).toLocaleString() : "—"}
-                  </div>
-                </div>
-              );
-            })}
+        {/* Panel overlay — solo movil */}
+        {mobile && panelOpen && (
+          <div style={{ position: "absolute", inset: 0, zIndex: 60, display: "flex", flexDirection: "column",
+            background: B.bg }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 14px", borderBottom: `1px solid ${B.border}`, flexShrink: 0 }}>
+              <span style={{ fontSize: 12, color: B.text, fontWeight: 600 }}>Propiedades y Captaciones</span>
+              <button onClick={() => setPanelOpen(false)}
+                style={{ width: 32, height: 32, borderRadius: 8, background: "transparent", border: `1px solid ${B.border}`,
+                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8AAECC" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+              <PanelLista propiedades={properties} captaciones={captaciones} filtroTipo={filtroTipo} q={q}
+                capas={capas} withCoordsFn={withCoords} sel={sel} setSel={setSel} leafRef={leafRef} />
+            </div>
+          </div>
+        )}
 
-          {capas.captaciones && captaciones.filter(c => c.lat && c.lng).map(cap => {
-            const isSel = sel?.id === cap.id && sel?._tipo === "captacion";
-            return (
-              <div key={cap.id} onClick={() => { setSel({ ...cap, _tipo: "captacion" }); leafRef.current?.setView([cap.lat, cap.lng], 16); }}
-                style={{ background: isSel ? "#CC223318" : B.card,
-                  border: `1.5px solid ${isSel ? "#CC2233" : B.border}`,
-                  borderLeft: "3px solid #CC2233", borderRadius: 9, padding: "9px 11px",
-                  cursor: "pointer", flexShrink: 0, borderStyle: "dashed" }}>
-                <div style={{ fontSize: 11, color: "#CC2233", fontWeight: 600 }}>📌 Captación</div>
-                <div style={{ fontSize: 11, color: "#8AAECC" }}>{cap.zona || cap.direccion || "Sin dirección"}</div>
-                {cap.precio && <div style={{ fontSize: 13, fontWeight: 700, color: B.accentL, fontFamily: "Georgia,serif", marginTop: 2 }}>USD {Number(cap.precio).toLocaleString()}</div>}
-              </div>
-            );
-          })}
-        </div>
+        {/* Lista lateral — solo desktop */}
+        {!mobile && (
+          <div style={{ width: 220, flexShrink: 0, display: "flex", flexDirection: "column", gap: 6,
+            overflowY: "auto", scrollbarWidth: "thin", scrollbarColor: `${B.border} transparent` }}>
+            <PanelLista propiedades={properties} captaciones={captaciones} filtroTipo={filtroTipo} q={q}
+              capas={capas} withCoordsFn={withCoords} sel={sel} setSel={setSel} leafRef={leafRef} />
+          </div>
+        )}
       </div>
 
       {/* Popup */}
