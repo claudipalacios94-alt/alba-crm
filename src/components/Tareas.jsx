@@ -6,9 +6,9 @@ import React, { useState, useEffect } from "react";
 import { B, AG } from "../data/constants.js";
 
 const PRIO = {
-  urgente:   { label: "🔴 Urgente",   color: "#CC2233" },
-  importante:{ label: "🟡 Importante",color: "#E8A830" },
-  normal:    { label: "⚪ Normal",     color: "#4A8ABE" },
+  urgente:   { label: "Urgente",   color: "#CC2233" },
+  importante:{ label: "Importante",color: "#E8A830" },
+  normal:    { label: "Normal",     color: "#4A8ABE" },
 };
 
 function fmtFecha(dateStr) {

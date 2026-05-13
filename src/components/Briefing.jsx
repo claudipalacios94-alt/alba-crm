@@ -93,10 +93,10 @@ function InsightPanel({ leads, properties }) {
   const convRate     = activos.length > 0 ? Math.round((negociacion / activos.length) * 100) : 0;
 
   const alarmas = [
-    sinAsignar.length > 0 && { texto: `${sinAsignar.length} lead${sinAsignar.length>1?"s":""} sin agente`, color:"#CC2233", icono:"⚠", urgente:true },
-    sinAccion.length > 0  && { texto: `${sinAccion.length} sin próxima acción (+3d)`, color:"#E8A830", icono:"⏰", urgente:false },
-    frios.length > 0      && { texto: `${frios.length} frío${frios.length>1?"s":""} (+15 días sin contacto)`, color:"#4A8ABE", icono:"❄", urgente:false },
-    propsSinInteresados.length > 0 && { texto: `${propsSinInteresados.length} propiedad${propsSinInteresados.length>1?"es":""} sin interesados`, color:"#9B6DC8", icono:"🏠", urgente:false },
+    sinAsignar.length > 0 && { texto: `${sinAsignar.length} lead${sinAsignar.length>1?"s":""} sin agente`, color:"#CC2233", urgente:true },
+    sinAccion.length > 0  && { texto: `${sinAccion.length} sin proxima accion (+3d)`, color:"#E8A830", urgente:false },
+    frios.length > 0      && { texto: `${frios.length} frio${frios.length>1?"s":""} (+15 dias sin contacto)`, color:"#4A8ABE", urgente:false },
+    propsSinInteresados.length > 0 && { texto: `${propsSinInteresados.length} propiedad${propsSinInteresados.length>1?"es":""} sin interesados`, color:"#9B6DC8", urgente:false },
   ].filter(Boolean);
 
   return (
@@ -104,13 +104,13 @@ function InsightPanel({ leads, properties }) {
       {/* KPIs clave */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
         {[
-          { label:"En negociación", val:negociacion, color:B.ok, sub: pipeline > 0 ? "USD "+pipeline.toLocaleString() : "sin monto" },
+          { label:"En negociación", val:negociacion, color:B.ok, sub: pipeline > 0 ? "USD "+pipeline.toLocaleString() : "Sin monto" },
           { label:"Visitas", val:visitas, color:B.warm, sub: activos.length+" activos" },
-          { label:"Calientes hoy", val:calientes.length, color:B.hot, sub:"≤2 días sin contacto" },
-          { label:"Conversión", val:convRate+"%", color:B.accentL, sub:"a negociación" },
+          { label:"Calientes hoy", val:calientes.length, color:B.hot, sub:"Hasta 2 dias sin contacto" },
+          { label:"Conversion", val:convRate+"%", color:B.accentL, sub:"A negociacion" },
         ].map(k => (
-          <div key={k.label} style={{ background:B.card, borderRadius:10, padding:"10px 12px",
-            border:"1px solid " + k.color + "30", borderLeft:"3px solid " + k.color }}>
+          <div key={k.label} style={{ background:B.card, borderRadius:8, padding:"10px 12px",
+            border:"1px solid " + B.border }}>
             <div style={{ fontSize:18, fontWeight:700, color:k.color, fontFamily:"Georgia,serif", lineHeight:1 }}>{k.val}</div>
             <div style={{ fontSize:11, color:"#E8F0FA", fontWeight:500, marginTop:3 }}>{k.label}</div>
             <div style={{ fontSize:10, color:"#6A8AAE", marginTop:1 }}>{k.sub}</div>
@@ -121,11 +121,10 @@ function InsightPanel({ leads, properties }) {
       {/* Alarmas accionables */}
       {alarmas.length > 0 && (
         <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
-          <div style={{ fontSize:10, color:"#5A7A9A", fontWeight:600, letterSpacing:"0.8px", textTransform:"uppercase", marginBottom:2 }}>Requieren atención</div>
+          <div style={{ fontSize:10, color:"#4A6A90", fontWeight:600, letterSpacing:"0.8px", textTransform:"uppercase", marginBottom:2 }}>Requieren atencion</div>
           {alarmas.map((a, i) => (
             <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px",
               background:a.color+"12", border:"1px solid "+a.color+"30", borderRadius:8 }}>
-              <span style={{ fontSize:13 }}>{a.icono}</span>
               <span style={{ fontSize:12, color:a.urgente ? "#E8F0FA" : "#8AAECC", fontWeight:a.urgente?600:400 }}>{a.texto}</span>
               {a.urgente && <span style={{ fontSize:9, padding:"1px 5px", borderRadius:4, background:a.color+"30", color:a.color, fontWeight:700, marginLeft:"auto" }}>AHORA</span>}
             </div>
@@ -133,7 +132,7 @@ function InsightPanel({ leads, properties }) {
         </div>
       )}
       {alarmas.length === 0 && (
-        <div style={{ fontSize:12, color:"#2E9E6A", textAlign:"center", padding:"8px 0" }}>✓ Todo en orden</div>
+        <div style={{ fontSize:12, color:"#2E9E6A", textAlign:"center", padding:"8px 0", fontWeight:500 }}>Todo en orden</div>
       )}
     </div>
   );
@@ -174,14 +173,16 @@ function LeadCard({ lead, updateLead }) {
         <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
           <span style={{ fontSize:14, fontWeight:700, color:'#E8F0FA' }}>{lead.nombre}</span>
           {ag && <span style={{ fontSize:11, padding:'2px 7px', borderRadius:4, background:ag.bg||'rgba(42,91,173,0.25)', color:ag.c, fontWeight:700, border:'1px solid '+ag.c+'40' }}>{ag.n}</span>}
-          {/* Calificación rápida visible siempre */}
           <span style={{ fontSize:10, padding:'2px 8px', borderRadius:10, background:calColor+'22', color:calColor, border:'1px solid '+calColor+'40', fontWeight:700 }}>
             {respondidas}/{PREGUNTAS.length} calificado
           </span>
-          <span style={{ fontSize:11, color:urgColor, fontWeight:700, marginLeft:'auto' }}>{razon} {open ? '▲' : '▼'}</span>
+          <span style={{ fontSize:11, color:urgColor, fontWeight:700, marginLeft:'auto' }}>{razon}
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ marginLeft:4, verticalAlign:'middle', transition:'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+              <path d="M4 6L8 10L12 6" stroke={urgColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </span>
         </div>
         <div style={{ fontSize:12, color:'#8AAECC', marginBottom:4 }}>{lead.zona} · {lead.tipo} · {lead.presup ? 'USD ' + lead.presup.toLocaleString() : '—'}</div>
-        {/* Barra de calificación */}
         <div style={{ height:3, background:B.border, borderRadius:2, overflow:'hidden' }}>
           <div style={{ height:'100%', width:pct+'%', background:calColor, borderRadius:2, transition:'width 0.3s' }} />
         </div>
@@ -189,12 +190,17 @@ function LeadCard({ lead, updateLead }) {
       {open && (
         <div style={{ borderTop:'1px solid ' + urgColor + '30', padding:'12px 14px', background:'rgba(10,21,37,0.5)', display:'flex', flexDirection:'column', gap:10 }}>
           {lead.nota && <div style={{ fontSize:13, color:'#A8C8E8', lineHeight:1.6, fontStyle:'italic' }}>{lead.nota}</div>}
-          {lead.proxAccion && <div style={{ fontSize:12, color:'#8AAECC' }}><span style={{ color:'#5A8AAE', fontWeight:600, fontSize:11 }}>PRÓXIMA ACCIÓN: </span>{lead.proxAccion}</div>}
-          {lead.notaImp && <div style={{ fontSize:12, color:B.warm }}><span style={{ fontWeight:600 }}>⚠ </span>{lead.notaImp}</div>}
+          {lead.proxAccion && <div style={{ fontSize:12, color:'#8AAECC' }}><span style={{ color:'#5A8AAE', fontWeight:600, fontSize:11 }}>PROXIMA ACCION: </span>{lead.proxAccion}</div>}
+          {lead.notaImp && <div style={{ fontSize:12, color:B.warm, display:'flex', alignItems:'center', gap:6 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.warm} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.77 3h16.82a2 2 0 0 0 1.77-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            {lead.notaImp}
+          </div>}
 
-          {/* Checklist calificación */}
           <div style={{ background:'rgba(10,21,37,0.4)', borderRadius:8, padding:'10px 12px', border:'1px solid '+B.border }}>
-            <div style={{ fontSize:10, fontWeight:700, color:B.accentL, letterSpacing:'0.8px', marginBottom:8 }}>CALIFICACIÓN DEL LEAD</div>
+            <div style={{ fontSize:10, fontWeight:700, color:B.accentL, letterSpacing:'0.8px', marginBottom:8 }}>CALIFICACION DEL LEAD</div>
             {PREGUNTAS.map(p => (
               <div key={p.key} style={{ marginBottom:6 }}>
                 {editQ === p.key ? (
@@ -208,16 +214,24 @@ function LeadCard({ lead, updateLead }) {
                       {savingQ?'...':'OK'}
                     </button>
                     <button onClick={()=>setEditQ(null)}
-                      style={{ padding:'4px 8px', borderRadius:5, cursor:'pointer', background:'transparent', border:'1px solid '+B.border, color:'#8AAECC', fontSize:11 }}>✕</button>
+                      style={{ padding:'4px 8px', borderRadius:5, cursor:'pointer', background:'transparent', border:'1px solid '+B.border, color:'#8AAECC', fontSize:11 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8AAECC" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
                   </div>
                 ) : (
                   <div onClick={()=>{ setEditQ(p.key); setValQ(lead[p.key]||''); }}
                     style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'3px 6px', borderRadius:5, background: lead[p.key]?'rgba(46,158,106,0.08)':'rgba(204,34,51,0.06)' }}>
-                    <span style={{ fontSize:13, flexShrink:0 }}>{lead[p.key] ? '✅' : '⬜'}</span>
+                    <span style={{ fontSize:13, flexShrink:0, color: lead[p.key] ? '#2E9E6A' : '#4A6A90' }}>
+                      {lead[p.key] ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2E9E6A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4A6A90" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+                      )}
+                    </span>
                     <span style={{ fontSize:11, color:'#8AAECC', flex:1 }}>{p.label}</span>
                     {lead[p.key]
                       ? <span style={{ fontSize:11, color:'#A8C8E8', fontStyle:'italic' }}>{lead[p.key]}</span>
-                      : <span style={{ fontSize:10, color:B.hot }}>sin dato — tocá para completar</span>}
+                      : <span style={{ fontSize:10, color:B.hot }}>Sin dato — click para completar</span>}
                   </div>
                 )}
               </div>
@@ -330,7 +344,7 @@ function CalendarioSemanal({ supabase }) {
                 style={{ background:"transparent", border:`1px solid ${B.border}`, borderRadius:5, color:"#8AAECC", cursor:"pointer", padding:"2px 8px", fontSize:12 }}>›</button>
             </>
           ) : (
-            <span style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px" }}>📅 ESTA SEMANA</span>
+            <span style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px" }}>ESTA SEMANA</span>
           )}
         </div>
         <div style={{ display:"flex", gap:3, background:B.card, borderRadius:6, padding:2, border:`1px solid ${B.border}` }}>
@@ -418,9 +432,9 @@ function ResumenCaptacionZonas({ supabase }) {
   };
 
   const ACCIONES = [
-    { key:"contactos", dia:"Lunes",    icono:"📞", label:"5 propietarios en ZonaProp" },
-    { key:"recorrida", dia:"Miércoles",icono:"🚶", label:"Recorrida del barrio" },
-    { key:"contenido", dia:"Viernes",  icono:"📸", label:"Carrusel Instagram" },
+    { key:"contactos", dia:"Lunes",    label:"5 propietarios en ZonaProp" },
+    { key:"recorrida", dia:"Miercoles",label:"Recorrida del barrio" },
+    { key:"contenido", dia:"Viernes",  label:"Carrusel Instagram" },
   ];
 
   React.useEffect(() => {
@@ -432,8 +446,8 @@ function ResumenCaptacionZonas({ supabase }) {
   if (!loaded) return null;
 
   return (
-    <div style={{ background:B.sidebar, border:"1px solid " + B.border, borderRadius:14, padding:16 }}>
-      <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:12 }}>🏘 CAPTACIÓN DE ZONAS — ESTA SEMANA</div>
+    <div>
+      <div style={{ fontSize:11, color:"#8AAECC", fontWeight:600, letterSpacing:"1px", marginBottom:12 }}>CAPTACION DE ZONAS — ESTA SEMANA</div>
       {!semana ? (
         <div style={{ textAlign:"center", padding:"12px 0", color:"#4A6A90", fontSize:12 }}>
           Sin barrio activo esta semana —{" "}
@@ -467,8 +481,8 @@ function ResumenCaptacionZonas({ supabase }) {
                 <div key={a.key} style={{ flex:1, padding:"6px 8px", borderRadius:7, textAlign:"center",
                   background: done ? "rgba(46,158,106,0.1)" : "rgba(42,91,173,0.08)",
                   border: `1px solid ${done ? "#2E9E6A40" : B.border}` }}>
-                  <div style={{ fontSize:14 }}>{done ? "✅" : a.icono}</div>
-                  <div style={{ fontSize:9, color: done ? "#2E9E6A" : "#8AAECC", marginTop:2 }}>{a.dia}</div>
+                  <div style={{ fontSize:11, color: done ? "#2E9E6A" : "#8AAECC", fontWeight:600 }}>{done ? "Completada" : a.dia}</div>
+                  <div style={{ fontSize:10, color:"#6A8AAE", marginTop:2 }}>{a.label}</div>
                 </div>
               );
             })}
@@ -560,7 +574,11 @@ function MicBtn({ onTranscript }) {
           }} />
         ))
       ) : (
-        <span style={{ fontSize:16 }}>🎙</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accentL} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="1" width="6" height="12" rx="3"/>
+          <path d="M5 10a7 7 0 0 0 14 0"/>
+          <line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
       )}
     </button>
   );
@@ -664,14 +682,14 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
   };
 
   return (
-    <div style={{ background:B.sidebar, border:`1px solid ${B.accentL}50`, borderRadius:14, marginBottom:14 }}>
+    <div>
       {/* Header */}
-      <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-        <span style={{ fontSize:11, color:B.accentL, fontWeight:700, letterSpacing:"1px" }}>✨ ASISTENTE ALBA</span>
+      <div style={{ padding:"4px 0 12px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <span style={{ fontSize:11, color:B.accentL, fontWeight:600, letterSpacing:"0.8px" }}>Asistente IA</span>
         {iniciado && (
           <button onClick={()=>{ setMensajes([]); setIniciado(false); }}
             style={{ fontSize:10, color:"#4A6A90", background:"transparent", border:"none", cursor:"pointer" }}>
-            Nueva conversación
+            Nueva conversacion
           </button>
         )}
       </div>
@@ -690,7 +708,8 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
           </button>
         </div>
       ) : (
-        <div ref={chatRef} style={{ maxHeight:320, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:10 }}>
+        <div ref={chatRef} style={{ maxHeight:500, minHeight:300, overflowY:"auto", padding:"12px 8px", display:"flex", flexDirection:"column", gap:10,
+          background:"rgba(10,21,37,0.3)", borderRadius:8, border:`1px solid ${B.border}` }}>
           {mensajes.map((m, i) => (
             <div key={i} style={{
               display:"flex", justifyContent: m.role==="user" ? "flex-end" : "flex-start"
@@ -718,8 +737,8 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
         </div>
       )}
 
-      {/* Input — siempre visible */}
-      <div style={{ padding:"10px 16px", borderTop:`1px solid ${B.border}`, display:"flex", gap:8, alignItems:"center" }}>
+      {/* Input */}
+      <div style={{ paddingTop:12, display:"flex", gap:8, alignItems:"center" }}>
         <input value={input} onChange={e=>setInput(e.target.value)}
           onKeyDown={e=>{ if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); enviar(input); } }}
           placeholder={iniciado ? "Escribí o dictá..." : "Preguntame qué hacer hoy..."}
@@ -747,14 +766,14 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
 
 // ── Canales de captación ─────────────────────────────────────
 const CANAL_CONFIG = {
-  "facebook":          { label:"Facebook",     color:"#1877F2", icono:"📘" },
-  "instagram":         { label:"Instagram",    color:"#E1306C", icono:"📸" },
-  "zonaprop":          { label:"ZonaProp",     color:"#FF6B35", icono:"🏠" },
-  "cartel":            { label:"Cartel",       color:"#E8A830", icono:"🪧" },
-  "referido":          { label:"Referido",     color:"#2E9E6A", icono:"🤝" },
-  "whatsapp":          { label:"WhatsApp",     color:"#25D366", icono:"💬" },
-  "whatsapp / referido":{ label:"WA/Referido", color:"#25D366", icono:"💬" },
-  "otro":              { label:"Otro",         color:"#8AAECC", icono:"📌" },
+  "facebook":          { label:"Facebook",     color:"#1877F2" },
+  "instagram":         { label:"Instagram",    color:"#E1306C" },
+  "zonaprop":          { label:"ZonaProp",     color:"#FF6B35" },
+  "cartel":            { label:"Cartel",       color:"#E8A830" },
+  "referido":          { label:"Referido",     color:"#2E9E6A" },
+  "whatsapp":          { label:"WhatsApp",     color:"#25D366" },
+  "whatsapp / referido":{ label:"WA/Referido", color:"#25D366" },
+  "otro":              { label:"Otro",         color:"#8AAECC" },
 };
 
 function CanalesCaptacion({ leads }) {
@@ -780,7 +799,7 @@ function CanalesCaptacion({ leads }) {
   const canales = Object.entries(conteo)
     .sort((a,b) => b[1]-a[1])
     .map(([key, cnt]) => {
-      const cfg = CANAL_CONFIG[key] || { label:key, color:"#8AAECC", icono:"📌" };
+      const cfg = CANAL_CONFIG[key] || { label:key, color:"#8AAECC" };
       const conv = conversion[key] || 0;
       const pct  = Math.round((cnt/total)*100);
       const convPct = Math.round((conv/cnt)*100);
@@ -792,14 +811,13 @@ function CanalesCaptacion({ leads }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
       <div style={{ fontSize:10, color:"#4A6A90", lineHeight:1.5 }}>
-        💡 <strong style={{ color:B.accentL }}>Cómo leerlo:</strong> La barra muestra volumen de leads. El % verde es conversión a negociación/cierre.
+        La barra muestra volumen de leads. El porcentaje verde es conversion a negociacion/cierre.
       </div>
 
       {canales.map(({ key, cfg, cnt, pct, conv, convPct }) => (
         <div key={key}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:5 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-              <span style={{ fontSize:14 }}>{cfg.icono}</span>
               <span style={{ fontSize:12, fontWeight:600, color:B.text }}>{cfg.label}</span>
               <span style={{ fontSize:11, color:"#4A6A90" }}>{cnt} leads · {pct}%</span>
             </div>
@@ -933,11 +951,11 @@ function InteligenciaMercado({ leads, properties, captaciones }) {
   };
 
   return (
-    <div style={{ background:"rgba(10,21,37,0.6)", border:`1px solid ${B.border}`, borderRadius:14, padding:18, marginBottom:14 }}>
+    <div>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
         <div>
-          <div style={{ fontSize:13, fontWeight:700, color:B.text, fontFamily:"Georgia,serif" }}>📊 Inteligencia de mercado</div>
-          <div style={{ fontSize:11, color:"#4A6A90", marginTop:2 }}>Demanda vs oferta por zona · identifica dónde captar</div>
+          <div style={{ fontSize:13, fontWeight:700, color:B.text, fontFamily:"Georgia,serif" }}>Inteligencia de mercado</div>
+          <div style={{ fontSize:11, color:"#4A6A90", marginTop:2 }}>Demanda vs oferta por zona — identifica donde captar</div>
         </div>
       </div>
 
@@ -1001,7 +1019,52 @@ function InteligenciaMercado({ leads, properties, captaciones }) {
       {/* Leyenda */}
       <div style={{ marginTop:14, padding:"10px 12px", background:"rgba(42,91,173,0.08)", borderRadius:8,
         border:`1px solid ${B.border}`, fontSize:11, color:"#8AAECC", lineHeight:1.6 }}>
-        💡 <strong style={{ color:B.accentL }}>Cómo leerlo:</strong> Si la barra azul (demanda) supera la verde (oferta) en una zona — hay oportunidad de captación. Priorizá captar en zonas con más leads buscando que propiedades disponibles.
+        Si la barra azul (demanda) supera la verde (oferta) en una zona, hay oportunidad de captacion. Prioriza captar en zonas con mas leads buscando que propiedades disponibles.
+      </div>
+    </div>
+  );
+}
+
+// ── Hook responsive ──────────────────────────────────────────
+function useIsMobile(breakpoint = 768) {
+  const [w, setW] = React.useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+  React.useEffect(() => {
+    const handler = () => setW(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return w < breakpoint;
+}
+
+// ── Collapsible section ──────────────────────────────────────
+function Collapsible({ title, badge, summary, color, children, defaultOpen = false }) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  const contentRef = React.useRef(null);
+  const innerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (contentRef.current && innerRef.current) {
+      contentRef.current.style.maxHeight = open ? innerRef.current.scrollHeight + "px" : "0px";
+    }
+  }, [open, children]);
+
+  return (
+    <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:10, overflow:"hidden" }}>
+      <div onClick={() => setOpen(o => !o)}
+        style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 18px", cursor:"pointer",
+          background: open ? "rgba(74,138,232,0.04)" : "transparent", transition:"background 0.2s" }}>
+        <span style={{ fontSize:12, fontWeight:600, color:"#C8D8E8", letterSpacing:"0.8px", flex:1 }}>{title}</span>
+        {badge > 0 && <span style={{ fontSize:10, padding:"2px 8px", borderRadius:4,
+          background:"rgba(204,34,51,0.12)", color:"#CC2233", fontWeight:600 }}>{badge}</span>}
+        {summary && !open && <span style={{ fontSize:11, color:"#4A6A90", marginRight:6 }}>{summary}</span>}
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0, transition:"transform 0.25s ease", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>
+          <path d="M4 6L8 10L12 6" stroke="#4A6A90" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+      <div ref={contentRef} style={{ overflow:"hidden", transition:"max-height 0.35s ease", maxHeight:0 }}>
+        <div ref={innerRef} style={{ padding:"0 18px 18px", borderTop:`1px solid ${B.border}` }}>
+          <div style={{ paddingTop:16 }}>{children}</div>
+        </div>
       </div>
     </div>
   );
@@ -1009,6 +1072,7 @@ function InteligenciaMercado({ leads, properties, captaciones }) {
 
 export default function Briefing({ leads, properties, rentals, captaciones, supabase, onConsumo }) {
   const [filtroAg, setFiltroAg] = useState("Todos");
+  const mobile = useIsMobile(768);
   const hoy = new Date();
   const hora = hoy.getHours();
   const saludo = hora < 12 ? "Buenos días" : hora < 19 ? "Buenas tardes" : "Buenas noches";
@@ -1017,19 +1081,10 @@ export default function Briefing({ leads, properties, rentals, captaciones, supa
   const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
   const filtrados = filtroAg === "Todos" ? activos : activos.filter(l => l.ag === filtroAg);
  
-  // Gauge 1: Leads en negociación — el número más importante del día
   const enNegociacion = filtrados.filter(l => l.etapa === "Negociación").length;
-
-  // Gauge 2: Leads nuevos este mes
   const leadsNuevosMes = leads.filter(l => l.created_at && new Date(l.created_at) >= inicioMes).length;
-
-  // Gauge 3: Calientes hoy
   const nCalientes = filtrados.filter(l => l.dias <= 2 || l.etapa === "Negociación").length;
-
-  // Gauge 4: Propiedades en cartera
   const propsActivas = (properties || []).filter(p => p.activa !== false).length;
-
-  // Gauge 5: Leads activos totales
   const totalProps = (properties || []).length;
  
   const urgentes = useMemo(() => {
@@ -1045,7 +1100,6 @@ export default function Briefing({ leads, properties, rentals, captaciones, supa
     }).sort((a, b) => b._score - a._score).slice(0, 4);
   }, [filtrados]);
  
-  // Matches del día
   const matchesHoy = useMemo(() => {
     const props = properties || [];
     return filtrados
@@ -1060,46 +1114,49 @@ export default function Briefing({ leads, properties, rentals, captaciones, supa
     background: filtroAg === a ? B.accentL + "18" : "transparent",
     color: filtroAg === a ? B.accentL : B.muted,
   });
+
+  const alarmas = useMemo(() => {
+    const sinAsignar     = filtrados.filter(l => !l.ag);
+    const frios          = filtrados.filter(l => l.dias > 15 && l.etapa !== "Negociación");
+    const sinAccion      = filtrados.filter(l => !l.proxAccion && l.dias > 3);
+    const propsSinInteresados = (properties || []).filter(p => {
+      const matches = filtrados.filter(l => {
+        const zona = (l.zona||"").toLowerCase();
+        const pZona = (p.zona||"").toLowerCase();
+        const zonas = zona.split(/[,\/]|\s+y\s+/).map(z => z.trim());
+        return zonas.some(z => pZona.includes(z) || z.includes(pZona));
+      });
+      return matches.length === 0;
+    });
+    return [
+      sinAsignar.length > 0 && { texto: `${sinAsignar.length} lead${sinAsignar.length>1?"s":""} sin agente`, color:"#CC2233", urgente:true },
+      sinAccion.length > 0  && { texto: `${sinAccion.length} sin próxima acción (+3d)`, color:"#E8A830", urgente:false },
+      frios.length > 0      && { texto: `${frios.length} frío${frios.length>1?"s":""} (+15 días sin contacto)`, color:"#4A8ABE", urgente:false },
+      propsSinInteresados.length > 0 && { texto: `${propsSinInteresados.length} propiedad${propsSinInteresados.length>1?"es":""} sin interesados`, color:"#9B6DC8", urgente:false },
+    ].filter(Boolean);
+  }, [filtrados, properties]);
  
-  const STATS = [
-    { label:"En negociación", value:enNegociacion, sub:"cierres potenciales", color:"#E8A830", icon:"◆" },
-    { label:"Calientes hoy",  value:nCalientes,    sub:"≤2 días sin contacto", color:"#CC2233", icon:"●" },
-    { label:"Leads nuevos",   value:leadsNuevosMes,sub:"este mes",            color:B.accentL,  icon:"↑" },
-    { label:"En cartera",     value:propsActivas,  sub:"propiedades activas", color:"#2E9E6A",  icon:"⬡" },
-    { label:"Pipeline total", value:activos.length,sub:`de ${leads.length} leads`, color:"#8AAECC", icon:"≡" },
-  ];
-
-  const card = { background:"rgba(10,21,37,0.6)", border:`1px solid ${B.border}`, borderRadius:12, padding:16 };
-  const secTit = (txt, badge) => (
-    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
-      <div style={{ width:3, height:14, background:B.accentL, borderRadius:2 }} />
-      <span style={{ fontSize:11, color:"#C8D8E8", fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase" }}>{txt}</span>
-      {badge > 0 && <span style={{ marginLeft:"auto", fontSize:10, padding:"2px 8px", borderRadius:10,
-        background:"rgba(204,34,51,0.15)", color:"#CC2233", border:"1px solid rgba(204,34,51,0.3)", fontWeight:700 }}>{badge}</span>}
-    </div>
-  );
-
   return (
-    <div style={{ width:"100%", maxWidth:"100%", minWidth:0, overflowX:"hidden", display:"flex", flexDirection:"column", gap:12 }}>
+    <div style={{ width:"100%", maxWidth:900, margin:"0 auto", display:"flex", flexDirection:"column", gap: mobile ? 12 : 16, paddingBottom:40 }}>
 
       {/* ── Header ─────────────────────────────────────────── */}
-      <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", paddingBottom:16, borderBottom:`1px solid ${B.border}` }}>
+      <div style={{ display:"flex", flexDirection: mobile ? "column" : "row", alignItems: mobile ? "flex-start" : "flex-end", justifyContent:"space-between", paddingBottom:16, borderBottom:`1px solid ${B.border}`, gap: mobile ? 10 : 0 }}>
         <div>
-          <div style={{ fontSize:11, color:"#4A6A90", letterSpacing:"2px", textTransform:"uppercase", marginBottom:6, fontWeight:500 }}>
-            {hoy.toLocaleDateString("es-AR", { weekday:"long" }).toUpperCase()} · {hoy.toLocaleDateString("es-AR", { day:"numeric", month:"long", year:"numeric" })}
+          <div style={{ fontSize: mobile ? 10 : 11, color:"#4A6A90", letterSpacing:"1.5px", textTransform:"uppercase", marginBottom:6, fontWeight:500 }}>
+            {hoy.toLocaleDateString("es-AR", { weekday:"long" }).toUpperCase()} · {hoy.toLocaleDateString("es-AR", { day:"numeric", month:"long" })}
           </div>
-          <h1 style={{ fontSize:28, fontWeight:400, color:"#E8F0FA", margin:0,
-            fontFamily:"Georgia, 'Times New Roman', serif", letterSpacing:"-0.5px", lineHeight:1.1 }}>
-            {saludo}, <span style={{ fontStyle:"italic", color:B.accentL }}>Claudi</span>
+          <h1 style={{ fontSize: mobile ? 22 : 26, fontWeight:500, color:"#E8F0FA", margin:0,
+            letterSpacing:"-0.3px", lineHeight:1.1 }}>
+            {saludo}
           </h1>
         </div>
-        <div style={{ display:"flex", gap:4, background:"rgba(10,21,37,0.6)", borderRadius:10, padding:4, border:`1px solid ${B.border}` }}>
+        <div style={{ display:"flex", gap:3, background:B.card, borderRadius:8, padding:3, border:`1px solid ${B.border}` }}>
           {["Todos","C","A","F","L"].map(a => {
             const ag = AG[a];
             const active = filtroAg === a;
             return (
               <button key={a} onClick={() => setFiltroAg(a)}
-                style={{ padding:"5px 12px", borderRadius:7, fontSize:11, cursor:"pointer", border:"none", fontWeight:600, transition:"all 0.15s",
+                style={{ padding: mobile ? "4px 8px" : "5px 12px", borderRadius:6, fontSize: mobile ? 10 : 11, cursor:"pointer", border:"none", fontWeight:600, transition:"all 0.15s",
                   background: active ? (ag?.bg || B.accent) : "transparent",
                   color: active ? (ag?.c || "#fff") : "#4A6A90" }}>
                 {a === "Todos" ? "Todos" : ag?.n || a}
@@ -1109,52 +1166,88 @@ export default function Briefing({ leads, properties, rentals, captaciones, supa
         </div>
       </div>
 
-      {/* ── Fila 1: Asistente IA — ancho completo ──────────── */}
-      <BriefingIA leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase} onConsumo={onConsumo} />
-
-      {/* ── Fila 2: Tareas | Calendario ────────────────────── */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-        <div style={card}>
-          {secTit("Tareas")}
-          <Tareas supabase={supabase} />
-        </div>
-        <div style={card}>
-          <CalendarioSemanal supabase={supabase} />
-        </div>
+      {/* ── KPIs principales ───────────────────────────────── */}
+      <div style={{ display:"grid", gridTemplateColumns: mobile ? "repeat(2, 1fr)" : "repeat(5, 1fr)", gap: mobile ? 8 : 12 }}>
+        {[
+          { label:"En negociación", value:enNegociacion, sub:"Cierres potenciales" },
+          { label:"Calientes hoy",  value:nCalientes,    sub:"Hasta 2 días sin contacto" },
+          { label:"Leads nuevos",   value:leadsNuevosMes,sub:"Este mes" },
+          { label:"En cartera",     value:propsActivas,  sub:"Propiedades activas" },
+          { label:"Pipeline",       value:activos.length,sub:`De ${leads.length} leads` },
+        ].map(k => (
+          <div key={k.label} style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding: mobile ? "12px 10px" : "16px 14px" }}>
+            <div style={{ fontSize: mobile ? 22 : 28, fontWeight:700, color:"#E8F0FA", lineHeight:1,
+              fontFamily:"Georgia, 'Times New Roman', serif" }}>{k.value}</div>
+            <div style={{ fontSize: mobile ? 11 : 12, color:"#C8D8E8", fontWeight:500, marginTop:4 }}>{k.label}</div>
+            <div style={{ fontSize: mobile ? 10 : 11, color:"#4A6A90", marginTop:2 }}>{k.sub}</div>
+          </div>
+        ))}
       </div>
 
-      {/* ── Fila 3: Llamar hoy | Resumen ───────────────────── */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-        <div style={card}>
-          {secTit("Llamar hoy", urgentes.length)}
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {urgentes.length === 0 && (
-              <div style={{ textAlign:"center", padding:"20px 0", color:"#4A6A90", fontSize:12 }}>Sin leads urgentes hoy ✓</div>
-            )}
-            {urgentes.map(l => <LeadCard key={l.id} lead={l} updateLead={async (id, upd) => { await supabase.from("leads").update(upd).eq("id", id); }} />)}
+      {/* ── Alarmas ─────────────────────────────────────────── */}
+      {alarmas.length > 0 && (
+        <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:"14px 18px" }}>
+          <div style={{ fontSize:11, color:"#4A6A90", fontWeight:600, letterSpacing:"0.8px", textTransform:"uppercase", marginBottom:10 }}>Requieren atención</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+            {alarmas.map((a, i) => (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px",
+                background:a.color+"08", borderLeft:`2px solid ${a.urgente ? a.color : a.color+"60"}`, borderRadius:6 }}>
+                <span style={{ fontSize:12, color:a.urgente ? "#E8F0FA" : "#8AAECC", fontWeight:a.urgente?600:400, flex:1 }}>{a.texto}</span>
+                {a.urgente && <span style={{ fontSize:9, padding:"2px 6px", borderRadius:3, background:a.color+"20", color:a.color, fontWeight:700, letterSpacing:"0.5px" }}>URGENTE</span>}
+              </div>
+            ))}
           </div>
         </div>
-        <div style={card}>
-          {secTit("Resumen")}
-          <InsightPanel leads={filtrados} properties={properties} />
+      )}
+      {alarmas.length === 0 && (
+        <div style={{ fontSize:12, color:"#2E9E6A", textAlign:"center", padding:"8px 0", fontWeight:500 }}>Todo en orden</div>
+      )}
+
+      {/* ── Llamar hoy ─────────────────────────────────────── */}
+      <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:"14px 18px" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
+          <span style={{ fontSize:12, color:"#C8D8E8", fontWeight:600, letterSpacing:"0.8px", flex:1 }}>Llamar hoy</span>
+          {urgentes.length > 0 && <span style={{ fontSize:11, color:"#4A6A90" }}>{urgentes.length} leads</span>}
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          {urgentes.length === 0 && (
+            <div style={{ textAlign:"center", padding:"20px 0", color:"#4A6A90", fontSize:12 }}>Sin leads urgentes hoy</div>
+          )}
+          {urgentes.map(l => <LeadCard key={l.id} lead={l} updateLead={async (id, upd) => { await supabase.from("leads").update(upd).eq("id", id); }} />)}
         </div>
       </div>
 
-      {/* ── Fila 4: Captación zonas | Inteligencia ─────────── */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-        <div style={card}>
-          <ResumenCaptacionZonas supabase={supabase} />
-        </div>
-        <div style={card}>
-          <InteligenciaMercado leads={leads} properties={properties} captaciones={captaciones} />
-        </div>
+      {/* ── Secciones colapsables ──────────────────────────── */}
+
+      {/* Asistente IA */}
+      <Collapsible title="Asistente IA" color={B.accentL}>
+        <BriefingIA leads={leads} properties={properties} rentals={rentals} captaciones={captaciones} supabase={supabase} onConsumo={onConsumo} />
+      </Collapsible>
+
+      {/* Tareas + Calendario */}
+      <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap:12 }}>
+        <Collapsible title="Tareas" color="#4A8ABE">
+          <Tareas supabase={supabase} />
+        </Collapsible>
+        <Collapsible title="Calendario" color="#4A8ABE">
+          <CalendarioSemanal supabase={supabase} />
+        </Collapsible>
       </div>
 
-      {/* ── Fila 5: Canales de captación ───────────────────── */}
-      <div style={card}>
-        <div style={{ fontSize:11, color:"#8AAECC", fontWeight:700, letterSpacing:"1px", marginBottom:14 }}>📡 CANALES DE CAPTACIÓN</div>
+      {/* Captación zonas */}
+      <Collapsible title="Captación de zonas" color="#2E9E6A">
+        <ResumenCaptacionZonas supabase={supabase} />
+      </Collapsible>
+
+      {/* Inteligencia de mercado */}
+      <Collapsible title="Inteligencia de mercado" color="#9B6DC8">
+        <InteligenciaMercado leads={leads} properties={properties} captaciones={captaciones} />
+      </Collapsible>
+
+      {/* Canales de captación */}
+      <Collapsible title="Canales de captación" color="#E8A830">
         <CanalesCaptacion leads={leads} />
-      </div>
+      </Collapsible>
 
     </div>
   );
