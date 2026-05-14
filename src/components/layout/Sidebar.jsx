@@ -34,7 +34,7 @@ export default function Sidebar() {
 
   const {
     loading, error, lastSync, reload,
-    user, signOut,
+    user, agent, signOut,
     saldoIA, consumoIA, editSaldo, setEditSaldo, inputSaldo, setInputSaldo,
     guardarSaldo,
     leads, sinAsignar,
@@ -181,8 +181,24 @@ export default function Sidebar() {
       </nav>
 
       <div style={{ padding: "10px 13px 12px", borderTop: `1px solid ${B.border}` }}>
-        <div style={{ fontSize: 11, color: B.dim, marginBottom: 5 }}>
-          {user?.email} · {leads.length} leads
+        {/* Agente logueado */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+            background: agent?.color || B.border,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 11, fontWeight: 700, color: "#fff",
+          }}>
+            {agent?.initial || "?"}
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: B.text, fontWeight: 600 }}>
+              {agent?.nombre || user?.email}
+            </div>
+            <div style={{ fontSize: 9, color: B.dim }}>
+              {agent?.rol || "agente"} · {leads.length} leads
+            </div>
+          </div>
         </div>
         <div style={{ display: "flex", gap: 3, marginBottom: 8 }}>
           {Object.entries(AG).map(([k, v]) => (

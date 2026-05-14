@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { B } from "../data/constants.js";
 
 export default function Login({ onLogin }) {
-  const [email,    setEmail]    = useState("claudipalacios94@gmail.com");
+  const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState(null);
@@ -17,10 +17,11 @@ export default function Login({ onLogin }) {
     setError(null);
     try {
       await onLogin(email, password);
-    } catch (err) {
+    } catch {
       setError("Email o contraseña incorrectos");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   const inp = {
@@ -31,7 +32,8 @@ export default function Login({ onLogin }) {
 
   return (
     <div style={{ height: "100vh", background: B.bg, display: "flex",
-      alignItems: "center", justifyContent: "center", fontFamily: "'Trebuchet MS',sans-serif" }}>
+      alignItems: "center", justifyContent: "center",
+      fontFamily: "'Trebuchet MS',sans-serif" }}>
 
       <div style={{ width: 360, padding: "40px 36px", background: B.sidebar,
         border: `1px solid ${B.border}`, borderRadius: 18,
@@ -63,15 +65,27 @@ export default function Login({ onLogin }) {
           <div style={{ marginBottom: 14 }}>
             <label style={{ fontSize: 10, color: B.muted, letterSpacing: ".8px",
               textTransform: "uppercase", display: "block", marginBottom: 6 }}>Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-              style={inp} placeholder="tu@email.com" />
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              style={inp}
+              placeholder="tu@email.com"
+              autoComplete="email"
+            />
           </div>
 
           <div style={{ marginBottom: 24 }}>
             <label style={{ fontSize: 10, color: B.muted, letterSpacing: ".8px",
               textTransform: "uppercase", display: "block", marginBottom: 6 }}>Contraseña</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              style={inp} placeholder="••••••••" />
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              style={inp}
+              placeholder="••••••••"
+              autoComplete="current-password"
+            />
           </div>
 
           {error && (
@@ -82,12 +96,15 @@ export default function Login({ onLogin }) {
             </div>
           )}
 
-          <button type="submit" disabled={loading || !email || !password}
+          <button
+            type="submit"
+            disabled={loading || !email || !password}
             style={{ width: "100%", padding: "13px", borderRadius: 10,
               background: loading ? B.border : B.accent,
               border: `1px solid ${loading ? B.border : B.accentL}`,
               color: loading ? B.muted : "#fff",
-              fontSize: 14, fontWeight: 700, cursor: loading ? "wait" : "pointer",
+              fontSize: 14, fontWeight: 700,
+              cursor: loading ? "wait" : "pointer",
               fontFamily: "Georgia,serif", transition: "all .15s" }}>
             {loading ? "Ingresando..." : "Ingresar →"}
           </button>
