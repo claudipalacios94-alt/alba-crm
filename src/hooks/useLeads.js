@@ -19,6 +19,8 @@ function normalizeLead(l) {
     ...l,
     dias:       calcDias(l),
     proxAccion: l.proxaccion || l.proxAccion || "",
+    proxaccionTipo:  l.proxaccion_tipo  || null,
+    proxaccionFecha: l.proxaccion_fecha || null,
     notaImp:    l.nota_imp   || l.notaImp    || "",
     agCapto:    l.ag_capto   || l.agCapto    || "",
   };
@@ -81,6 +83,8 @@ export function useLeads() {
       origen:     lead.origen    || "",
       nota:       lead.nota      || "",
       proxaccion: lead.proxAccion || "",
+      proxaccion_tipo:  lead.proxaccionTipo  || null,
+      proxaccion_fecha: lead.proxaccionFecha || null,
       prob:       lead.prob      ? Number(lead.prob) : null,
       nota_imp:   lead.notaImp   || "",
       dias:       0,
