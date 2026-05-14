@@ -877,7 +877,7 @@ export default function Briefing({ leads, properties, rentals, captaciones, supa
           </h1>
         </div>
         <div style={{ display:"flex", gap:3, background:B.card, borderRadius:8, padding:3, border:`1px solid ${B.border}` }}>
-          {["Todos","C","A","F","L"].map(a => {
+          {["Todos","C","A","F","L","Lu"].map(a => {
             const ag = AG[a];
             const active = filtroAg === a;
             return (
