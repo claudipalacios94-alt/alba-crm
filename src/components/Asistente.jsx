@@ -20,7 +20,7 @@ const SUGERENCIAS = [
   { t:"Agustina Rutia — CALIENTE",    p:"Agustina Rutia busca casa 3 amb con cochera en Chauvin hasta USD 135k. ¿Qué propiedades le muestro?" },
   { t:"Patricia — visita pendiente",  p:"Patricia tiene 55k al contado y la propiedad a ver es 62k. ¿Cómo manejo la diferencia de precio?" },
   { t:"Prioridades del día",          p:"¿A quién llamo primero hoy y por qué? Analizá los leads calientes y tibios." },
-  { t:"Distribución del equipo",      p:"¿Cómo reparto los leads sin agente asignado entre Claudi, Alejandra, Flor y Lucas?" },
+  { t:"Distribución del equipo",      p:"¿Cómo reparto los leads sin agente asignado entre Claudi, Alejandra, Flor, Lucas y Luján?" },
   { t:"WhatsApp para Susana",         p:"Redactá un WhatsApp de primer contacto para Susana que quiere ver el depto de La Perla USD 85.000." },
   { t:"Leads en Chauvin",             p:"Tengo varios leads buscando en Chauvin. ¿Qué propiedades tengo disponibles y cómo las priorizo?" },
   { t:"Reactivar leads fríos",        p:"¿Cómo reactivaría a los leads que llevan más de 20 días sin responder? Dame una estrategia concreta." },
@@ -52,7 +52,7 @@ export default function Asistente({ leads, properties }) {
     `${p.tipo} ${p.zona} USD${p.precio?.toLocaleString()||"?"}`
   ).join("\n");
  
-  const SYSTEM = `Asistente de Alba Inversiones, Mar del Plata. Equipo: Claudi(C) Alejandra(A) Flor(F) Lucas(L). Español rioplatense, directo, máx 3 párrafos.
+  const SYSTEM = `Asistente de Alba Inversiones, Mar del Plata. Equipo: Claudi(C) Alejandra(A) Flor(F) Lucas(L) Luján(Lu). Español rioplatense, directo, máx 3 párrafos.
  
 LEADS URGENTES (${leadsCtx.length} de ${activos.length} activos):
 ${ctxLeads}
