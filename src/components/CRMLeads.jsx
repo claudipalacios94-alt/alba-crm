@@ -424,7 +424,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           </div>
           <div style={{ display:"flex", gap:4, alignItems:"center", flexWrap:"wrap" }}>
             <span style={{ fontSize: mobile ? 12 : 11, color:B.muted }}>AGENTE</span>
-            {["Todos","C","A","F","L","Sin asignar"].map(a => (
+            {["Todos","C","A","F","L","Lu","Sin asignar"].map(a => (
               <button key={a} onClick={() => setFa(a)}
                 style={{...chip(fa===a, a==="Sin asignar"?B.hot:a!=="Todos"?AG[a]?.c:B.accentL), padding: mobile ? "6px 12px" : "4px 11px", fontSize: mobile ? 12 : 11}}>
                 {a==="Todos"?"Todos":a==="Sin asignar"?"—":AG[a]?.n}
