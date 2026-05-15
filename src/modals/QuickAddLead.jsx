@@ -33,12 +33,15 @@ function Section({ n, title }) {
   );
 }
 
+const TIPOS_PROXACCION = ["Llamar", "WhatsApp", "Email", "Visita", "Enviar opciones", "Otro"];
+
 export default function QuickAddLead({ onClose, onAdd }) {
   const [f, setF] = useState({
     nombre:"", tel:"", origen:"Instagram", etapa:"Nuevo Contacto",
     op:"Compra", tipo:"", presup:"", formaPago:"",
     zonas:"", ambientes:"", cochera:"", balcon:"", patio:"", m2min:"",
-    nota:"", proxAccion:"", prob:"", urgencia:"",
+    nota:"", proxAccion:"", proxaccionTipo:"", proxaccionFecha:"",
+    prob:"", urgencia:"",
     agCapto:"", agSeg:"", notaImp:"",
   });
   const [err, setErr] = useState({});
@@ -64,6 +67,8 @@ export default function QuickAddLead({ onClose, onAdd }) {
       origen: f.origen,
       nota:   [f.nota, f.cochera && "Cochera: "+f.cochera, f.balcon && "Balcón: "+f.balcon, f.patio && "Patio: "+f.patio].filter(Boolean).join(" · "),
       proxAccion: f.proxAccion.trim() || "Calificar y contactar",
+      proxaccionTipo:  f.proxaccionTipo  || null,
+      proxaccionFecha: f.proxaccionFecha || null,
       prob:   f.prob ? Number(f.prob) : null,
       notaImp: f.notaImp.trim(),
       cochera: f.cochera.toLowerCase().includes("s") ? "si" : f.cochera.toLowerCase().includes("n") ? "no" : "",
@@ -166,7 +171,21 @@ export default function QuickAddLead({ onClose, onAdd }) {
             {ETAPAS_INIT.map(e => <option key={e}>{e}</option>)}
           </select>
         </Field>
-        <Field label="Próxima acción" half>
+        <Field label="Tipo de próxima acción" half>
+          <select style={inp} value={f.proxaccionTipo} onChange={set("proxaccionTipo")}>
+            <option value="">Sin definir</option>
+            {TIPOS_PROXACCION.map(t => <option key={t}>{t}</option>)}
+          </select>
+        </Field>
+        <Field label="Fecha próxima acción" half>
+          <input
+            type="date"
+            style={{ ...inp, colorScheme:"dark" }}
+            value={f.proxaccionFecha}
+            onChange={set("proxaccionFecha")}
+          />
+        </Field>
+        <Field label="Detalle próxima acción" half>
           <input style={inp} value={f.proxAccion} onChange={set("proxAccion")} placeholder="ej: Llamar, Buscar opciones" />
         </Field>
         <Field label="Probabilidad %" half>
