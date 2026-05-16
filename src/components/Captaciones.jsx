@@ -36,7 +36,6 @@ async function nominatim(dir) {
 function parsearTextoLocal(texto) {
   const t = texto.toLowerCase();
 
-  // ── Tipo de inmueble ───────────────────────────────────────
   const tipo =
     /tipo de inmueble:\s*departamento|departamento|depto|dpto/i.test(texto) ? "Departamento" :
     /tipo de inmueble:\s*ph|\bph\b|planta alta/i.test(texto)                ? "PH" :
@@ -45,12 +44,9 @@ function parsearTextoLocal(texto) {
     /tipo de inmueble:\s*terreno|terreno|lote/i.test(texto)                 ? "Terreno" :
     /tipo de inmueble:\s*casa|\bcasa\b|chalet|vivienda/i.test(texto)        ? "Casa" : null;
 
-  // ── Operación ──────────────────────────────────────────────
   const operacion =
     /tipo operaci[oó]n:\s*alquiler|alquil/i.test(texto) ? "alquiler" : "venta";
 
-  // ── Precio — múltiples formatos ────────────────────────────
-  // "U$D  141,900" / "USD 85.000" / "$ 141900"
   const precioMatch =
     texto.match(/u\$d\s*([\d]{1,3}(?:[.,][\d]{3})*)/i) ||
     texto.match(/usd?\s*([\d]{1,3}(?:[.,][\d]{3})*)/i) ||
@@ -59,26 +55,20 @@ function parsearTextoLocal(texto) {
   const precioRaw = precioMatch ? precioMatch[1].replace(/\./g,"").replace(",","") : null;
   const precio = precioRaw ? parseInt(precioRaw) : null;
 
-  // ── Ambientes ──────────────────────────────────────────────
   const ambMatch =
     texto.match(/ambientes:\s*\n?\s*(\d)/i) ||
     texto.match(/(\d)\s*amb(?:ientes?)?/i);
   const ambientes = ambMatch ? parseInt(ambMatch[1]) : null;
 
-  // ── Dormitorios ────────────────────────────────────────────
   const dormMatch = texto.match(/dormitorios:\s*\n?\s*(\d)/i);
   const dormitorios = dormMatch ? parseInt(dormMatch[1]) : null;
 
-  // ── Superficie ─────────────────────────────────────────────
-  // "Sup. cubierta:\n70.00 m²" / "70 m²"
   const m2cubMatch = texto.match(/sup(?:\.|erficie)?\s*cubierta:\s*\n?\s*([\d.,]+)\s*m/i);
   const m2Match    = texto.match(/superficie\s+total:\s*([\d.,]+)\s*m/i)
     || texto.match(/([\d]{2,4})[.,]?\d*\s*m[²2]/i);
   const m2cub = m2cubMatch ? parseFloat(m2cubMatch[1]) : null;
   const m2tot = m2Match ? parseFloat(m2Match[1].replace(",",".")) : m2cub;
 
-  // ── Dirección ──────────────────────────────────────────────
-  // "Dirección: corrientes 2244" / "corrientes 2244"
   let direccion = null;
   const dirMatch =
     texto.match(/direcci[oó]n:\s*([^\n\r]+)/i) ||
@@ -88,12 +78,10 @@ function parsearTextoLocal(texto) {
       ? dirMatch[1].trim().replace(/\s+/g," ")
       : null;
     if (dirMatch[2]) direccion = (dirMatch[1]||"").trim() + " " + dirMatch[2];
-    // Capitalizar
     if (direccion) direccion = direccion.split(" ")
       .map(w => w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(" ");
   }
 
-  // ── Zona/barrio ────────────────────────────────────────────
   const BARRIOS = [
     "la perla","chauvin","centro","güemes","punta mogotes","alfar",
     "bosque grande","san carlos","los pinares","playa grande","divino rostro",
@@ -102,12 +90,10 @@ function parsearTextoLocal(texto) {
     "estrada","chapadmalal","batán","sierra de los padres","peralta ramos",
     "villa del parque","nueva pompey","félix u. camet","bernardino rivadavia",
   ];
-  // Intentar "Barrio: CENTRO" primero
   const barrioMatch = texto.match(/barrio:\s*([^\n\r]+)/i);
   let zona = null;
   if (barrioMatch) {
     zona = barrioMatch[1].trim().toLowerCase();
-    // Normalizar a nombre conocido
     zona = BARRIOS.find(b => zona.includes(b)) || zona;
     zona = zona.charAt(0).toUpperCase() + zona.slice(1);
   } else {
@@ -115,15 +101,12 @@ function parsearTextoLocal(texto) {
     zona = found ? found.charAt(0).toUpperCase()+found.slice(1) : null;
   }
 
-  // ── Cochera ────────────────────────────────────────────────
   const cochera = /cochera/i.test(texto) && !/sin cochera/i.test(texto) ? "si"
     : /sin cochera/i.test(texto) ? "no" : null;
 
-  // ── Teléfono ───────────────────────────────────────────────
   const telMatch = texto.match(/(?:\+?54\s*9?\s*)?(?:223|2235|2236|2234|2238)[\s\-]?(\d[\d\s\-]{5,9}\d)/);
   const telefono = telMatch ? telMatch[0].replace(/[\s\-]/g,"") : null;
 
-  // ── Características relevantes ─────────────────────────────
   const caracts = [
     ambientes && `${ambientes} amb`,
     dormitorios && `${dormitorios} dorm`,
@@ -144,23 +127,35 @@ function parsearTextoLocal(texto) {
   };
 }
 
-async function analizarConIA(texto) {
+async function analizarConIA(texto, supabase) {
   try {
+    // Obtener token de sesión actual
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) throw new Error("No hay sesión");
+
     const res = await fetch("/api/analyze", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
       body: JSON.stringify({ texto }),
     });
-    if (res.ok) {
-      const text = await res.text();
-      const trimmed = text.replace(/```json|```/g, "").trim();
-      if (trimmed && trimmed !== "{}") {
-        const parsed = JSON.parse(trimmed);
-        if (parsed.tipo || parsed.precio || parsed.zona) return parsed;
-      }
+
+    if (res.status === 429) {
+      alert("Límite de análisis con IA alcanzado. Usá el análisis local.");
+      return parsearTextoLocal(texto);
+    }
+    if (!res.ok) throw new Error("Error en API");
+
+    const text = await res.text();
+    const trimmed = text.replace(/```json|```/g, "").trim();
+    if (trimmed && trimmed !== "{}") {
+      const parsed = JSON.parse(trimmed);
+      if (parsed.tipo || parsed.precio || parsed.zona) return parsed;
     }
   } catch(e) {}
-  // Sin creditos IA o respuesta vacia — usar parser local
   return parsearTextoLocal(texto);
 }
 
@@ -449,7 +444,7 @@ export default function Captaciones({ supabase }) {
   async function analizar() {
     if (!input.trim() || analizando) return;
     setAnalizando(true); setCampos(null); setCompletos({});
-    const result = await analizarConIA(input);
+    const result = await analizarConIA(input, supabase);
     prerellenar(result);
     setAnalizando(false);
   }
@@ -489,9 +484,9 @@ export default function Captaciones({ supabase }) {
       operacion:get("operacion")||"venta", nota:nota.trim()||null,
       ag:ag||null, lat, lng, convertida:false,
       tipo_captacion:tipoCap||null,
-url:get("url")||null,
-nota_interna:get("nota_interna")||null,
-inmobiliaria:get("inmobiliaria")||null,
+      url:get("url")||null,
+      nota_interna:get("nota_interna")||null,
+      inmobiliaria:get("inmobiliaria")||null,
     }]).select().single();
     if (!error && data) {
       setItems(p=>[data,...p]);
@@ -532,7 +527,6 @@ inmobiliaria:get("inmobiliaria")||null,
   return (
     <div style={{ overflowY:"auto", maxWidth: mobile ? "100%" : 700, display:"flex", flexDirection:"column", gap: mobile ? 12 : 14 }}>
 
-      {/* Header */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap: mobile ? "wrap" : "nowrap", gap: mobile ? 8 : 8 }}>
         <div>
           <h1 style={{ fontSize: mobile ? 18 : 20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Captación rápida</h1>
@@ -550,7 +544,6 @@ inmobiliaria:get("inmobiliaria")||null,
         </div>
       </div>
 
-      {/* Input */}
       <div style={{ background:B.card, border:`1px solid ${B.accentL}40`, borderRadius:12, padding: mobile ? 12 : 14, display:"flex", flexDirection:"column", gap: mobile ? 10 : 10 }}>
         <textarea value={input} onChange={e=>{ setInput(e.target.value); setCampos(null); setCompletos({}); }}
           placeholder="Pegá acá el texto de WhatsApp, descripción del portal, dirección y precio... lo que tengas"
@@ -605,7 +598,6 @@ inmobiliaria:get("inmobiliaria")||null,
         </div>
       </div>
 
-      {/* Resultado IA */}
       {campos && (
         <div style={{ background:B.card, border:`1px solid ${B.accentL}40`, borderRadius:12, padding: mobile ? 12 : 14, display:"flex", flexDirection:"column", gap: mobile ? 10 : 8 }}>
           <div style={{ fontSize: mobile ? 12 : 11, fontWeight:700, color:B.accentL, letterSpacing:"0.8px" }}>DATOS DETECTADOS — editá lo que haga falta</div>
@@ -628,7 +620,6 @@ inmobiliaria:get("inmobiliaria")||null,
               );
             })}
           </div>
-          {/* Zona y dirección — full width */}
           {["zona","direccion"].map(k => {
             const def = CAMPOS_DEF.find(f=>f.k===k);
             const val = completos[k]!==undefined?completos[k]:(campos[k]||"");
@@ -641,7 +632,6 @@ inmobiliaria:get("inmobiliaria")||null,
               </div>
             );
           })}
-          {/* Precio, ambientes, m2 — 3 cols */}
           <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr 1fr", gap: mobile ? 10 : 8 }}>
             {["precio","ambientes","m2tot"].map(k => {
               const def = CAMPOS_DEF.find(f=>f.k===k);
@@ -656,14 +646,12 @@ inmobiliaria:get("inmobiliaria")||null,
               );
             })}
           </div>
-          {/* Cochera select */}
           <div>
             <label style={{ fontSize: mobile ? 11 : 10, color:campos.cochera?"#2E9E6A":"#E8A830", display:"block", marginBottom:2 }}>{campos.cochera?"✓ ":""}COCHERA</label>
             <select value={completos.cochera!==undefined?completos.cochera:(campos.cochera||"")} onChange={e=>setCompletos(p=>({...p,cochera:e.target.value}))} style={inpS}>
               <option value="">Sin datos</option><option value="si">Con cochera</option><option value="no">Sin cochera</option>
             </select>
           </div>
-          {/* Propietario y teléfono */}
           <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 10 : 8 }}>
             {["nombre_propietario","telefono"].map(k => {
               const def = CAMPOS_DEF.find(f=>f.k===k);
@@ -678,7 +666,6 @@ inmobiliaria:get("inmobiliaria")||null,
               );
             })}
           </div>
-          {/* Caracts */}
           {(() => {
             const val = completos.caracts!==undefined?completos.caracts:(campos.caracts||"");
             const detected = !!campos.caracts;
@@ -690,7 +677,6 @@ inmobiliaria:get("inmobiliaria")||null,
               </div>
             );
           })()}
-          {/* URL / Link */}
           {(() => {
             const val = completos.url!==undefined?completos.url:(campos.url||"");
             return (
@@ -710,7 +696,6 @@ inmobiliaria:get("inmobiliaria")||null,
         </div>
       )}
 
-      {/* Vista cards o mapa */}
       {vistaActiva==="mapa" ? (
         <MapaCaptaciones items={items} />
       ) : (
@@ -726,7 +711,6 @@ inmobiliaria:get("inmobiliaria")||null,
         </>
       )}
 
-      {/* Modal eliminar */}
       {confirmDel && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999, padding: mobile ? 16 : 20 }} onClick={()=>setConfirmDel(null)}>
           <div style={{ background:B.sidebar, border:`1px solid ${B.hot}50`, borderRadius:14, padding: mobile ? "24px 20px" : "28px 32px", maxWidth:360, width:"90%" }} onClick={e=>e.stopPropagation()}>
