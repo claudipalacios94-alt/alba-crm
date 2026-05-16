@@ -78,7 +78,7 @@ ${ctxProps}`;
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: AI_MODEL_SMART,,
+          model: AI_MODEL_SMART,
           max_tokens: 800,
           system: SYSTEM,
           messages: history.map(m => ({ role: m.role, content: m.content })),
