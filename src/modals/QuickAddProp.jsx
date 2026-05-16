@@ -5,9 +5,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { B, AG, TIPOS_PROP_VENTA, ESTADOS_PROP } from "../data/constants.js";
  
-const GOOGLE_KEY = "AIzaSyD2ZKp0GLdu7rUTD2DWrOrpCy8LHeulGZM";
-const MDP_CENTER = "point:-38.002,-57.555";
- 
 const inp = {
   width:"100%", background:"#0F1E35", border:"1px solid #1A2F50",
   borderRadius:8, padding:"9px 12px", color:"#E8EEF8",
@@ -37,7 +34,7 @@ function Section({ n, title }) {
   );
 }
  
-// ── Autocomplete via Places API REST ─────────────────────────
+// ── Autocomplete via proxy /api/places ────────────────────────
 function DireccionField({ value, onChange, onSelect, error }) {
   const [suggestions, setSuggestions] = useState([]);
   const [open,        setOpen]        = useState(false);
@@ -49,13 +46,7 @@ function DireccionField({ value, onChange, onSelect, error }) {
     setLoading(true);
     try {
       const resp = await fetch(
-        "https://maps.googleapis.com/maps/api/place/autocomplete/json?" +
-        "input=" + encodeURIComponent(texto) +
-        "&components=country:ar" +
-        "&location=-38.002,-57.555&radius=20000" +
-        "&language=es" +
-        "&key=" + GOOGLE_KEY,
-        { mode: "cors" }
+        "/api/places?input=" + encodeURIComponent(texto)
       );
       const data = await resp.json();
       if (data.predictions?.length) {
@@ -66,7 +57,6 @@ function DireccionField({ value, onChange, onSelect, error }) {
         setOpen(false);
       }
     } catch(e) {
-      // CORS bloqueado — usar geocoding directo
       setSuggestions([]);
       setOpen(false);
     }
@@ -77,17 +67,14 @@ function DireccionField({ value, onChange, onSelect, error }) {
     setOpen(false);
     const desc = prediction.structured_formatting?.main_text || prediction.description;
     onChange(desc);
-    // Geocodificar el place_id
+    // Geocodificar via proxy
     try {
       const resp = await fetch(
-        "https://maps.googleapis.com/maps/api/place/details/json?" +
-        "place_id=" + prediction.place_id +
-        "&fields=geometry,name,formatted_address" +
-        "&key=" + GOOGLE_KEY
+        "/api/geocode?address=" + encodeURIComponent(prediction.description)
       );
       const data = await resp.json();
-      if (data.result?.geometry?.location) {
-        const { lat, lng } = data.result.geometry.location;
+      if (data.results?.[0]?.geometry?.location) {
+        const { lat, lng } = data.results[0].geometry.location;
         onSelect({ dir: desc, lat, lng });
       }
     } catch(e) {}
