@@ -2,6 +2,7 @@
 // ALBA CRM — MÓDULO ASISTENTE IA
 // Chat con Claude Opus, contexto real de leads y propiedades
 // ══════════════════════════════════════════════════════════════
+import { AI_MODEL_SMART } from "../config/ai.js";
 import React, { useState, useRef, useEffect } from "react";
 import { B, AG, PROPS_DEMO } from "../data/constants.js";
  
@@ -77,7 +78,7 @@ ${ctxProps}`;
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-opus-4-6",
+          model: AI_MODEL_SMART,,
           max_tokens: 800,
           system: SYSTEM,
           messages: history.map(m => ({ role: m.role, content: m.content })),
