@@ -1,3 +1,4 @@
+import { useAppContext } from "../context/SupabaseContext.jsx";
 import React from "react";
 import { B } from "../data/constants.js";
 import { useLeadStore }      from "../store/useLeadStore.js";
@@ -95,6 +96,7 @@ function MicBtn({ onTranscript }) {
 }
 
 export default function AIFloatingChat() {
+  const { user } = useAppContext();
   const leads       = useLeadStore((s) => s.leads);
   const properties  = usePropertyStore((s) => s.properties);
   const rentals     = useRentalStore((s) => s.rentals);
@@ -184,7 +186,7 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
       const respuesta = data.content?.[0]?.text || "Sin respuesta";
       setMensajes(p => [...p, { role:"assistant", content: respuesta }]);
       await guardarMensaje("assistant", respuesta);
-      if (agregarConsumo) agregarConsumo(800, 150);
+     if (agregarConsumo) agregarConsumo(800, 150, user?.id);
     } catch(e) {
       setMensajes(p => [...p, { role:"assistant", content: "Error al conectar. Verificá los créditos." }]);
     }
