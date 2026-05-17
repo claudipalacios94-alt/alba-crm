@@ -1,8 +1,8 @@
 import React from "react";
 import Alquileres from "../components/Alquileres.jsx";
-import { useAppContext } from "../context/SupabaseContext.jsx";
+import { useRentalStore } from "../store/useRentalStore.js";
 
 export default function AlquileresPage() {
-  const { rentals } = useAppContext();
+  const rentals = useRentalStore((s) => s.rentals);
   return <Alquileres rentals={rentals} />;
 }

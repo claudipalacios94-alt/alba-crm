@@ -1,6 +1,11 @@
 import React from "react";
 import { B } from "../data/constants.js";
-import { useAppContext } from "../context/SupabaseContext.jsx";
+import { useLeadStore }      from "../store/useLeadStore.js";
+import { usePropertyStore }  from "../store/usePropertyStore.js";
+import { useRentalStore }    from "../store/useRentalStore.js";
+import { useCaptacionStore } from "../store/useCaptacionStore.js";
+import { useAIStore }        from "../store/useAIStore.js";
+import { supabase }          from "../hooks/useSupabase.js";
 
 function MicBtn({ onTranscript }) {
   const [escuchando, setEscuchando] = React.useState(false);
@@ -90,7 +95,12 @@ function MicBtn({ onTranscript }) {
 }
 
 export default function AIFloatingChat() {
-  const { leads, properties, rentals, captaciones, supabase, agregarConsumo } = useAppContext();
+  const leads       = useLeadStore((s) => s.leads);
+  const properties  = usePropertyStore((s) => s.properties);
+  const rentals     = useRentalStore((s) => s.rentals);
+  const captaciones = useCaptacionStore((s) => s.captaciones);
+  const agregarConsumo = useAIStore((s) => s.agregarConsumo);
+
   const [open, setOpen] = React.useState(false);
   const [mensajes, setMensajes] = React.useState([]);
   const [input, setInput] = React.useState("");
@@ -116,9 +126,7 @@ CAPTACIONES pendientes (${caps.length}): ${capResumen||"ninguna"}
 REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos del CRM, preguntás antes. Tenés visión completa del mapa, captaciones, propiedades y leads.`;
   }
 
-  // Cargar historial de hoy
   React.useEffect(() => {
-    if (!supabase) return;
     const hoy = new Date().toISOString().slice(0,10);
     supabase.from("briefing_chat").select("*")
       .gte("created_at", hoy + "T00:00:00")
@@ -136,7 +144,6 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [mensajes]);
 
-  // Scroll al abrir
   React.useEffect(() => {
     if (open && chatRef.current) {
       const timer = setTimeout(() => {
@@ -147,7 +154,6 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
   }, [open]);
 
   async function guardarMensaje(role, content) {
-    if (!supabase) return;
     await supabase.from("briefing_chat").insert([{ role, content }]);
   }
 
@@ -199,7 +205,6 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
 
   return (
     <>
-      {/* Botón flotante */}
       <button onClick={() => setOpen(true)}
         style={{ position:"fixed", bottom:20, right:20, width:56, height:56, borderRadius:"50%",
           background:"linear-gradient(135deg,#2A5BAD,#4A8AE8)", border:"none", cursor:"pointer",
@@ -213,7 +218,6 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
         </svg>
       </button>
 
-      {/* Panel de chat */}
       {open && (
         <div style={{ position:"fixed", bottom: mobile ? 0 : 88, right: mobile ? 0 : 20,
           width: mobile ? "100%" : 380, height: mobile ? "calc(100vh - 60px)" : 520,
@@ -222,7 +226,6 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
           boxShadow:"0 8px 32px rgba(0,0,0,0.5)",
           display:"flex", flexDirection:"column", zIndex:1001 }}>
 
-          {/* Header */}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
             padding:"14px 16px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
             <span style={{ fontSize:12, color:B.accentL, fontWeight:700, letterSpacing:"0.8px" }}>ASISTENTE ALBA</span>
@@ -243,7 +246,6 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
             </div>
           </div>
 
-          {/* Chat area */}
           {!iniciado ? (
             <div style={{ flex:1, padding:24, display:"flex", flexDirection:"column", gap:12, justifyContent:"center" }}>
               <div style={{ fontSize:13, color:"#8AAECC", fontStyle:"italic", textAlign:"center", lineHeight:1.6 }}>
@@ -259,9 +261,7 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
           ) : (
             <div ref={chatRef} style={{ flex:1, overflowY:"auto", padding:12, display:"flex", flexDirection:"column", gap:10 }}>
               {mensajes.map((m, i) => (
-                <div key={i} style={{
-                  display:"flex", justifyContent: m.role==="user" ? "flex-end" : "flex-start"
-                }}>
+                <div key={i} style={{ display:"flex", justifyContent: m.role==="user" ? "flex-end" : "flex-start" }}>
                   <div style={{
                     maxWidth:"85%", padding:"8px 12px",
                     borderRadius: m.role==="user" ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
@@ -286,7 +286,6 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
             </div>
           )}
 
-          {/* Input */}
           <div style={{ padding:"12px 16px", borderTop:`1px solid ${B.border}`, display:"flex", gap:8, alignItems:"center", flexShrink:0 }}>
             <input value={input} onChange={e=>setInput(e.target.value)}
               onKeyDown={e=>{ if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); enviar(input); } }}

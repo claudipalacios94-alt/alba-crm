@@ -3,18 +3,20 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { B, AG } from "../../data/constants.js";
 import SupabaseStatus from "../SupabaseStatus.jsx";
 import { useAppContext } from "../../context/SupabaseContext.jsx";
+import { useLeadStore }    from "../../store/useLeadStore.js";
+import { useAIStore }      from "../../store/useAIStore.js";
 
 const NAV_DEFAULT = [
-  { id: "briefing", label: "Briefing del dia", badge: "HOY" },
-  { id: "cuaderno", label: "Cuaderno de campo" },
-  { id: "kanban", label: "Kanban" },
-  { id: "crm", label: "CRM Leads" },
+  { id: "briefing",    label: "Briefing del dia", badge: "HOY" },
+  { id: "cuaderno",    label: "Cuaderno de campo" },
+  { id: "kanban",      label: "Kanban" },
+  { id: "crm",         label: "CRM Leads" },
   { id: "propiedades", label: "Propiedades" },
-  { id: "alquileres", label: "Alquileres" },
-  { id: "mapa", label: "Mapa" },
-  { id: "flyer", label: "Generador Flyer" },
+  { id: "alquileres",  label: "Alquileres" },
+  { id: "mapa",        label: "Mapa" },
+  { id: "flyer",       label: "Generador Flyer" },
   { id: "captaciones", label: "Captacion rapida", badge: "NEW" },
-  { id: "zonas", label: "Captacion zonas" },
+  { id: "zonas",       label: "Captacion zonas" },
 ];
 
 function loadNav() {
@@ -28,18 +30,25 @@ function loadNav() {
   } catch (e) { return NAV_DEFAULT; }
 }
 
-export default function Sidebar() {
+export default function Sidebar({ onOpenModal }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const {
-    loading, error, lastSync, reload,
-    user, agent, signOut,
-    saldoIA, consumoIA, editSaldo, setEditSaldo, inputSaldo, setInputSaldo,
-    guardarSaldo,
-    leads, sinAsignar,
-    setModal,
-  } = useAppContext();
+  const { user, agent, signOut, sinAsignar } = useAppContext();
+
+  // Datos desde stores
+  const leads    = useLeadStore((s) => s.leads);
+  const loading  = useLeadStore((s) => s.loading);
+  const error    = useLeadStore((s) => s.error);
+  const lastSync = useLeadStore((s) => s.lastSync);
+  const reload   = useLeadStore((s) => s.loadLeads);
+
+  const saldoIA   = useAIStore((s) => s.saldoIA);
+  const consumoIA = useAIStore((s) => s.consumoIA);
+  const guardarSaldo = useAIStore((s) => s.guardarSaldo);
+
+  const [editSaldo,  setEditSaldo]  = useState(false);
+  const [inputSaldo, setInputSaldo] = useState("");
 
   const [nav, setNav] = useState(loadNav);
   const [editingNav, setEditingNav] = useState(null);
@@ -92,6 +101,11 @@ export default function Sidebar() {
     saveNav(newNav);
   }
 
+  function handleGuardarSaldo() {
+    guardarSaldo(inputSaldo);
+    setEditSaldo(false);
+  }
+
   return (
     <div style={{ width: 210, background: "#080F1E", display: "flex", flexDirection: "column", flexShrink: 0 }}>
 
@@ -113,12 +127,12 @@ export default function Sidebar() {
       </div>
 
       <div style={{ padding: "0 10px 10px", display: "flex", gap: 6 }}>
-        <button onClick={() => setModal("lead")}
+        <button onClick={() => onOpenModal && onOpenModal("lead")}
           style={{ flex: 1, padding: "8px 4px", borderRadius: 8, cursor: "pointer",
             background: `${B.ok}18`, border: `1px solid ${B.ok}50`, color: B.ok, fontSize: 11, fontWeight: 700 }}>
           + Lead
         </button>
-        <button onClick={() => setModal("prop")}
+        <button onClick={() => onOpenModal && onOpenModal("prop")}
           style={{ flex: 1, padding: "8px 4px", borderRadius: 8, cursor: "pointer",
             background: `${B.accentL}18`, border: `1px solid ${B.accentL}50`, color: B.accentL, fontSize: 11, fontWeight: 700 }}>
           + Prop
@@ -181,7 +195,6 @@ export default function Sidebar() {
       </nav>
 
       <div style={{ padding: "10px 13px 12px", borderTop: `1px solid ${B.border}` }}>
-        {/* Agente logueado */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
           <div style={{
             width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
@@ -211,10 +224,10 @@ export default function Sidebar() {
           {editSaldo ? (
             <div style={{ display: "flex", gap: 4 }}>
               <input autoFocus value={inputSaldo} onChange={e => setInputSaldo(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") guardarSaldo(); if (e.key === "Escape") setEditSaldo(false); }}
+                onKeyDown={e => { if (e.key === "Enter") handleGuardarSaldo(); if (e.key === "Escape") setEditSaldo(false); }}
                 placeholder="ej: 10.00" type="number" step="0.01"
                 style={{ flex: 1, background: B.bg, border: `1px solid ${B.accentL}`, borderRadius: 5, padding: "3px 6px", color: B.text, fontSize: 11, outline: "none" }} />
-              <button onClick={guardarSaldo} style={{ padding: "3px 7px", borderRadius: 5, cursor: "pointer", background: B.accent, border: "none", color: "#fff", fontSize: 10, fontWeight: 700 }}>OK</button>
+              <button onClick={handleGuardarSaldo} style={{ padding: "3px 7px", borderRadius: 5, cursor: "pointer", background: B.accent, border: "none", color: "#fff", fontSize: 10, fontWeight: 700 }}>OK</button>
             </div>
           ) : saldoIA !== null ? (
             <div>

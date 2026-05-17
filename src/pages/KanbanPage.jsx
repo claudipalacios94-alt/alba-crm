@@ -1,8 +1,9 @@
 import React from "react";
 import Kanban from "../components/Kanban.jsx";
-import { useAppContext } from "../context/SupabaseContext.jsx";
+import { useLeadStore } from "../store/useLeadStore.js";
 
 export default function KanbanPage() {
-  const { leads, updateLead } = useAppContext();
+  const leads      = useLeadStore((s) => s.leads);
+  const updateLead = useLeadStore((s) => s.updateLead);
   return <Kanban leads={leads} updateLead={updateLead} />;
 }

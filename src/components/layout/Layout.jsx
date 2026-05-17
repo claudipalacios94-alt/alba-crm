@@ -5,7 +5,8 @@ import Sidebar from "./Sidebar.jsx";
 import Modal from "../../modals/Modal.jsx";
 import QuickAddLead from "../../modals/QuickAddLead.jsx";
 import QuickAddProp from "../../modals/QuickAddProp.jsx";
-import { useAppContext } from "../../context/SupabaseContext.jsx";
+import { useLeadStore }     from "../../store/useLeadStore.js";
+import { usePropertyStore } from "../../store/usePropertyStore.js";
 import AIFloatingChat from "../AIFloatingChat.jsx";
 
 const FULL_HEIGHT = ["kanban", "mapa", "flyer", "captaciones", "zonas", "cuaderno"];
@@ -13,7 +14,11 @@ const FULL_HEIGHT = ["kanban", "mapa", "flyer", "captaciones", "zonas", "cuadern
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { addLead, addProperty, setModal, modal } = useAppContext();
+
+  const addLead     = useLeadStore((s) => s.addLead);
+  const addProperty = usePropertyStore((s) => s.addProperty);
+
+  const [modal, setModal] = React.useState(null);
   const [w, setW] = React.useState(typeof window !== "undefined" ? window.innerWidth : 1024);
   React.useEffect(() => {
     const handler = () => setW(window.innerWidth);
@@ -55,7 +60,6 @@ export default function Layout() {
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
 
-      {/* Mobile hamburger */}
       {mobile && (
         <button onClick={() => setSidebarOpen(o => !o)}
           style={{ position:"fixed", top:12, left:12, zIndex:1001, width:40, height:40, borderRadius:8,
@@ -67,7 +71,6 @@ export default function Layout() {
         </button>
       )}
 
-      {/* Sidebar overlay on mobile */}
       {mobile && sidebarOpen && (
         <div onClick={() => setSidebarOpen(false)}
           style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:999 }} />
@@ -79,7 +82,7 @@ export default function Layout() {
         top: 0, bottom: 0,
         zIndex: 1000,
         transition: mobile ? "left 0.25s ease" : "none" }}>
-        <Sidebar />
+        <Sidebar onOpenModal={setModal} />
       </div>
 
       <div style={{
