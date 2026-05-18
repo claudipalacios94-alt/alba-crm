@@ -1,5 +1,5 @@
 import React from "react";
-import Briefing from "../components/Briefing.jsx";
+import Briefing from "../components/briefing/index.jsx";
 import { useLeadStore }      from "../store/useLeadStore.js";
 import { usePropertyStore }  from "../store/usePropertyStore.js";
 import { useRentalStore }    from "../store/useRentalStore.js";

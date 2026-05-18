@@ -4,6 +4,7 @@
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useEffect, useRef } from "react";
 import { B, AG } from "../data/constants.js";
+import { useLeaflet, geocodeNominatim } from "../hooks/useLeaflet.js";
 
 function useIsMobile(breakpoint = 768) {
   const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
@@ -13,24 +14,6 @@ function useIsMobile(breakpoint = 768) {
     return () => window.removeEventListener("resize", handler);
   }, []);
   return w < breakpoint;
-}
-
-async function nominatim(dir) {
-  if (!dir) return { lat: null, lng: null };
-  const query = encodeURIComponent(dir + ", Mar del Plata, Buenos Aires, Argentina");
-  try {
-    const r = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&countrycodes=ar`,
-      { headers: { "Accept-Language": "es" } }
-    );
-    const d = await r.json();
-    if (d.length > 0) {
-      const lat = parseFloat(d[0].lat), lng = parseFloat(d[0].lon);
-      if (lat > -38.15 && lat < -37.85 && lng > -57.75 && lng < -57.40)
-        return { lat, lng };
-    }
-  } catch(e) {}
-  return { lat: null, lng: null };
 }
 
 function parsearTextoLocal(texto) {
@@ -74,9 +57,7 @@ function parsearTextoLocal(texto) {
     texto.match(/direcci[oó]n:\s*([^\n\r]+)/i) ||
     texto.match(/([A-ZÁÉÍÓÚÑ][a-záéíóúñA-ZÁÉÍÓÚÑ\s\.]{3,25})\s+(\d{3,5})\b/);
   if (dirMatch) {
-    direccion = dirMatch[1]
-      ? dirMatch[1].trim().replace(/\s+/g," ")
-      : null;
+    direccion = dirMatch[1] ? dirMatch[1].trim().replace(/\s+/g," ") : null;
     if (dirMatch[2]) direccion = (dirMatch[1]||"").trim() + " " + dirMatch[2];
     if (direccion) direccion = direccion.split(" ")
       .map(w => w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(" ");
@@ -129,26 +110,19 @@ function parsearTextoLocal(texto) {
 
 async function analizarConIA(texto, supabase) {
   try {
-    // Obtener token de sesión actual
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
     if (!token) throw new Error("No hay sesión");
-
     const res = await fetch("/api/analyze", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
       body: JSON.stringify({ texto }),
     });
-
     if (res.status === 429) {
       alert("Límite de análisis con IA alcanzado. Usá el análisis local.");
       return parsearTextoLocal(texto);
     }
     if (!res.ok) throw new Error("Error en API");
-
     const text = await res.text();
     const trimmed = text.replace(/```json|```/g, "").trim();
     if (trimmed && trimmed !== "{}") {
@@ -159,34 +133,12 @@ async function analizarConIA(texto, supabase) {
   return parsearTextoLocal(texto);
 }
 
+// ── Mapa de preview dentro de Captaciones ────────────────────
 function MapaCaptaciones({ items }) {
   const mobile = useIsMobile(768);
   const mapRef   = useRef(null);
-  const leafRef  = useRef(null);
   const marksRef = useRef([]);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    if (window.L) { setReady(true); return; }
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-    document.head.appendChild(link);
-    const script = document.createElement("script");
-    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-    script.onload = () => setReady(true);
-    document.head.appendChild(script);
-  }, []);
-
-  useEffect(() => {
-    if (!ready || !mapRef.current || leafRef.current) return;
-    const map = window.L.map(mapRef.current, { center: [-38.002, -57.555], zoom: 13 });
-    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap", maxZoom: 19,
-    }).addTo(map);
-    leafRef.current = map;
-    setTimeout(() => map.invalidateSize(), 200);
-  }, [ready]);
+  const { leafRef, ready } = useLeaflet(mapRef);
 
   useEffect(() => {
     if (!ready || !leafRef.current) return;
@@ -216,7 +168,7 @@ function MapaCaptaciones({ items }) {
   const conCoords = items.filter(i => i.lat && i.lng);
   return (
     <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, overflow:"hidden" }}>
-      <div style={{ padding: mobile ? "12px 14px" : "10px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap: mobile ? "wrap" : "nowrap", gap: mobile ? 4 : 0 }}>
+      <div style={{ padding: mobile ? "12px 14px" : "10px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <span style={{ fontSize: mobile ? 13 : 12, fontWeight:700, color:B.accentL }}>📍 Mapa de captaciones</span>
         <span style={{ fontSize: mobile ? 12 : 11, color:"#4A6A90" }}>{conCoords.length} con ubicación</span>
       </div>
@@ -230,12 +182,12 @@ function MapaCaptaciones({ items }) {
   );
 }
 
-
 const TC = {
   colega:     { label:"🔴 Colega",     bg:"#CC2233", border:"dashed" },
   honorarios: { label:"🟢 Honorarios", bg:"#2E9E6A", border:"solid" },
   propia:     { label:"🟡 Propia",     bg:"#E8A830", border:"solid" },
 };
+
 function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
   const mobile = useIsMobile(768);
   const [open,    setOpen]    = useState(false);
@@ -274,8 +226,8 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
       nota_interna:form.nota_interna||null,
     };
     if (form.direccion !== item.direccion) {
-      const c = await nominatim(form.direccion || form.zona);
-      if (c.lat) { updates.lat = c.lat; updates.lng = c.lng; }
+      const c = await geocodeNominatim(form.direccion || form.zona);
+      if (c) { updates.lat = c.lat; updates.lng = c.lng; }
     }
     const { error } = await supabase.from("captaciones").update(updates).eq("id", item.id);
     if (!error) { onUpdate(item.id, updates); setEditing(false); }
@@ -346,7 +298,7 @@ function CaptacionCard({ item, supabase, onConvertir, onEliminar, onUpdate }) {
                 <option value="">Sin tipo</option>
                 {["Departamento","Casa","PH","Dúplex","Local","Terreno","Otro"].map(t=><option key={t}>{t}</option>)}
               </select></div>
-          <div style={{gridColumn: mobile ? "auto" : "1/-1"}}><label style={{ fontSize: mobile ? 11 : 10, color:"#E8A830", display:"block", marginBottom:2 }}>★ TIPO CAPTACIÓN (obligatorio)</label>
+            <div style={{gridColumn: mobile ? "auto" : "1/-1"}}><label style={{ fontSize: mobile ? 11 : 10, color:"#E8A830", display:"block", marginBottom:2 }}>★ TIPO CAPTACIÓN (obligatorio)</label>
               <select value={form.tipo_captacion} onChange={e=>setForm(f=>({...f,tipo_captacion:e.target.value}))} style={{...inp, borderColor:form.tipo_captacion?TC[form.tipo_captacion]?.bg:"#E8A830"}}>
                 <option value="">— Seleccioná —</option>
                 <option value="propia">🟡 Propia — tu cartera</option>
@@ -452,28 +404,21 @@ export default function Captaciones({ supabase }) {
   function analizarLocal() {
     if (!input.trim()) return;
     setCampos(null); setCompletos({});
-    const result = parsearTextoLocal(input);
-    prerellenar(result);
+    prerellenar(parsearTextoLocal(input));
   }
 
   async function guardar() {
     if (guardando) return;
     const tel = completos.telefono || campos?.telefono;
     const nom = completos.nombre_propietario || campos?.nombre_propietario;
-    if (!tipoCap) {
-      alert("Seleccioná el tipo de captación (Propia, Honorarios o Colega).");
-      return;
-    }
-    if (!tel && !nom) {
-      alert("Agregá al menos nombre o teléfono del propietario antes de guardar.");
-      return;
-    }
+    if (!tipoCap) { alert("Seleccioná el tipo de captación (Propia, Honorarios o Colega)."); return; }
+    if (!tel && !nom) { alert("Agregá al menos nombre o teléfono del propietario antes de guardar."); return; }
     setGuardando(true);
     const get = k => completos[k] !== undefined ? completos[k] : campos?.[k] ?? null;
     const dir = get("direccion"), zona = get("zona");
     let lat = null, lng = null;
-    if (dir) { const c = await nominatim(dir); lat=c.lat; lng=c.lng; }
-    if (!lat && zona) { const c = await nominatim(zona); lat=c.lat; lng=c.lng; }
+    if (dir) { const c = await geocodeNominatim(dir); if (c) { lat=c.lat; lng=c.lng; } }
+    if (!lat && zona) { const c = await geocodeNominatim(zona); if (c) { lat=c.lat; lng=c.lng; } }
     const { data, error } = await supabase.from("captaciones").insert([{
       contenido: input.trim(), tipo:get("tipo"), zona, direccion:dir,
       precio:get("precio")?Number(get("precio")):null,
@@ -483,10 +428,8 @@ export default function Captaciones({ supabase }) {
       telefono:get("telefono"), caracts:get("caracts"),
       operacion:get("operacion")||"venta", nota:nota.trim()||null,
       ag:ag||null, lat, lng, convertida:false,
-      tipo_captacion:tipoCap||null,
-      url:get("url")||null,
-      nota_interna:get("nota_interna")||null,
-      inmobiliaria:get("inmobiliaria")||null,
+      tipo_captacion:tipoCap||null, url:get("url")||null,
+      nota_interna:get("nota_interna")||null, inmobiliaria:get("inmobiliaria")||null,
     }]).select().single();
     if (!error && data) {
       setItems(p=>[data,...p]);
@@ -526,7 +469,6 @@ export default function Captaciones({ supabase }) {
 
   return (
     <div style={{ overflowY:"auto", maxWidth: mobile ? "100%" : 700, display:"flex", flexDirection:"column", gap: mobile ? 12 : 14 }}>
-
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap: mobile ? "wrap" : "nowrap", gap: mobile ? 8 : 8 }}>
         <div>
           <h1 style={{ fontSize: mobile ? 18 : 20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>Captación rápida</h1>
@@ -536,8 +478,7 @@ export default function Captaciones({ supabase }) {
           {["cards","mapa"].map(v => (
             <button key={v} onClick={()=>setVistaActiva(v)}
               style={{ flex: mobile ? 1 : "none", padding: mobile ? "7px 14px" : "5px 14px", borderRadius:6, cursor:"pointer", fontSize: mobile ? 12 : 11, fontWeight:600,
-                background:vistaActiva===v?B.accent:"transparent",
-                color:vistaActiva===v?"#fff":"#8AAECC", border:"none" }}>
+                background:vistaActiva===v?B.accent:"transparent", color:vistaActiva===v?"#fff":"#8AAECC", border:"none" }}>
               {v==="cards"?`📋 Cards (${items.length})`:`📍 Mapa (${conUbicacion})`}
             </button>
           ))}
@@ -565,9 +506,9 @@ export default function Captaciones({ supabase }) {
           <label style={{ fontSize: mobile ? 12 : 11, color:"#E8A830", display:"block", marginBottom:3 }}>★ TIPO CAPTACIÓN — obligatorio</label>
           <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr 1fr", gap: mobile ? 8 : 6 }}>
             {[
-              { v:"propia",     label:"🟡 Propia",     desc:"Tu cartera" },
-              { v:"honorarios", label:"🟢 Honorarios",  desc:"Pedís la llave" },
-              { v:"colega",     label:"🔴 Colega",      desc:"Él tiene la llave" },
+              { v:"propia",     label:"🟡 Propia",    desc:"Tu cartera" },
+              { v:"honorarios", label:"🟢 Honorarios", desc:"Pedís la llave" },
+              { v:"colega",     label:"🔴 Colega",     desc:"Él tiene la llave" },
             ].map(({ v, label, desc }) => (
               <button key={v} onClick={()=>setTipoCap(v)}
                 style={{ padding: mobile ? "10px 8px" : "8px 6px", borderRadius:8, cursor:"pointer", textAlign:"center",
@@ -583,15 +524,13 @@ export default function Captaciones({ supabase }) {
         <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 10 : 8 }}>
           <button onClick={analizarLocal} disabled={!input.trim()}
             style={{ padding: mobile ? 13 : 11, borderRadius:9, cursor:input.trim()?"pointer":"default",
-              background:input.trim()?"#1E3A5F":B.border,
-              border:`1px solid ${input.trim()?B.accentL:B.border}`,
+              background:input.trim()?"#1E3A5F":B.border, border:`1px solid ${input.trim()?B.accentL:B.border}`,
               color:input.trim()?B.accentL:"#8AAECC", fontSize: mobile ? 14 : 13, fontWeight:700 }}>
             📋 Analizar
           </button>
           <button onClick={analizar} disabled={analizando||!input.trim()}
             style={{ padding: mobile ? 13 : 11, borderRadius:9, cursor:input.trim()&&!analizando?"pointer":"default",
-              background:input.trim()&&!analizando?B.accent:B.border,
-              border:`1px solid ${input.trim()&&!analizando?B.accentL:B.border}`,
+              background:input.trim()&&!analizando?B.accent:B.border, border:`1px solid ${input.trim()&&!analizando?B.accentL:B.border}`,
               color:input.trim()&&!analizando?"#fff":"#8AAECC", fontSize: mobile ? 14 : 13, fontWeight:700 }}>
             {analizando?"✨ Analizando...":"✨ Analizar con IA"}
           </button>

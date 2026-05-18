@@ -1,5 +1,5 @@
 import React from "react";
-import Propiedades from "../components/Propiedades.jsx";
+import Propiedades from "../components/propiedades/index.jsx";
 import { useLeadStore }     from "../store/useLeadStore.js";
 import { usePropertyStore } from "../store/usePropertyStore.js";
 import { useRentalStore }   from "../store/useRentalStore.js";

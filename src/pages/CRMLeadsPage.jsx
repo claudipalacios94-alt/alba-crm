@@ -2,7 +2,7 @@
 // ALBA CRM — CRMLeadsPage
 // ══════════════════════════════════════════════════════════════
 import React from 'react'
-import CRMLeads from '../components/CRMLeads.jsx'
+import CRMLeads from "../components/crmleads/index.jsx";
 import { useLeadStore }      from '../store/useLeadStore.js'
 import { usePropertyStore }  from '../store/usePropertyStore.js'
 import { useCaptacionStore } from '../store/useCaptacionStore.js'
