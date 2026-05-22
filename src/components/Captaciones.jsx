@@ -101,14 +101,12 @@ function parsearTextoLocal(texto) {
   ].filter(Boolean).join(", ") || null;
 const urlMatch = texto.match(/https?:\/\/[^\s\)\]\,\"\']+/i);
 const url = urlMatch ? urlMatch[0] : null;
-  return {tipo, precio, ambientes, m2tot, m2cub, zona, telefono, cochera,
+return {
+  tipo, precio, ambientes, m2tot, m2cub, zona, telefono, cochera,
   operacion, direccion, caracts, dormitorios, url,
-    tipo, precio, ambientes, m2tot, m2cub, zona, telefono, cochera,
-    operacion, direccion, caracts, dormitorios,
-    campos_faltantes: [!tipo&&"tipo",!zona&&"zona",!precio&&"precio"].filter(Boolean),
-    fuera_de_mdp: false,
-  };
-}
+  campos_faltantes: [!tipo&&"tipo",!zona&&"zona",!precio&&"precio"].filter(Boolean),
+  fuera_de_mdp: false,
+};
 
 async function analizarConIA(texto, supabase) {
   try {
