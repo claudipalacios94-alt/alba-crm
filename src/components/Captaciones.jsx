@@ -107,7 +107,7 @@ return {
   campos_faltantes: [!tipo&&"tipo",!zona&&"zona",!precio&&"precio"].filter(Boolean),
   fuera_de_mdp: false,
 };
-
+}
 async function analizarConIA(texto, supabase) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -386,7 +386,7 @@ export default function Captaciones({ supabase }) {
     if (result) {
       const pre = {};
       ["tipo","zona","direccion","precio","ambientes","m2tot","cochera",
-       "nombre_propietario","telefono","caracts","operacion"].forEach(k => {
+       "nombre_propietario","telefono","caracts","operacion","url"].forEach(k => {
         if (result[k] !== null && result[k] !== undefined) pre[k] = result[k];
       });
       setCompletos(pre);
