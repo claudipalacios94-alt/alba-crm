@@ -99,8 +99,10 @@ function parsearTextoLocal(texto) {
     /amoblado|amueblado|con muebles/i.test(texto) && "amoblado",
     /luminoso/i.test(texto) && "luminoso",
   ].filter(Boolean).join(", ") || null;
-
-  return {
+const urlMatch = texto.match(/https?:\/\/[^\s\)\]\,\"\']+/i);
+const url = urlMatch ? urlMatch[0] : null;
+  return {tipo, precio, ambientes, m2tot, m2cub, zona, telefono, cochera,
+  operacion, direccion, caracts, dormitorios, url,
     tipo, precio, ambientes, m2tot, m2cub, zona, telefono, cochera,
     operacion, direccion, caracts, dormitorios,
     campos_faltantes: [!tipo&&"tipo",!zona&&"zona",!precio&&"precio"].filter(Boolean),
