@@ -59,7 +59,7 @@ export function matchLeadProps(lead, properties) {
     .filter(p => p.activa !== false)
     .map(p => {
       const pZona    = normZona(p.zona);
-      const pTipo    = normZona((p.tipo || "").replace("departamento", "depto"));
+      const pTipo    = normZona((p.tipo || "").toLowerCase().replace("departamento", "depto"));
       const pPrecio  = Number(p.precio) || 0;
       const pCaracts = (p.caracts || "").toLowerCase();
       let score = 0;
@@ -73,7 +73,7 @@ export function matchLeadProps(lead, properties) {
       if (presup > 0 && pPrecio > 0) {
         if      (pPrecio <= presup)             score += 30;
         else if (pPrecio <= presup * 1.05)      score += 18;
-        else if (pPrecio <= presup * 1.10)      score += 8;
+        else if (pPrecio <= presup * 1.20)      score += 8;
         else return null;
       }
 
@@ -94,7 +94,7 @@ export function matchLeadProps(lead, properties) {
     })
     .filter(Boolean)
     .sort((a, b) => b._score - a._score)
-    .slice(0, 5);
+    ;
 }
 
 /**
@@ -109,7 +109,7 @@ export function matchPropLeads(prop, leads) {
   if (!leads?.length) return [];
 
   const pZona   = normZona(prop.zona);
-  const pTipo   = normZona((prop.tipo || "").replace("departamento", "depto"));
+  const pTipo   = normZona((prop.tipo || "").toLowerCase().replace("departamento", "depto"));
   const pPrecio = Number(prop.precio) || 0;
 
   return leads

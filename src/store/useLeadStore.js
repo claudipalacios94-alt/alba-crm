@@ -51,10 +51,11 @@ export const useLeadStore = create((set, get) => ({
     }
   },
 
-  addLead: async (lead) => {
+addLead: async (lead) => {
     const { data, error } = await supabase.from('leads').insert([{
       nombre:           lead.nombre,
       ag:               lead.ag             || '',
+      ag_capto:         lead.agCapto        || '',
       etapa:            lead.etapa          || 'Nuevo Contacto',
       op:               lead.op             || '',
       presup:           lead.presup         ? Number(lead.presup) : null,
@@ -68,6 +69,11 @@ export const useLeadStore = create((set, get) => ({
       proxaccion_fecha: lead.proxaccionFecha || null,
       prob:             lead.prob           ? Number(lead.prob) : null,
       nota_imp:         lead.notaImp        || '',
+      cochera:          lead.cochera        || null,
+      balcon:           lead.balcon         || null,
+      patio:            lead.patio          || null,
+      ambientes:        lead.ambientes      || null,
+      m2min:            lead.m2min          ? Number(lead.m2min) : null,
       dias:             0,
     }]).select().single()
     if (error) { console.error('addLead error:', error); throw error }

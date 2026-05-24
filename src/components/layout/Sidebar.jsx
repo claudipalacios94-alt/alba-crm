@@ -7,12 +7,12 @@ import { useLeadStore }    from "../../store/useLeadStore.js";
 import { useAIStore }      from "../../store/useAIStore.js";
 
 const NAV_DEFAULT = [
+  { id: "", label: "Dashboard", badge: "INICIO" },
   { id: "briefing",    label: "Briefing del dia", badge: "HOY" },
   { id: "cuaderno",    label: "Cuaderno de campo" },
   { id: "kanban",      label: "Kanban" },
   { id: "crm",         label: "CRM Leads" },
   { id: "propiedades", label: "Propiedades" },
-  { id: "alquileres",  label: "Alquileres" },
   { id: "mapa",        label: "Mapa" },
   { id: "flyer",       label: "Generador Flyer" },
   { id: "captaciones", label: "Captacion rapida", badge: "NEW" },

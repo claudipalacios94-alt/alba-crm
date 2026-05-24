@@ -3,7 +3,7 @@
 // Filtros, tabs, grupos por temperatura, mail de pedidos
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useMemo, useEffect } from "react";
-import { B, AG, scoreLead, matchLeadProps } from "../../data/constants.js";
+import { B, AG, scoreLead, matchLeadProps, getPriorityScore, getRecommendedAction } from "../../data/constants.js";
 import LeadCard    from "./LeadCard.jsx";
 import ModalPerdido from "./ModalPerdido.jsx";
 
@@ -158,6 +158,13 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
     { titulo:"⚪ FRÍOS",     color:B.dim,  leads: leadsActivos.filter(l => { const s=scoreLead(l).label; return s.includes("Frío"); }) },
   ].filter(g => g.leads.length > 0);
 
+  const leadTop = useMemo(() => {
+    const activos = leadsActivos.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
+    return activos.sort((a, b) => getPriorityScore(b) - getPriorityScore(a))[0] || null;
+  }, [leadsActivos]);
+
+  const urgenciaColor = { alta: B.hot, media: B.warm, baja: B.dim };
+
   const cardProps = { mobile, properties, captaciones, mostrados, toggleMostrado, updateLead, deleteLead, setEtapa, setAgente, setModalPerdido, setConfirmDelete };
 
   return (
@@ -274,6 +281,49 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           </div>
         </div>
       </div>
+
+      {/* Acción del día */}
+      {leadTop && (() => {
+        const score = getPriorityScore(leadTop);
+        const rec   = getRecommendedAction(leadTop);
+        const col   = urgenciaColor[rec.urgencia];
+        return (
+          <div style={{ background:`${col}12`, border:`1px solid ${col}40`,
+            borderLeft:`4px solid ${col}`, borderRadius:10,
+            padding: mobile ? "12px 14px" : "14px 16px", marginBottom: mobile ? 12 : 16,
+            display:"flex", alignItems:"center", gap: mobile ? 10 : 14,
+            flexWrap: mobile ? "wrap" : "nowrap" }}>
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", minWidth: mobile ? 44 : 48 }}>
+              <span style={{ fontSize: mobile ? 20 : 22, fontWeight:900, color:col,
+                lineHeight:1, fontFamily:"Georgia,serif" }}>{score}</span>
+              <span style={{ fontSize:9, color:B.dim, letterSpacing:"1px", marginTop:1 }}>SCORE</span>
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize: mobile ? 10 : 9, fontWeight:700, color:col,
+                letterSpacing:"1.5px", marginBottom:3 }}>ACCIÓN DEL DÍA</div>
+              <div style={{ fontSize: mobile ? 14 : 13, fontWeight:700, color:B.text, marginBottom:2 }}>
+                {leadTop.nombre}
+                {leadTop.zona && <span style={{ fontWeight:400, color:B.dim }}> · {leadTop.zona}</span>}
+              </div>
+              <div style={{ fontSize: mobile ? 12 : 11, color:B.dim }}>{rec.motivo}</div>
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", alignItems: mobile ? "flex-start" : "flex-end",
+              gap:6, flexShrink:0 }}>
+              <span style={{ fontSize: mobile ? 13 : 12, fontWeight:700, color:col,
+                background:`${col}18`, padding:"4px 12px", borderRadius:20,
+                border:`1px solid ${col}40`, whiteSpace:"nowrap" }}>
+                {rec.accion}
+              </span>
+              <button onClick={() => setExp(leadTop.id)}
+                style={{ fontSize: mobile ? 11 : 10, color:B.accentL, background:"transparent",
+                  border:`1px solid ${B.border}`, borderRadius:6, padding:"3px 10px",
+                  cursor:"pointer" }}>
+                Ver lead →
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Grupos */}
       {grupos.map(grupo => (

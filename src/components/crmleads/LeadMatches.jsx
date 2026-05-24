@@ -2,7 +2,7 @@
 // ALBA CRM — LeadMatches
 // Lista de propiedades compatibles con un lead
 // ══════════════════════════════════════════════════════════════
-import React from "react";
+import React, { useState } from "react";
 import { B, matchLeadProps, genMsgWhatsApp } from "../../data/constants.js";
 
 export default function LeadMatches({ lead, properties, captaciones, mostrados, toggleMostrado }) {
@@ -15,6 +15,7 @@ export default function LeadMatches({ lead, properties, captaciones, mostrados, 
   const todasProps = [...(properties||[]), ...capsNorm];
   const matches = matchLeadProps(lead, todasProps);
 
+  const [expandido, setExpandido] = React.useState(false);
   if (!matches.length) return null;
 
   return (
@@ -22,7 +23,7 @@ export default function LeadMatches({ lead, properties, captaciones, mostrados, 
       <div style={{ fontSize:11, color:"#8AAECC", letterSpacing:"1px", fontWeight:600, marginBottom:6 }}>
         🏠 PROPIEDADES COMPATIBLES ({matches.length})
       </div>
-      {matches.slice(0, 3).map(prop => {
+      {(expandido ? matches : matches.slice(0,3)).map(prop => {
         const msg  = genMsgWhatsApp(lead, prop);
         const wa   = lead.tel
           ? `https://wa.me/${lead.tel.replace(/\D/g,"")}?text=${encodeURIComponent(msg)}`
@@ -64,9 +65,25 @@ export default function LeadMatches({ lead, properties, captaciones, mostrados, 
                 💬 WA
               </a>
             )}
+            {prop._url && (
+              <a href={prop._url} target="_blank" rel="noreferrer"
+                style={{ padding:"3px 9px", borderRadius:6, whiteSpace:"nowrap",
+                  background:"rgba(42,91,173,0.1)", border:"1px solid rgba(42,91,173,0.3)",
+                  color:"#4A8ABE", fontSize:12, textDecoration:"none", fontWeight:600 }}>
+                🔗 Ver
+              </a>
+            )}
           </div>
         );
       })}
+      {matches.length > 3 && (
+        <button onClick={() => setExpandido(e => !e)}
+          style={{ width:"100%", padding:"6px", borderRadius:6, cursor:"pointer",
+            background:"transparent", border:"1px solid #1E3A5F",
+            color:"#8AAECC", fontSize:11, marginTop:4 }}>
+          {expandido ? "▲ Mostrar menos" : `▼ Ver todas (${matches.length})`}
+        </button>
+      )}
     </div>
   );
 }

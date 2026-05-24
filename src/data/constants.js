@@ -3,7 +3,7 @@
 // Agentes y pipeline → src/config/agents.js
 
 export { AG, ETAPAS, ECOL } from "../config/agents.js";
-export { scoreLead, matchLeadProps, genMsgWhatsApp, genMsgBusqueda } from "../domain/lead.js";
+export { scoreLead, matchLeadProps, genMsgWhatsApp, genMsgBusqueda, getPriorityScore, getRecommendedAction } from "../domain/lead.js";
 
 export const B = {
   bg:         "#070E1C",

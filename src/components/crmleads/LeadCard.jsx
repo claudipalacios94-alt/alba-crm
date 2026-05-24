@@ -3,7 +3,7 @@
 // Card expandible de un lead: etapa, agente, tags, notas, matches
 // ══════════════════════════════════════════════════════════════
 import React, { useState } from "react";
-import { B, AG, ETAPAS, ECOL, scoreLead } from "../../data/constants.js";
+import { B, AG, ETAPAS, ECOL, scoreLead, matchLeadProps } from "../../data/constants.js";
 import LeadForm     from "./LeadForm.jsx";
 import LeadMatches  from "./LeadMatches.jsx";
 import LeadAcciones from "./LeadAcciones.jsx";
@@ -110,6 +110,37 @@ export default function LeadCard({
               onCancelar={() => setEditing(false)} />
           ) : (
             <div style={{ paddingTop:12 }}>
+              {/* ── Resumen rápido ── */}
+              {(() => {
+                const partes = [];
+                if (lead.dias > 7) partes.push({ text: `🔴 ${lead.dias}d sin contacto`, color: "#E85D30" });
+                else if (lead.dias > 3) partes.push({ text: `🟡 ${lead.dias}d sin contacto`, color: "#E8A830" });
+                else partes.push({ text: `🟢 ${lead.dias}d sin contacto`, color: "#2E9E6A" });
+                const normZ = z => (z||"").toLowerCase().replace(/^(la|el|los|las)\s+/i,"").trim();
+                const lz = normZ(lead.zona);
+                const mProps = (properties||[]).filter(p => p.activa && normZ(p.zona).includes(lz) && lz.length > 2).length;
+                const mCaps = (captaciones||[]).filter(c => normZ(c.zona).includes(lz) && lz.length > 2).length;
+                const matches = mProps + mCaps;
+                if (matches > 0) partes.push({ text: `🏠 ${matches} match${matches > 1 ? "es" : ""}`, color: "#4A8ABE" });
+                else partes.push({ text: "Sin matches en zona", color: "#7A96B8" });
+                if (lead.nota) {
+                  const ultima = lead.nota.split("\n")[0].replace(/\[.*?\]\s*/, "").slice(0, 40);
+                  partes.push({ text: `💬 ${ultima}${ultima.length >= 40 ? "…" : ""}`, color: "#8AAECC" });
+                }
+                return (
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12,
+                    padding:"8px 10px", borderRadius:8, background:"rgba(42,91,173,0.07)",
+                    border:"1px solid rgba(42,91,173,0.15)" }}>
+                    {partes.map((p, i) => (
+                      <span key={i} style={{ fontSize:11, color:p.color, fontWeight:500 }}>
+                        {i > 0 && <span style={{ color:"#2A3A5A", marginRight:6 }}>·</span>}
+                        {p.text}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })()}
+
 
               {/* Etapa */}
               <div style={{ display:"flex", gap: mobile ? 6 : 5, flexWrap:"wrap", marginBottom: mobile ? 12 : 10 }}>

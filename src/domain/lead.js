@@ -19,13 +19,15 @@ export function scoreLead(lead) {
 
 export function genMsgWhatsApp(lead, prop) {
   const precio = prop.precio ? `USD ${Number(prop.precio).toLocaleString()}` : "a consultar";
-  const m2 = prop.m2tot ? ` · ${prop.m2tot}m²` : "";
-  return `Hola ${lead.nombre}! Tenemos una opción que creo que te puede interesar:\n\n` +
-    `🏠 ${prop.tipo} en ${prop.zona}\n` +
-    `📍 ${prop.dir || prop.zona}\n` +
-    `💰 ${precio}${m2}\n` +
-    (prop.caracts ? `✅ ${prop.caracts}\n` : "") +
-    `\n¿Te parece si coordinamos para verla? 🙂`;
+  const m2 = prop.m2tot ? ` - ${prop.m2tot}m2` : "";
+  const dir = prop.dir ? prop.dir + "\n" : "";
+  const caracts = prop.caracts ? prop.caracts + "\n" : "";
+  const url = prop._url ? prop._url + "\n" : "";
+  return prop.tipo + " en " + prop.zona + "\n" +
+    dir +
+    precio + m2 + "\n" +
+    caracts +
+    url;
 }
 
 export function genMsgBusqueda(lead) {
@@ -59,4 +61,27 @@ export function genMsgBusqueda(lead) {
     detalles.length > 0 ? detalles.join(" · ") : null,
     "Alba Inversiones · REG 3832",
   ].filter(l => l !== null).join("\n").trim();
+}
+export function getPriorityScore(lead) {
+  if (lead.etapa === "Cerrado" || lead.etapa === "Perdido") return 0;
+  let score = lead.prob || 0;
+  if (lead.dias <= 2) score += 20;
+  else if (lead.dias <= 5) score += 5;
+  else if (lead.dias > 7) score -= 20;
+  if (lead.etapa === "Negociacion") score += 15;
+  if (lead.etapa === "Visita") score += 10;
+  return Math.min(100, Math.max(0, Math.round(score)));
+}
+
+export function getRecommendedAction(lead) {
+  const score = getPriorityScore(lead);
+  if (lead.etapa === "Negociacion" && lead.dias >= 1)
+    return { accion: "Llamar ahora", urgencia: "alta", motivo: "Negociacion activa sin contacto" };
+  if (score > 80 && lead.dias >= 2)
+    return { accion: "Llamar ahora", urgencia: "alta", motivo: lead.dias + "d sin contacto, alta probabilidad" };
+  if (score > 70)
+    return { accion: "Enviar match", urgencia: "media", motivo: "Lead caliente, mandar propiedad concreta" };
+  if (score > 50)
+    return { accion: "Seguimiento", urgencia: "media", motivo: "En pipeline activo" };
+  return { accion: "Baja prioridad", urgencia: "baja", motivo: "Sin actividad reciente" };
 }

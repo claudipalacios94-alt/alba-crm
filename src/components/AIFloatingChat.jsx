@@ -174,9 +174,11 @@ REGLAS: Español rioplatense, directo y conciso. Si algo implica modificar datos
     try {
       const res = await fetch("/api/claude", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
+headers: { 
+  "Content-Type": "application/json",
+  "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ""}`,
+},        body: JSON.stringify({
+           model: "claude-haiku-4-5-20251001",
           max_tokens: 500,
           system: buildContexto(),
           messages: historial,
