@@ -5,6 +5,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { B, AG, scoreLead, matchLeadProps, getPriorityScore, getRecommendedAction } from "../../data/constants.js";
 import LeadCard    from "./LeadCard.jsx";
+import { useIncidents } from "../../hooks/useIncidents.js";
 import ModalPerdido from "./ModalPerdido.jsx";
 
 function useIsMobile(breakpoint = 768) {
@@ -19,6 +20,7 @@ function useIsMobile(breakpoint = 768) {
 
 export default function CRMLeads({ leads, updateLead, deleteLead, properties, captaciones, supabase }) {
   const mobile = useIsMobile(768);
+  useIncidents(leads);
   const [pagina,         setPagina]         = useState("compradores");
   const [fs,             setFs]             = useState("Todos");
   const [fa,             setFa]             = useState("Todos");

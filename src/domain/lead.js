@@ -8,7 +8,6 @@ import { parsearNotas, tipoNotaReciente } from "./nota.js";
 
 export { matchLeadProps } from "./matching.js";
 
-// Bonos/penalizaciones por tipo de nota sobre getPriorityScore
 const NOTA_SCORE = {
   urgencia:    +25,
   cierre:      +20,
@@ -17,7 +16,6 @@ const NOTA_SCORE = {
   objecion:    -10,
 };
 
-// scoreLead: ahora considera tipo de nota reciente además de días
 export function scoreLead(lead) {
   if (lead.etapa === "Cerrado" || lead.etapa === "Perdido")
     return { label: "⬜", c: "#4A8A5A", bg: "rgba(74,138,90,0.12)" };
@@ -25,13 +23,11 @@ export function scoreLead(lead) {
   const notas = parsearNotas(lead.nota);
   const tipo  = tipoNotaReciente(notas);
 
-  // Tipo de nota tiene más peso que días sueltos
   if (tipo === "urgencia" || tipo === "cierre")
     return { label: "🟢 Caliente", c: B.hot,  bg: "rgba(232,93,48,0.13)" };
   if (tipo === "objecion")
     return { label: "🟡 Tibio",    c: B.warm, bg: "rgba(232,168,48,0.13)" };
 
-  // Fallback: comportamiento original por días
   if (lead.dias < 3)
     return { label: "🟢 Caliente", c: B.hot,  bg: "rgba(232,93,48,0.13)"  };
   if (lead.dias <= 7)
@@ -46,10 +42,7 @@ export function genMsgWhatsApp(lead, prop) {
   const caracts = prop.caracts ? prop.caracts + "\n" : "";
   const url = prop._url ? prop._url + "\n" : "";
   return prop.tipo + " en " + prop.zona + "\n" +
-    dir +
-    precio + m2 + "\n" +
-    caracts +
-    url;
+    dir + precio + m2 + "\n" + caracts + url;
 }
 
 export function genMsgBusqueda(lead) {
@@ -90,16 +83,13 @@ export function getPriorityScore(lead) {
 
   let score = lead.prob || 0;
 
-  // Días
   if (lead.dias <= 2) score += 20;
   else if (lead.dias <= 5) score += 5;
   else if (lead.dias > 7) score -= 20;
 
-  // Etapa
   if (lead.etapa === "Negociacion") score += 15;
   if (lead.etapa === "Visita")      score += 10;
 
-  // Tipo de nota reciente — nuevo
   const notas = parsearNotas(lead.nota);
   const tipo  = tipoNotaReciente(notas);
   if (tipo && NOTA_SCORE[tipo] !== undefined) score += NOTA_SCORE[tipo];
@@ -112,7 +102,6 @@ export function getRecommendedAction(lead) {
   const notas = parsearNotas(lead.nota);
   const tipo  = tipoNotaReciente(notas);
 
-  // Tipo de nota tiene prioridad sobre reglas genéricas
   if (tipo === "urgencia")
     return { accion: "Llamar ahora", urgencia: "alta", motivo: "Marcó urgencia en nota" };
   if (tipo === "cierre")
@@ -122,7 +111,6 @@ export function getRecommendedAction(lead) {
   if (tipo === "interes" && lead.dias >= 2)
     return { accion: "Enviar match hoy", urgencia: "alta", motivo: "Interés activo + días sin contacto" };
 
-  // Fallback: reglas originales
   if (lead.etapa === "Negociacion" && lead.dias >= 1)
     return { accion: "Llamar ahora", urgencia: "alta", motivo: "Negociacion activa sin contacto" };
   if (score > 80 && lead.dias >= 2)
@@ -132,4 +120,30 @@ export function getRecommendedAction(lead) {
   if (score > 50)
     return { accion: "Seguimiento", urgencia: "media", motivo: "En pipeline activo" };
   return { accion: "Baja prioridad", urgencia: "baja", motivo: "Sin actividad reciente" };
+}
+
+// ── Motor central ──────────────────────────────────────────────
+
+export function detectIncident(lead) {
+  const notas   = parsearNotas(lead.nota);
+  const tipoNota = tipoNotaReciente(notas);
+
+  if (tipoNota === "urgencia" && lead.dias >= 1)
+    return { tipo: "urgencia_sin_atender", label: "🔥 Urgencia sin atender" };
+  if (tipoNota === "interes" && lead.dias >= 3)
+    return { tipo: "interes_frio", label: "❄️ Interés sin seguimiento" };
+  if (lead.etapa === "Negociacion" && lead.dias >= 2)
+    return { tipo: "negociacion_parada", label: "⚠️ Negociación parada" };
+
+  return null;
+}
+
+export function computeLeadState(lead) {
+  const notas    = parsearNotas(lead.nota);
+  const tipoNota = tipoNotaReciente(notas);
+  const score    = getPriorityScore(lead);
+  const { accion, urgencia, motivo } = getRecommendedAction(lead);
+  const incident = detectIncident(lead);
+
+  return { score, urgencia, accion, motivo, incident, tipoNota };
 }
