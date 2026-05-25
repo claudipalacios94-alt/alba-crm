@@ -1,141 +1,105 @@
-// api/analyze.js — Proxy seguro para Claude (análisis de captaciones)
-// Protecciones: CORS allowlist, Supabase auth, rate-limit, usage log
-
-import { createClient } from "@supabase/supabase-js";
+// ══════════════════════════════════════════════════════════════
+// ALBA CRM — API / ANALYZE
+// Vercel Edge Function — análisis IA de notas tipadas
+// ══════════════════════════════════════════════════════════════
 
 export const config = { runtime: "edge" };
 
-const ALLOWED_ORIGINS = [
-  "https://alba-crm.vercel.app",
-  "http://localhost:5173",
-];
-
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY  // service key (no anon), solo en servidor
-);
+const AI_MODEL = "claude-haiku-4-5-20251001";
 
 export default async function handler(req) {
-  const origin = req.headers.get("origin") || "";
+  if (req.method !== "POST")
+    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
 
-  // ── CORS ──────────────────────────────────────────────────
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : null;
-  if (!allowedOrigin) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), {
-      status: 403,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const auth = req.headers.get("Authorization");
+  if (!auth?.startsWith("Bearer "))
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
 
-  const corsHeaders = {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  };
+  let body;
+  try { body = await req.json(); }
+  catch { return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400 }); }
 
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders });
-  }
+  const { notas = [], leadInfo = {} } = body;
 
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
-  }
+  // Sin notas → no gastar tokens
+  if (!notas.length)
+    return new Response(
+      JSON.stringify({ status: "frio", nextAction: "Calificar lead", reason: "Sin notas", source: "rules" }),
+      { headers: { "Content-Type": "application/json" } }
+    );
 
-  // ── Auth ──────────────────────────────────────────────────
-  const authHeader = req.headers.get("authorization") || "";
-  const token = authHeader.replace("Bearer ", "").trim();
-  if (!token) {
-    return new Response(JSON.stringify({ error: "No autorizado" }), {
-      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  // Formatear notas para el prompt — el tipo es el dato clave
+  const notasTexto = notas
+    .map((n, i) => {
+      const fecha = n.createdAt
+        ? new Date(n.createdAt).toLocaleDateString("es-AR", { day: "2-digit", month: "short" })
+        : "sin fecha";
+      return `${i + 1}. [${(n.tipo || "seguimiento").toUpperCase()}] "${n.texto}" (${fecha})`;
+    })
+    .join("\n");
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: "Token inválido" }), {
-      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  const prompt = `Sos asistente de una inmobiliaria en Mar del Plata, Argentina.
+Analizá las notas de este comprador y decidí qué hacer hoy.
 
-  // ── Rate limit (20 requests/hora por usuario) ─────────────
-  const now = new Date();
-  const windowStart = new Date(now);
-  windowStart.setMinutes(0, 0, 0); // inicio de la hora actual
+Lead:
+- Zona buscada: ${leadInfo.zona || "?"}
+- Presupuesto: USD ${leadInfo.presup ? Number(leadInfo.presup).toLocaleString() : "?"}
+- Tipo: ${leadInfo.tipo || "?"}
+- Etapa: ${leadInfo.etapa || "?"}
+- Días sin contacto: ${leadInfo.dias ?? 0}
 
-  const { data: rl } = await supabase
-    .from("rate_limits")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("endpoint", "analyze")
-    .gte("window_start", windowStart.toISOString())
-    .single();
+Notas (más reciente primero):
+${notasTexto}
 
-  if (rl && rl.count >= 20) {
-    return new Response(JSON.stringify({ error: "Límite de requests alcanzado. Intentá en la próxima hora." }), {
-      status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+Tipos de nota posibles:
+- INTERES = quiere comprar, le gustó algo
+- OBJECION = freno real (precio, pareja, timing, confianza)
+- URGENCIA = necesita resolver rápido
+- CIERRE = lista para hacer oferta
+- SEGUIMIENTO = contacto sin definición clara
 
-  // Upsert rate limit
-  if (rl) {
-    await supabase.from("rate_limits").update({ count: rl.count + 1 }).eq("id", rl.id);
-  } else {
-    await supabase.from("rate_limits").insert({
-      user_id: user.id, endpoint: "analyze", count: 1, window_start: windowStart.toISOString(),
-    });
-  }
-
-  // ── Request a Claude ──────────────────────────────────────
-  const { texto } = await req.json();
-  if (!texto) {
-    return new Response("Missing texto", { status: 400, headers: corsHeaders });
-  }
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1000,
-      system: `Sos un asistente de inmobiliaria en Mar del Plata, Argentina. Analizás texto libre y extraés información de propiedades.
-Respondé SOLO con JSON válido, sin texto adicional, sin backticks:
+Respondé SOLO con este JSON (sin backticks, sin explicación):
 {
-  "nombre_propietario": string o null,
-  "telefono": string o null,
-  "tipo": "Departamento"|"Casa"|"PH"|"Dúplex"|"Local"|"Terreno"|"Otro" o null,
-  "zona": string o null,
-  "direccion": string o null,
-  "precio": number o null,
-  "m2tot": number o null,
-  "m2cub": number o null,
-  "ambientes": number o null,
-  "caracts": string o null,
-  "operacion": "venta"|"alquiler" o null,
-  "fuera_de_mdp": boolean,
-  "ciudad_detectada": string o null,
-  "campos_faltantes": array de strings — solo los importantes: tipo, zona, precio
-}`,
-      messages: [{ role: "user", content: texto }],
-    }),
-  });
+  "status": "caliente" | "templado" | "frio",
+  "nextAction": "acción concreta en máx 6 palabras",
+  "reason": "motivo en una línea, sin paja"
+}`;
 
-  const data = await res.json();
-  const content = data.content?.[0]?.text || "{}";
-  const tokensIn  = data.usage?.input_tokens  || 0;
-  const tokensOut = data.usage?.output_tokens || 0;
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: AI_MODEL,
+        max_tokens: 150,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
 
-  // ── Usage log ─────────────────────────────────────────────
-  await supabase.from("usage_log").insert({
-    user_id: user.id, endpoint: "analyze",
-    tokens_in: tokensIn, tokens_out: tokensOut,
-    timestamp: now.toISOString(),
-  });
+    const data = await res.json();
+    const text = data.content?.[0]?.text || "{}";
 
-  return new Response(content, {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+    let parsed;
+    try { parsed = JSON.parse(text.replace(/```json|```/g, "").trim()); }
+    catch {
+      return new Response(
+        JSON.stringify({ status: "frio", nextAction: "Revisar notas", reason: "Error parse IA", source: "rules" }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ ...parsed, source: "ai" }),
+      { headers: { "Content-Type": "application/json" } }
+    );
+  } catch (err) {
+    return new Response(
+      JSON.stringify({ status: "frio", nextAction: "Error IA", reason: err.message, source: "error" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
 }

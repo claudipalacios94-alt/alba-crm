@@ -8,6 +8,7 @@ import LeadForm     from "./LeadForm.jsx";
 import LeadMatches  from "./LeadMatches.jsx";
 import LeadAcciones from "./LeadAcciones.jsx";
 import InversorNota from "./InversorNota.jsx";
+import NotaLead     from "./NotaLead.jsx";
 import { BuscadorPanel } from "../Buscador.jsx";
 
 export default function LeadCard({
@@ -17,7 +18,6 @@ export default function LeadCard({
   setEtapa, setAgente, setModalPerdido, setConfirmDelete,
 }) {
   const [editing,    setEditing]    = useState(false);
-  const [notaVal,    setNotaVal]    = useState("");
   const [buscandoId, setBuscandoId] = useState(null);
 
   const s   = scoreLead(lead);
@@ -29,20 +29,16 @@ export default function LeadCard({
     await updateLead(lead.id, { prob: n * 20 });
   }
 
-  async function guardarNota() {
-    const nueva = notaVal.trim();
-    if (!nueva) return;
-    const ts = new Date().toLocaleDateString("es-AR", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" });
-    await updateLead(lead.id, { nota: `[${ts}] ${nueva}${lead.nota ? "\n"+lead.nota : ""}` });
-    setNotaVal("");
-  }
-
   async function toggleInversor() {
     await updateLead(lead.id, { inversor: !lead.inversor });
   }
 
   async function guardarNotaInversor(l, nota) {
     await updateLead(l.id, { nota_inversor: nota });
+  }
+
+  async function guardarNota(l, val) {
+    await updateLead(l.id, { nota: val });
   }
 
   async function handleGuardarEdicion(id, data) {
@@ -123,10 +119,6 @@ export default function LeadCard({
                 const matches = mProps + mCaps;
                 if (matches > 0) partes.push({ text: `🏠 ${matches} match${matches > 1 ? "es" : ""}`, color: "#4A8ABE" });
                 else partes.push({ text: "Sin matches en zona", color: "#7A96B8" });
-                if (lead.nota) {
-                  const ultima = lead.nota.split("\n")[0].replace(/\[.*?\]\s*/, "").slice(0, 40);
-                  partes.push({ text: `💬 ${ultima}${ultima.length >= 40 ? "…" : ""}`, color: "#8AAECC" });
-                }
                 return (
                   <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12,
                     padding:"8px 10px", borderRadius:8, background:"rgba(42,91,173,0.07)",
@@ -140,7 +132,6 @@ export default function LeadCard({
                   </div>
                 );
               })()}
-
 
               {/* Etapa */}
               <div style={{ display:"flex", gap: mobile ? 6 : 5, flexWrap:"wrap", marginBottom: mobile ? 12 : 10 }}>
@@ -200,32 +191,8 @@ export default function LeadCard({
                 );
               })()}
 
-              {/* Nota */}
-              {lead.nota && (
-                <div style={{ fontSize: mobile ? 12 : 11, color:B.dim, background:B.bg, borderRadius:6,
-                  padding: mobile ? "10px 12px" : "8px 10px", marginBottom: mobile ? 12 : 10,
-                  lineHeight:1.6, whiteSpace:"pre-wrap", maxHeight:80, overflow:"auto" }}>
-                  {lead.nota}
-                </div>
-              )}
-
-              {/* Nueva nota */}
-              <div style={{ display:"flex", gap: mobile ? 8 : 6, marginBottom: mobile ? 12 : 10,
-                flexDirection: mobile ? "column" : "row" }}>
-                <input placeholder="Nota rápida... (Enter para guardar)"
-                  value={notaVal}
-                  onChange={e => setNotaVal(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && guardarNota()}
-                  style={{ flex:1, background:B.bg, border:`1px solid ${B.border}`,
-                    borderRadius:6, padding: mobile ? "8px 12px" : "6px 10px",
-                    color:B.text, fontSize: mobile ? 13 : 11, outline:"none" }} />
-                <button onClick={guardarNota}
-                  style={{ padding: mobile ? "8px 14px" : "6px 12px", borderRadius:6,
-                    background:`${B.accentL}18`, border:`1px solid ${B.accentL}40`,
-                    color:B.accentL, fontSize: mobile ? 13 : 11, cursor:"pointer" }}>
-                  + Nota
-                </button>
-              </div>
+              {/* Notas tipadas — reemplaza nota plana + input anterior */}
+              <NotaLead lead={lead} onGuardar={guardarNota} />
 
               {/* Matches */}
               <LeadMatches lead={lead} properties={properties} captaciones={captaciones}
@@ -279,4 +246,4 @@ export default function LeadCard({
       )}
     </div>
   );
-}
+} 
