@@ -19,28 +19,33 @@ export default function NotaLead({ lead, onGuardar }) {
     setTipo("seguimiento");
   }
 
+  async function borrar(id) {
+    const nuevas = notas.filter(n => n.id !== id);
+    await onGuardar(lead, serializarNotas(nuevas));
+  }
+
   return (
-    <div style={{ marginTop: 8 }}>
+    <div style={{ marginTop: 8, marginBottom: 10 }}>
 
       {/* Input */}
-      <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
         <input
           value={texto}
           onChange={e => setTexto(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter") guardar(); }}
           placeholder="Agregar nota..."
           style={{
-            flex: 1, background: "rgba(10,21,37,0.6)",
-            border: "1px solid #334155", borderRadius: 5,
-            padding: "4px 8px", color: "#C8D8E8", fontSize: 11, outline: "none",
+            flex: 1, background: B.bg, border: `1px solid ${B.border}`,
+            borderRadius: 6, padding: "6px 10px", color: B.text,
+            fontSize: 11, outline: "none",
           }}
         />
         <button onClick={guardar} style={{
-          padding: "4px 10px", borderRadius: 5, cursor: "pointer",
-          background: B.accent || "#3A8BC4", border: "none",
-          color: "#fff", fontSize: 10, fontWeight: 700, whiteSpace: "nowrap",
+          padding: "6px 12px", borderRadius: 6, cursor: "pointer",
+          background: `${B.accentL}18`, border: `1px solid ${B.accentL}40`,
+          color: B.accentL, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap",
         }}>
-          OK
+          + Nota
         </button>
       </div>
 
@@ -68,23 +73,35 @@ export default function NotaLead({ lead, onGuardar }) {
               const cfg = TIPO_NOTA[nota.tipo] || TIPO_NOTA.seguimiento;
               return (
                 <div key={nota.id || i} style={{
+                  display: "flex", alignItems: "flex-start", gap: 6,
                   background: "rgba(10,21,37,0.5)", borderRadius: 5,
                   padding: "5px 8px", marginBottom: 4,
                   borderLeft: `2px solid ${cfg.color}`,
                 }}>
-                  <span style={{ fontSize: 10, color: cfg.color, fontWeight: 700 }}>
-                    {cfg.emoji} {cfg.label}
-                  </span>
-                  {nota.createdAt && (
-                    <span style={{ fontSize: 10, color: "#475569", marginLeft: 6 }}>
-                      {new Date(nota.createdAt).toLocaleDateString("es-AR", {
-                        day: "2-digit", month: "short",
-                      })}
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontSize: 10, color: cfg.color, fontWeight: 700 }}>
+                      {cfg.emoji} {cfg.label}
                     </span>
-                  )}
-                  <div style={{ fontSize: 11, color: "#C8D8E8", marginTop: 2 }}>
-                    {nota.texto}
+                    {nota.createdAt && (
+                      <span style={{ fontSize: 10, color: "#475569", marginLeft: 6 }}>
+                        {new Date(nota.createdAt).toLocaleDateString("es-AR", {
+                          day: "2-digit", month: "short",
+                        })}
+                      </span>
+                    )}
+                    <div style={{ fontSize: 11, color: "#C8D8E8", marginTop: 2 }}>
+                      {nota.texto}
+                    </div>
                   </div>
+                  {nota.id && nota.id !== "legacy" && (
+                    <button onClick={() => borrar(nota.id)} style={{
+                      background: "transparent", border: "none",
+                      color: "#475569", cursor: "pointer", fontSize: 12,
+                      padding: "0 2px", lineHeight: 1, flexShrink: 0,
+                    }} title="Borrar nota">
+                      ✕
+                    </button>
+                  )}
                 </div>
               );
             })}
