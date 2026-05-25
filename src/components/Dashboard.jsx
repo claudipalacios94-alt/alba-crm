@@ -2,6 +2,7 @@
 // ALBA CRM — DASHBOARD
 // Pantalla de situación operativa
 // ══════════════════════════════════════════════════════════════
+import DashboardAIResumen from "./DashboardAIResumen.jsx";
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { B, AG, scoreLead, matchLeadProps } from "../data/constants.js";
@@ -296,6 +297,11 @@ export default function Dashboard({ leads = [], properties = [], captaciones = [
       </div>
 
       {/* Accesos rápidos */}
+      <DashboardAIResumen
+  urgentes={leadsActivos.filter(l => l.dias > 3).map(l => ({ nombre: l.nombre, zona: l.zona, dias: l.dias }))}
+  sinMatch={leadsSinMatch.length}
+  zonas={[...new Set(leadsSinMatch.map(l => l.zona).filter(Boolean))].slice(0, 3)}
+/>
       <div style={{ marginTop: 20 }}>
         <div style={{ fontSize: 11, color: B.muted, fontWeight: 700, letterSpacing: "1px",
           textTransform: "uppercase", marginBottom: 8 }}>
