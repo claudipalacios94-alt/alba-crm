@@ -1,52 +1,57 @@
-// ══════════════════════════════════════════════════════════════
+python3 << 'PYEOF'
+content = '''// ══════════════════════════════════════════════════════════════
 // ALBA CRM — HOOK / useIncidents
-// Detecta incidents y sincroniza tareas automáticas.
-// No recrea tareas completadas en las últimas 24h.
+// Top 5 incidents priorizados. Corre una vez por sesión.
 // ══════════════════════════════════════════════════════════════
 import { useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient.js";
 import { computeLeadState } from "../domain/lead.js";
 
+function scoreIncident(lead, incident) {
+  let score = 0;
+
+  if (incident.tipo === "urgencia_sin_atender") score += 100;
+  if (incident.tipo === "negociacion_parada")   score += 70;
+  if (incident.tipo === "interes_frio")         score += 50;
+
+  if (lead.dias <= 3)       score += 20;
+  else if (lead.dias <= 7)  score += 10;
+  else if (lead.dias > 14)  score -= 20;
+
+  score += (lead.prob || 0) * 0.3;
+
+  return score;
+}
+
+function pickTopIncidents(leads, max = 5) {
+  const candidatos = [];
+  leads.forEach(lead => {
+    const { incident } = computeLeadState(lead);
+    if (!incident) return;
+    candidatos.push({ lead, incident, score: scoreIncident(lead, incident) });
+  });
+  return candidatos.sort((a, b) => b.score - a.score).slice(0, max);
+}
+
 export function useIncidents(leads = []) {
-  const ran = useRef(false);
+  const lastHash = useRef(null);
 
   useEffect(() => {
     if (!leads.length) return;
-    if (ran.current) return;
-    ran.current = true;
 
+    const hash = leads.map(l => `${l.id}:${l.last_contact_at}:${l.nota}:${l.etapa}`).join("|");
+    if (lastHash.current === hash) return;
+    lastHash.current = hash;
+
+    const hoy = new Date().toISOString().split("T")[0];
     const activos = leads.filter(
       l => l.etapa !== "Cerrado" && l.etapa !== "Perdido"
     );
 
+    // Cerrar tareas de leads sin incident
     activos.forEach(async (lead) => {
       const { incident } = computeLeadState(lead);
-
-      if (incident) {
-        // Verificar si ya existe tarea pendiente O completada hoy
-        const hoy = new Date().toISOString().split("T")[0];
-        const { data: existing } = await supabase
-          .from("tareas")
-          .select("id, completada")
-          .eq("lead_id", lead.id)
-          .eq("tipo", incident.tipo)
-          .gte("fecha", hoy)
-          .limit(1);
-
-        if (existing && existing.length > 0) return;
-
-        await supabase.from("tareas").insert({
-          lead_id:    lead.id,
-          tipo:       incident.tipo,
-          titulo:     incident.label + " — " + lead.nombre,
-          prioridad:  "alta",
-          fecha:      hoy,
-          completada: false,
-          ag:         lead.ag || null,
-        });
-
-      } else {
-        // Incident resuelto → cerrar tareas automáticas pendientes
+      if (!incident) {
         await supabase
           .from("tareas")
           .update({ completada: true })
@@ -55,5 +60,34 @@ export function useIncidents(leads = []) {
           .not("tipo", "is", null);
       }
     });
+
+    // Crear solo top 5
+    const top = pickTopIncidents(activos, 5);
+    top.forEach(async ({ lead, incident }) => {
+      const { data: existing } = await supabase
+        .from("tareas")
+        .select("id")
+        .eq("lead_id", lead.id)
+        .eq("tipo", incident.tipo)
+        .gte("fecha", hoy)
+        .limit(1);
+
+      if (existing && existing.length > 0) return;
+
+      await supabase.from("tareas").insert({
+        lead_id:    lead.id,
+        tipo:       incident.tipo,
+        titulo:     incident.label + " — " + lead.nombre,
+        prioridad:  "alta",
+        fecha:      hoy,
+        completada: false,
+        ag:         lead.ag || null,
+      });
+    });
   }, [leads]);
 }
+'''
+with open("src/hooks/useIncidents.js", "w") as f:
+    f.write(content)
+print("OK")
+PYEOF
