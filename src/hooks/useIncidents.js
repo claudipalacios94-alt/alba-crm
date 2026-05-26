@@ -61,6 +61,7 @@ export function useIncidents(leads = []) {
     });
 
     // Crear top 5
+    console.log('activos:', activos.length, 'top:', pickTopIncidents(activos, 5).length);
     const top = pickTopIncidents(activos, 5);
     top.forEach(async ({ lead, incident }) => {
       const { data: existing } = await supabase.from("tareas").select("id")
