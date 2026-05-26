@@ -1,10 +1,19 @@
 // ══════════════════════════════════════════════════════════════
 // ALBA CRM — HOOK / useIncidents
-// Top 5 incidents priorizados. Corre una vez por sesion.
+// Top 5 incidents priorizados.
 // ══════════════════════════════════════════════════════════════
 import { useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient.js";
 import { computeLeadState } from "../domain/lead.js";
+
+function diasDesde(fecha) {
+  if (!fecha) return 99;
+  return Math.floor((Date.now() - new Date(fecha).getTime()) / 86400000);
+}
+
+function normalizarLead(lead) {
+  return { ...lead, dias: lead.dias ?? diasDesde(lead.last_contact_at) };
+}
 
 function scoreIncident(lead, incident) {
   let score = 0;
@@ -38,8 +47,11 @@ export function useIncidents(leads = []) {
     lastHash.current = hash;
 
     const hoy = new Date().toISOString().split("T")[0];
-    const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
+    const activos = leads
+      .filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido")
+      .map(normalizarLead);
 
+    // Cerrar tareas de leads sin incident
     activos.forEach(async (lead) => {
       const { incident } = computeLeadState(lead);
       if (!incident) {
@@ -48,6 +60,7 @@ export function useIncidents(leads = []) {
       }
     });
 
+    // Crear top 5
     const top = pickTopIncidents(activos, 5);
     top.forEach(async ({ lead, incident }) => {
       const { data: existing } = await supabase.from("tareas").select("id")
