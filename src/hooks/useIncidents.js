@@ -27,43 +27,50 @@ function scoreIncident(lead, incident) {
   return score;
 }
 
-function pickTopIncidents(leads, max = 5) {
+function pickTopIncidents(leads, max) {
   const candidatos = [];
-  leads.forEach(lead => {
-    const { incident } = computeLeadState(lead);
-    if (!incident) return;
-    candidatos.push({ lead, incident, score: scoreIncident(lead, incident) });
+  leads.forEach(function(lead) {
+    const state = computeLeadState(lead);
+    if (!state.incident) return;
+    candidatos.push({ lead: lead, incident: state.incident, score: scoreIncident(lead, state.incident) });
   });
-  return candidatos.sort((a, b) => b.score - a.score).slice(0, max);
+  return candidatos.sort(function(a, b) { return b.score - a.score; }).slice(0, max);
 }
 
-export function useIncidents(leads = []) {
+export function useIncidents(leads) {
   const lastHash = useRef(null);
 
-  useEffect(() => {
-    if (!leads.length) return;
-    const hash = leads.map(l => l.id + ":" + l.last_contact_at + ":" + l.nota + ":" + l.etapa).join("|");
+  useEffect(function() {
+    console.log("useIncidents effect leads:", leads ? leads.length : 0);
+    if (!leads || !leads.length) return;
+
+    const hash = leads.map(function(l) { return l.id + ":" + l.last_contact_at + ":" + l.etapa; }).join("|");
     if (lastHash.current === hash) return;
     lastHash.current = hash;
 
+    console.log("useIncidents running with", leads.length, "leads");
+
     const hoy = new Date().toISOString().split("T")[0];
     const activos = leads
-      .filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido")
+      .filter(function(l) { return l.etapa !== "Cerrado" && l.etapa !== "Perdido"; })
       .map(normalizarLead);
 
-    // Cerrar tareas de leads sin incident
-    activos.forEach(async (lead) => {
-      const { incident } = computeLeadState(lead);
-      if (!incident) {
+    console.log("activos:", activos.length);
+
+    activos.forEach(async function(lead) {
+      const state = computeLeadState(lead);
+      if (!state.incident) {
         await supabase.from("tareas").update({ completada: true })
           .eq("lead_id", lead.id).eq("completada", false).not("tipo", "is", null);
       }
     });
 
-    // Crear top 5
-    console.log('activos:', activos.length, 'top:', pickTopIncidents(activos, 5).length);
     const top = pickTopIncidents(activos, 5);
-    top.forEach(async ({ lead, incident }) => {
+    console.log("top incidents:", top.length);
+
+    top.forEach(async function(item) {
+      const lead = item.lead;
+      const incident = item.incident;
       const { data: existing } = await supabase.from("tareas").select("id")
         .eq("lead_id", lead.id).eq("tipo", incident.tipo).gte("fecha", hoy).limit(1);
       if (existing && existing.length > 0) return;
