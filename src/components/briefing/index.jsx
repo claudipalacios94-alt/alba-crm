@@ -11,7 +11,6 @@ import BriefingCalendario     from "./BriefingCalendario.jsx";
 import BriefingCaptacionZonas from "./BriefingCaptacionZonas.jsx";
 import Tareas                 from "../Tareas.jsx";
 import OportunidadesCaptacion from "./OportunidadesCaptacion.jsx";
-import OportunidadesCaptacion from "./OportunidadesCaptacion.jsx";
 
 function useIsMobile(breakpoint = 768) {
   const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
