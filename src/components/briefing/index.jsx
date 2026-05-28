@@ -10,6 +10,8 @@ import BriefingLeadCard       from "./BriefingLeadCard.jsx";
 import BriefingCalendario     from "./BriefingCalendario.jsx";
 import BriefingCaptacionZonas from "./BriefingCaptacionZonas.jsx";
 import Tareas                 from "../Tareas.jsx";
+import OportunidadesCaptacion from "./OportunidadesCaptacion.jsx";
+import OportunidadesCaptacion from "./OportunidadesCaptacion.jsx";
 
 function useIsMobile(breakpoint = 768) {
   const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
@@ -193,6 +195,18 @@ export default function Briefing({ leads, properties, rentals, captaciones, supa
         props={propsActivas.length}
         captaciones={(captaciones || []).length}
       />
+
+      <OportunidadesCaptacion
+        leads={activos}
+        properties={propsActivas}
+        captaciones={captaciones || []}
+      />
+      <OportunidadesCaptacion
+        leads={activos}
+        properties={propsActivas}
+        captaciones={captaciones || []}
+      />
+
 
       {alarmas.length > 0 ? (
         <div style={{ background: B.card, border: `1px solid ${B.border}`, borderRadius: 10, padding: "14px 18px" }}>
