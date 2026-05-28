@@ -119,6 +119,7 @@ export function getTopOpportunities(leads, properties, captaciones) {
     const [zonaNorm, tipoNorm] = key.split("||");
     if (grupoLeads.length < 2) continue;
     if (grupoLeads.length === 2 && !grupoLeads.every(tieneSeñalFuerte)) continue;
+    console.debug("[OPP] grupo:", key, "leads:", grupoLeads.length);
     const demandaTotal = grupoLeads.reduce((sum, l) => sum + computeLeadDemandWeight(l), 0);
     const supply = computeSupply(properties, captaciones, zonaNorm, tipoNorm);
     const score  = scoreOpportunity(demandaTotal, supply, grupoLeads.length);
