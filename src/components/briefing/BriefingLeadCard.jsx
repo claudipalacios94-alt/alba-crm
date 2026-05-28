@@ -13,11 +13,13 @@ export default function BriefingLeadCard({ lead }) {
   const waLink  = lead.tel ? "https://wa.me/" + lead.tel.replace(/\D/g, "") : null;
 
   const urgColor = lead.etapa === "Negociación" ? B.ok
+    : lead.dias === null ? B.muted
     : lead.dias <= 2 ? B.hot
     : lead.dias <= 5 ? B.warm
     : B.accentL;
 
   const razon = lead.etapa === "Negociación" ? "En negociación"
+    : lead.dias === null ? "Sin registro"
     : lead.dias === 0 ? "Nuevo hoy"
     : lead.dias <= 2 ? lead.dias + "d — Caliente"
     : lead.dias <= 5 ? lead.dias + "d — Tibio"

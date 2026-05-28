@@ -7,7 +7,7 @@ import { supabase } from "./supabaseClient.js";
 import { computeLeadState } from "../domain/lead.js";
 
 function diasDesde(fecha) {
-  if (!fecha) return 99;
+  if (!fecha) return null;
   return Math.floor((Date.now() - new Date(fecha).getTime()) / 86400000);
 }
 
@@ -20,9 +20,12 @@ function scoreIncident(lead, incident) {
   if (incident.tipo === "urgencia_sin_atender") score += 100;
   if (incident.tipo === "negociacion_parada")   score += 70;
   if (incident.tipo === "interes_frio")         score += 50;
-  if (lead.dias <= 3)       score += 20;
-  else if (lead.dias <= 7)  score += 10;
-  else if (lead.dias > 14)  score -= 20;
+  const _d = typeof lead.dias === "number" ? lead.dias : null;
+  if (_d !== null) {
+    if (_d <= 3)       score += 20;
+    else if (_d <= 7)  score += 10;
+    else if (_d > 14)  score -= 20;
+  }
   score += (lead.prob || 0) * 0.3;
   return score;
 }

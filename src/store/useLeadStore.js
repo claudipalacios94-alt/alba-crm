@@ -7,11 +7,10 @@ import { supabase } from '../hooks/supabaseClient.js'
 import { LEADS_DEMO } from '../data/constants.js'
 
 function calcDias(l) {
-  const ref = l.last_contact_at || l.created_at
-  if (!ref) return l.dias || 0
+  if (!l.last_contact_at) return null;
   return Math.max(0, Math.floor(
-    (Date.now() - new Date(ref).getTime()) / (1000 * 60 * 60 * 24)
-  ))
+    (Date.now() - new Date(l.last_contact_at).getTime()) / 86400000
+  ));
 }
 
 function normalizeLead(l) {

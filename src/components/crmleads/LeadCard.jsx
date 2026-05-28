@@ -132,10 +132,8 @@ export default function LeadCard({
   async function handleGuardarEdicion(id, data) { await updateLead(id, data); setEditing(false); }
 
   // Días sin contacto — color
-  const diasColor = lead.dias > 7 ? B.hot : lead.dias > 3 ? B.warm : B.ok;
-  const diasLabel = lead.dias === 0 ? "hoy"
-    : lead.dias === 1 ? "1d"
-    : lead.dias + "d";
+  const diasColor = lead.dias === null ? B.muted : lead.dias > 7 ? B.hot : lead.dias > 3 ? B.warm : B.ok;
+  const diasLabel = lead.dias === null ? "—" : lead.dias === 0 ? "hoy" : lead.dias === 1 ? "1d" : lead.dias + "d";
 
   return (
     <div style={{ background: B.card,

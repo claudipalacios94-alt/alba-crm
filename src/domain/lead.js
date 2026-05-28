@@ -26,11 +26,14 @@ export function scoreLead(lead) {
 
 function computeCalor(lead) {
   let score = 40;
-  if (lead.dias === 0)     score += 30;
-  else if (lead.dias <= 2) score += 20;
-  else if (lead.dias <= 5) score += 10;
-  else if (lead.dias > 14) score -= 20;
-  else if (lead.dias > 7)  score -= 10;
+  const _d = typeof lead.dias === "number" ? lead.dias : null;
+  if (_d !== null) {
+    if (_d === 0)       score += 30;
+    else if (_d <= 2)   score += 20;
+    else if (_d <= 5)   score += 10;
+    else if (_d > 14)   score -= 20;
+    else if (_d > 7)    score -= 10;
+  }
   if (lead.etapa === "Negociación") score += 30;
   else if (lead.etapa === "Visita") score += 20;
   const notas = parsearNotas(lead.nota);
@@ -86,7 +89,7 @@ function computeFriccion(lead) {
   const objeciones = notas.filter(n => n.tipo === "objecion").length;
   if (objeciones >= 2) score += 20;
   else if (objeciones === 1) score += 10;
-  if (lead.dias > 14) score += 10;
+  if (typeof lead.dias === "number" && lead.dias > 14) score += 10;
   return Math.min(100, Math.max(0, score));
 }
 
@@ -213,11 +216,12 @@ export function genMsgBusqueda(lead) {
 export function detectIncident(lead) {
   const notas    = parsearNotas(lead.nota);
   const tipoNota = tipoNotaReciente(notas);
-  if (tipoNota === "urgencia" && lead.dias >= 1)
+  const _dias = typeof lead.dias === "number" ? lead.dias : null;
+  if (tipoNota === "urgencia" && _dias !== null && _dias >= 1)
     return { tipo:"urgencia_sin_atender", label:"🔥 Urgencia sin atender" };
-  if (tipoNota === "interes"  && lead.dias >= 3)
+  if (tipoNota === "interes"  && _dias !== null && _dias >= 3)
     return { tipo:"interes_frio",         label:"❄️ Interés sin seguimiento" };
-  if (lead.etapa === "Negociacion" && lead.dias >= 2)
+  if (lead.etapa === "Negociación" && _dias !== null && _dias >= 2)
     return { tipo:"negociacion_parada",   label:"⚠️ Negociación parada" };
   return null;
 }
@@ -231,9 +235,9 @@ export function getRecommendedAction(lead) {
   if (tipo === "objecion") return { accion:"Follow up 48h",   urgencia:"media", motivo:"Tiene objeción — no presionar" };
   if (tipo === "interes" && lead.dias >= 2)
     return { accion:"Enviar match hoy", urgencia:"alta", motivo:"Interés activo + días sin contacto" };
-  if (lead.etapa === "Negociacion" && lead.dias >= 1)
-    return { accion:"Llamar ahora", urgencia:"alta", motivo:"Negociacion activa sin contacto" };
-  if (score > 80 && lead.dias >= 2)
+  if (lead.etapa === "Negociación" && typeof lead.dias === "number" && lead.dias >= 1)
+    return { accion:"Llamar ahora", urgencia:"alta", motivo:"Negociación activa sin contacto" };
+  if (score > 80 && typeof lead.dias === "number" && lead.dias >= 2)
     return { accion:"Llamar ahora", urgencia:"alta", motivo:lead.dias+"d sin contacto, alta prioridad" };
   if (score > 70) return { accion:"Enviar match",    urgencia:"media", motivo:"Lead activo" };
   if (score > 50) return { accion:"Seguimiento",     urgencia:"media", motivo:"En pipeline activo" };
