@@ -56,6 +56,7 @@ export function useIncidents(leads) {
       .map(normalizarLead);
 
     console.log("activos:", activos.length);
+    if (activos.length > 0) { const s = computeLeadState(activos[0]); console.log("sample lead:", activos[0].dias, activos[0].etapa, activos[0].nota, "incident:", s.incident); }
 
     activos.forEach(async function(lead) {
       const state = computeLeadState(lead);
