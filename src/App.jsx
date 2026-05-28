@@ -2,16 +2,15 @@
 // ALBA CRM — App
 // ══════════════════════════════════════════════════════════════
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { B } from "./data/constants.js";
 import { signIn } from "./hooks/useSupabase.js";
 import { useAppContext } from "./context/SupabaseContext.jsx";
 import Login from "./components/Login.jsx";
 import Layout from "./components/layout/Layout.jsx";
 
-import DashboardPage      from "./pages/DashboardPage.jsx";
 import BriefingPage       from "./pages/BriefingPage.jsx";
-import ReportesPage from "./pages/Reportes.jsx";
+import ReportesPage       from "./pages/Reportes.jsx";
 import CuadernoPage       from "./pages/CuadernoPage.jsx";
 import KanbanPage         from "./pages/KanbanPage.jsx";
 import CRMLeadsPage       from "./pages/CRMLeadsPage.jsx";
@@ -42,9 +41,9 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route path="/"            element={<DashboardPage />} />
-        <Route path="/briefing"    element={<BriefingPage />} />
-        <Route path="/reportes" element={<ReportesPage />} />
+        <Route path="/"            element={<BriefingPage />} />
+        <Route path="/briefing"    element={<Navigate to="/" replace />} />
+        <Route path="/reportes"    element={<ReportesPage />} />
         <Route path="/cuaderno"    element={<CuadernoPage />} />
         <Route path="/kanban"      element={<KanbanPage />} />
         <Route path="/crm"         element={<CRMLeadsPage />} />

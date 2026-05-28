@@ -6,8 +6,8 @@ export { AG, ETAPAS, ECOL } from "../config/agents.js";
 export { scoreLead, matchLeadProps, genMsgWhatsApp, genMsgBusqueda, getPriorityScore, getRecommendedAction } from "../domain/lead.js";
 
 export const B = {
-  bg:         "#070E1C",
-  sidebar:    "#080F1E",
+  bg:         "#111827",
+  sidebar:    "#111827",
   card:       "#0F1E35",
   colBg:      "#060C18",
   surface:    "#0A1525",

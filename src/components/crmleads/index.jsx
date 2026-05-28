@@ -4,6 +4,7 @@
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useMemo, useEffect } from "react";
 import { B, AG, scoreLead, matchLeadProps, getPriorityScore, getRecommendedAction } from "../../data/constants.js";
+import { computeRanking } from "../../domain/lead.js";
 import LeadCard    from "./LeadCard.jsx";
 import { useIncidents } from "../../hooks/useIncidents.js";
 import ModalPerdido from "./ModalPerdido.jsx";
@@ -91,6 +92,15 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
     return count;
   }, [filt, filtInversores, todasProps, matchesVistos]);
 
+  const leadsConMatchNuevo = useMemo(() => {
+    const ids = new Set();
+    [...filt, ...filtInversores].forEach(l => {
+      if (matchLeadProps(l, todasProps).some(p => !matchesVistos.has(`${l.id}-${p.id}`)))
+        ids.add(l.id);
+    });
+    return ids;
+  }, [filt, filtInversores, todasProps, matchesVistos]);
+
   function marcarMatchesVistos() {
     const nuevos = new Set(matchesVistos);
     [...filt, ...filtInversores].forEach(l => {
@@ -162,8 +172,12 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
 
   const leadTop = useMemo(() => {
     const activos = leadsActivos.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
-    return activos.sort((a, b) => getPriorityScore(b) - getPriorityScore(a))[0] || null;
-  }, [leadsActivos]);
+    return activos.sort((a, b) => {
+      const mA = matchLeadProps(a, todasProps).length;
+      const mB = matchLeadProps(b, todasProps).length;
+      return computeRanking(b, mB).prioridad - computeRanking(a, mA).prioridad;
+    })[0] || null;
+  }, [leadsActivos, todasProps]);
 
   const urgenciaColor = { alta: B.hot, media: B.warm, baja: B.dim };
 
@@ -339,6 +353,8 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
               <LeadCard key={lead.id} lead={lead}
                 open={exp === lead.id}
                 onToggle={() => setExp(exp === lead.id ? null : lead.id)}
+                isBlurred={exp !== null && exp !== lead.id}
+                hasNewMatch={leadsConMatchNuevo.has(lead.id)}
                 {...cardProps} />
             ))}
           </div>

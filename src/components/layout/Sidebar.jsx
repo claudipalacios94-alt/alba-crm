@@ -7,8 +7,7 @@ import { useLeadStore }    from "../../store/useLeadStore.js";
 import { useAIStore }      from "../../store/useAIStore.js";
 
 const NAV_DEFAULT = [
-  { id: "", label: "Dashboard", badge: "INICIO" },
-  { id: "briefing",    label: "Briefing del dia", badge: "HOY" },
+  { id: "",            label: "Inicio" },
   { id: "cuaderno",    label: "Cuaderno de campo" },
   { id: "kanban",      label: "Kanban" },
   { id: "crm",         label: "CRM Leads" },
@@ -58,7 +57,7 @@ export default function Sidebar({ onOpenModal }) {
   const dragItem = useRef(null);
   const dragOver = useRef(null);
 
-  const currentView = location.pathname.replace("/", "") || "briefing";
+  const currentView = location.pathname.replace("/", "") || "";
 
   function saveNav(newNav) {
     setNav(newNav);
