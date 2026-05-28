@@ -200,11 +200,7 @@ export default function Briefing({ leads, properties, rentals, captaciones, supa
         properties={propsActivas}
         captaciones={captaciones || []}
       />
-      <OportunidadesCaptacion
-        leads={activos}
-        properties={propsActivas}
-        captaciones={captaciones || []}
-      />
+      
 
 
       {alarmas.length > 0 ? (
