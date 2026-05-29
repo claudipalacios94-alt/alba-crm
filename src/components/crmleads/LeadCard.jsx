@@ -183,16 +183,20 @@ export default function LeadCard({
         {/* Línea 2: rol · zona · precio */}
         <div style={{
           padding: "3px 12px 0",
-          display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap",
+          display: "flex", alignItems: "center", gap: 5, minWidth: 0, overflow: "hidden",
         }}>
-          <span style={{ fontSize: 11, color: "#6A8AAE" }}>
+          <span style={{ fontSize: 11, color: "#6A8AAE", flexShrink: 0 }}>
             {lead.inversor ? "💼 Inversor" : lead.op || "Compra"}
           </span>
           {lead.zona && (
-            <span style={{ fontSize: 11, color: "#6A8AAE" }}>· {lead.zona}</span>
+            <span style={{
+              fontSize: 11, color: "#6A8AAE",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              minWidth: 0, flex: 1,
+            }}>· {lead.zona}</span>
           )}
           {lead.presup && (
-            <span style={{ fontSize: 13, fontWeight: 800, color: "#EAF0FB", fontFamily: "Georgia,serif", marginLeft: "auto", flexShrink: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: "#EAF0FB", fontFamily: "Georgia,serif", marginLeft: 8, flexShrink: 0 }}>
               {precioLabel(lead.presup)}
             </span>
           )}
