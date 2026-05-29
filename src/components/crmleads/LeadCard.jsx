@@ -231,16 +231,18 @@ export default function LeadCard({
             </a>
           )}
 
-          <span style={{
-            fontSize: 11, fontWeight: 700,
-            color: matches.length > 0 ? "#4ADE80" : "#4A6580",
-            background: matches.length > 0 ? "rgba(74,222,128,0.10)" : "transparent",
-            padding: matches.length > 0 ? "2px 9px" : "0",
-            borderRadius: 20,
-            border: matches.length > 0 ? "1px solid rgba(74,222,128,0.20)" : "none",
-          }}>
-            🏠 {matches.length > 0 ? `${matches.length} compatibles` : "sin matches"}
-          </span>
+          {matches.length > 0 && (
+            <span style={{
+              fontSize: 11, fontWeight: 700,
+              color: "#4ADE80",
+              background: "rgba(74,222,128,0.10)",
+              padding: "2px 9px",
+              borderRadius: 20,
+              border: "1px solid rgba(74,222,128,0.20)",
+            }}>
+              🏠 {matches.length} compatibles
+            </span>
+          )}
 
           <button
             onClick={() => updateLead(lead.id, { last_contact_at: new Date().toISOString() })}

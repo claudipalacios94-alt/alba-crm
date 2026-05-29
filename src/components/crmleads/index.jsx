@@ -319,7 +319,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
                 letterSpacing:"1.5px", marginBottom:3 }}>ACCIÓN DEL DÍA</div>
               <div style={{ fontSize: mobile ? 14 : 13, fontWeight:700, color:B.text, marginBottom:2 }}>
                 {leadTop.nombre}
-                {leadTop.zona && <span style={{ fontWeight:400, color:B.dim }}> · {leadTop.zona}</span>}
+                {leadTop.zona && <span style={{ fontWeight:400, color:B.dim, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}> · {leadTop.zona}</span>}
               </div>
               <div style={{ fontSize: mobile ? 12 : 11, color:B.dim }}>{rec.motivo}</div>
             </div>
