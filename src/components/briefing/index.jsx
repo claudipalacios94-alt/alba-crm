@@ -241,69 +241,74 @@ export default function Briefing({ leads, properties, rentals, captaciones, supa
         <KPICard label="Sin match"      value={sinMatch}      sub="Leads sin propiedades"   color={B.warm}    onClick={() => navigate("/captaciones")} />
       </div>
 
-      {/* Zona B — Acción inmediata */}
-      <Seccion titulo="Acción inmediata" accion="Ver todos →" onAccion={() => navigate("/crm")}>
-        {accionInmediata.length === 0
-          ? <div style={{ textAlign: "center", padding: "16px 0", color: "#4A6A90", fontSize: 12 }}>Sin leads urgentes</div>
-          : <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {accionInmediata.map(l => <BriefingLeadCard key={l.id} lead={l} />)}
-            </div>
-        }
-      </Seccion>
+      {/* Grid 2 columnas desktop / 1 columna mobile */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: mobile ? "1fr" : "1.4fr 0.9fr",
+        gap: mobile ? 12 : 16,
+        alignItems: "start",
+      }}>
 
-      {/* Zona C — Operaciones en riesgo */}
-      {enRiesgo.length > 0 && (
-        <Seccion titulo="Operaciones en riesgo" accion="Ir al CRM →" onAccion={() => navigate("/crm")}>
-          <div style={{ fontSize: 11, color: "#4A6A90", marginBottom: 10 }}>
-            Negociaciones o visitas con más de 2 días sin contacto
-          </div>
-          {enRiesgo.map(l => <RiesgoItem key={l.id} lead={l} onVerLead={() => navigate("/crm")} />)}
-        </Seccion>
-      )}
+        {/* Columna izquierda */}
+        <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 12 : 16 }}>
+          <Seccion titulo="Acción inmediata" accion="Ver todos →" onAccion={() => navigate("/crm")}>
+            {accionInmediata.length === 0
+              ? <div style={{ textAlign: "center", padding: "16px 0", color: "#4A6A90", fontSize: 12 }}>Sin leads urgentes</div>
+              : <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {accionInmediata.map(l => <BriefingLeadCard key={l.id} lead={l} />)}
+                </div>
+            }
+          </Seccion>
+          <Seccion titulo="Oportunidades de captación">
+            <OportunidadesCaptacion
+              leads={activos}
+              properties={propsActivas}
+              captaciones={captaciones || []}
+            />
+          </Seccion>
+        </div>
 
-      {/* Zona D — Oportunidades de captación */}
-      <Seccion titulo="Oportunidades de captación">
-        <OportunidadesCaptacion
-          leads={activos}
-          properties={propsActivas}
-          captaciones={captaciones || []}
-        />
-      </Seccion>
-
-      {/* Requieren atención */}
-      {alarmas.length > 0 && (
-        <Seccion titulo="Requieren atención">
-          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            {alarmas.map((a, i) => (
-              <div key={i} onClick={a.onClick}
-                style={{ display: "flex", alignItems: "center", gap: 10,
-                  padding: "8px 12px", borderRadius: 6, cursor: "pointer",
-                  background: nivelBg[a.nivel],
-                  borderLeft: `2px solid ${a.nivel === 0 ? a.color : a.color + "60"}` }}>
-                <span style={{ fontSize: 12, flex: 1,
-                  color: a.nivel === 0 ? "#E8F0FA" : "#8AAECC",
-                  fontWeight: a.nivel === 0 ? 600 : 400 }}>{a.texto}</span>
-                {nivelLabel[a.nivel] && (
-                  <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 3, fontWeight: 700, flexShrink: 0,
-                    background: a.color + "20", color: a.color }}>{nivelLabel[a.nivel]}</span>
-                )}
-                <span style={{ fontSize: 11, color: a.color }}>→</span>
+        {/* Columna derecha */}
+        <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 12 : 16 }}>
+          {alarmas.length > 0 && (
+            <Seccion titulo="Requieren atención">
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {alarmas.map((a, i) => (
+                  <div key={i} onClick={a.onClick}
+                    style={{ display: "flex", alignItems: "center", gap: 10,
+                      padding: "8px 12px", borderRadius: 6, cursor: "pointer",
+                      background: nivelBg[a.nivel],
+                      borderLeft: `2px solid ${a.nivel === 0 ? a.color : a.color + "60"}` }}>
+                    <span style={{ fontSize: 12, flex: 1,
+                      color: a.nivel === 0 ? "#E8F0FA" : "#8AAECC",
+                      fontWeight: a.nivel === 0 ? 600 : 400 }}>{a.texto}</span>
+                    {nivelLabel[a.nivel] && (
+                      <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 3, fontWeight: 700, flexShrink: 0,
+                        background: a.color + "20", color: a.color }}>{nivelLabel[a.nivel]}</span>
+                    )}
+                    <span style={{ fontSize: 11, color: a.color }}>→</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </Seccion>
-      )}
+            </Seccion>
+          )}
+          {enRiesgo.length > 0 && (
+            <Seccion titulo="Operaciones en riesgo" accion="Ir al CRM →" onAccion={() => navigate("/crm")}>
+              <div style={{ fontSize: 11, color: "#4A6A90", marginBottom: 10 }}>
+                Negociaciones o visitas con más de 2 días sin contacto
+              </div>
+              {enRiesgo.map(l => <RiesgoItem key={l.id} lead={l} onVerLead={() => navigate("/crm")} />)}
+            </Seccion>
+          )}
+          <Collapsible title="Tareas" defaultOpen>
+            <Tareas supabase={supabase} />
+          </Collapsible>
+          <Collapsible title="Calendario" defaultOpen>
+            <BriefingCalendario />
+          </Collapsible>
+        </div>
 
-      {/* Tareas + Calendario */}
-      <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: 12 }}>
-        <Collapsible title="Tareas" defaultOpen>
-          <Tareas supabase={supabase} />
-        </Collapsible>
-        <Collapsible title="Calendario" defaultOpen>
-          <BriefingCalendario />
-        </Collapsible>
       </div>
-
       {/* Captación de zonas */}
       <Collapsible title="Captación de zonas">
         <BriefingCaptacionZonas />
