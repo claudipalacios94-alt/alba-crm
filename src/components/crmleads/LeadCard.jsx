@@ -32,12 +32,11 @@ function prioridadColor(p) {
 }
 
 function diasConfig(dias) {
-  if (dias === null || dias === undefined) return { label: "—",         color: "#4A6580" };
-  if (dias === 0)                          return { label: "hoy",       color: "#4ADE80" };
-  if (dias === 1)                          return { label: "+1d",       color: "#4ADE80" };
-  if (dias <= 3)                           return { label: `+${dias}d`, color: "#F5C842" };
-  if (dias <= 7)                           return { label: `+${dias}d`, color: "#FF8C42" };
-  return                                          { label: `+${dias}d`, color: "#FF4D4D" };
+  if (dias === null || dias === undefined) return { label: "—",      color: "#4A6580", bg: null };
+  if (dias === 0)                          return { label: "hoy",    color: "#4ADE80", bg: null };
+  if (dias <= 3)                           return { label: `+${dias}d`, color: "#8BA4BC", bg: null };
+  if (dias <= 6)                           return { label: `+${dias}d`, color: "#F5C842", bg: null };
+  return { label: `+${dias}d`, color: "#FF4D4D", bg: "rgba(255,77,77,0.15)" };
 }
 
 function precioLabel(presup) {
@@ -173,8 +172,11 @@ export default function LeadCard({
           {/* Días */}
           <span style={{
             fontSize: 11, fontWeight: 700, color: dc.color, flexShrink: 0,
+            background: dc.bg || "transparent",
+            padding: dc.bg ? "2px 6px" : "0",
+            borderRadius: dc.bg ? 4 : 0,
           }}>
-            {dc.label}{lead.dias >= 3 ? " ⏰" : ""}
+            {dc.label}
           </span>
         </div>
 
@@ -190,8 +192,8 @@ export default function LeadCard({
             <span style={{ fontSize: 11, color: "#6A8AAE" }}>· {lead.zona}</span>
           )}
           {lead.presup && (
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#C8D8F0", fontFamily: "Georgia,serif" }}>
-              · {precioLabel(lead.presup)}
+            <span style={{ fontSize: 13, fontWeight: 800, color: "#EAF0FB", fontFamily: "Georgia,serif", marginLeft: "auto", flexShrink: 0 }}>
+              {precioLabel(lead.presup)}
             </span>
           )}
         </div>
@@ -232,11 +234,12 @@ export default function LeadCard({
           <span style={{
             fontSize: 11, fontWeight: 700,
             color: matches.length > 0 ? "#4ADE80" : "#4A6580",
-            background: matches.length > 0 ? "rgba(74,222,128,0.08)" : "transparent",
-            padding: matches.length > 0 ? "2px 8px" : "0",
+            background: matches.length > 0 ? "rgba(74,222,128,0.10)" : "transparent",
+            padding: matches.length > 0 ? "2px 9px" : "0",
             borderRadius: 20,
+            border: matches.length > 0 ? "1px solid rgba(74,222,128,0.20)" : "none",
           }}>
-            🏠 {matches.length} {matches.length === 1 ? "match" : "matches"}
+            🏠 {matches.length > 0 ? `${matches.length} compatibles` : "sin matches"}
           </span>
 
           <button
