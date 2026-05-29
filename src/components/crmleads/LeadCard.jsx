@@ -1,12 +1,12 @@
 // ══════════════════════════════════════════════════════════════
-// ALBA CRM — LeadCard v2 (Fase 1 visual)
-// Mismo contrato de props. Solo cambia presentación zona cerrada.
+// ALBA CRM — LeadCard v3 (densidad vertical)
+// Card cerrada: 85-95px. 5 respuestas en 2 segundos.
 // Zona expandida intacta.
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useMemo } from "react";
 import { B, AG, ETAPAS, ECOL, scoreLead, matchLeadProps, genMsgBusqueda } from "../../data/constants.js";
-import { parsearNotas, tipoNotaReciente, TIPO_NOTA } from "../../domain/nota.js";
-import { getPriorityScore, getQualificationScore, computeRanking } from "../../domain/lead.js";
+import { parsearNotas, TIPO_NOTA } from "../../domain/nota.js";
+import { computeRanking } from "../../domain/lead.js";
 import LeadForm          from "./LeadForm.jsx";
 import LeadMatches       from "./LeadMatches.jsx";
 import LeadAcciones      from "./LeadAcciones.jsx";
@@ -15,34 +15,13 @@ import NotaLead          from "./NotaLead.jsx";
 import LeadQualification from "./LeadQualification.jsx";
 import { BuscadorPanel } from "../Buscador.jsx";
 
-const C = {
-  cardBg:      "#0C1B2E",
-  headerBg:    "#07111f",
-  badgeBg:     "#091525",
-  border:      "rgba(255,255,255,0.06)",
-  borderHover: "rgba(255,255,255,0.11)",
-  text:        "#EAF0FB",
-  secondary:   "#8BA4BC",
-  muted:       "#4A6580",
-  wa:          "#25D366",
-  waBg:        "rgba(37,211,102,0.10)",
-  waBorder:    "rgba(37,211,102,0.30)",
-  matchBg:     "rgba(74,222,128,0.08)",
-  matchColor:  "#4ADE80",
-  urgente:     "#FF4D4D",
-  alta:        "#FF8C42",
-  media:       "#F5C842",
-  baja:        "#4ADE80",
-  frio:        "#4A6580",
-};
-
 function badgeConfig(label) {
   const map = {
-    "Caliente": { bg: "rgba(255,77,77,0.15)",  color: "#FF4D4D", text: "URGENTE" },
-    "Tibio":    { bg: "rgba(255,140,66,0.15)", color: "#FF8C42", text: "TIBIO"   },
-    "Frío":     { bg: "rgba(74,101,128,0.20)", color: "#4A6580", text: "FRÍO"    },
+    "Caliente": { dot: "🔴", color: "#FF4D4D", bg: "rgba(255,77,77,0.13)"  },
+    "Tibio":    { dot: "🟡", color: "#FF8C42", bg: "rgba(255,140,66,0.13)" },
+    "Frío":     { dot: "⚪", color: "#4A6580", bg: "rgba(74,101,128,0.15)" },
   };
-  return map[label] || { bg: "rgba(74,101,128,0.15)", color: "#4A6580", text: label?.toUpperCase() || "—" };
+  return map[label] || map["Frío"];
 }
 
 function prioridadColor(p) {
@@ -55,7 +34,7 @@ function prioridadColor(p) {
 function diasConfig(dias) {
   if (dias === null || dias === undefined) return { label: "—",         color: "#4A6580" };
   if (dias === 0)                          return { label: "hoy",       color: "#4ADE80" };
-  if (dias === 1)                          return { label: "+1 día",    color: "#4ADE80" };
+  if (dias === 1)                          return { label: "+1d",       color: "#4ADE80" };
   if (dias <= 3)                           return { label: `+${dias}d`, color: "#F5C842" };
   if (dias <= 7)                           return { label: `+${dias}d`, color: "#FF8C42" };
   return                                          { label: `+${dias}d`, color: "#FF4D4D" };
@@ -65,16 +44,8 @@ function precioLabel(presup) {
   if (!presup) return null;
   const n = Number(presup);
   if (isNaN(n)) return String(presup);
+  if (n >= 1000) return `USD ${Math.round(n/1000)}k`;
   return `USD ${n.toLocaleString("es-AR")}`;
-}
-
-function getNotaClave(lead) {
-  const notas = parsearNotas(lead.nota);
-  if (!notas.length) return null;
-  const sorted = [...notas].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-  const nota = sorted[0];
-  const cfg  = TIPO_NOTA[nota.tipo] || TIPO_NOTA.seguimiento;
-  return { texto: nota.texto, emoji: cfg.emoji };
 }
 
 function getPedidoResumen(lead) {
@@ -85,49 +56,6 @@ function getPedidoResumen(lead) {
   if (lead.balcon  === "si") parts.push("balcon");
   if (lead.credito === "si") parts.push("credito");
   return parts.join(" · ") || null;
-}
-
-function MatchThumbs({ matches, properties }) {
-  if (!matches || matches.length === 0) {
-    return React.createElement("span", { style: { fontSize: 11, color: "#4A6580" } }, "0 matches");
-  }
-  const visible = matches.slice(0, 3);
-  const extra   = matches.length - 3;
-  return React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-    React.createElement("span", {
-      style: { fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", color: "#4ADE80",
-        background: "rgba(74,222,128,0.08)", padding: "2px 9px", borderRadius: 20 }
-    }, matches.length + (matches.length === 1 ? " MATCH" : " MATCHES")),
-    React.createElement("div", { style: { display: "flex", gap: 3 } },
-      ...visible.map((match, i) => {
-        const prop = Array.isArray(properties) ? properties.find(p => p.id === match.id) : null;
-        const fotos = prop?.fotos || match?.fotos;
-        let url = null;
-        if (Array.isArray(fotos) && fotos.length > 0) {
-          const f = fotos[0];
-          if (typeof f === "string" && (f.startsWith("http") || f.startsWith("data:"))) url = f;
-        } else if (typeof fotos === "string" && fotos.startsWith("http")) {
-          url = fotos;
-        }
-        return React.createElement("div", {
-          key: match.id || i,
-          style: { width: 30, height: 30, borderRadius: 6, overflow: "hidden", background: "#091525",
-            border: "1px solid rgba(255,255,255,0.06)", flexShrink: 0,
-            display: "flex", alignItems: "center", justifyContent: "center" }
-        }, url
-          ? React.createElement("img", { src: url, alt: "", style: { width: "100%", height: "100%", objectFit: "cover" },
-              onError: e => { e.target.style.display = "none"; } })
-          : React.createElement("span", { style: { fontSize: 12, opacity: 0.35 } }, "🏠")
-        );
-      }),
-      extra > 0 && React.createElement("div", {
-        style: { width: 30, height: 30, borderRadius: 6, background: "#091525",
-          border: "1px solid rgba(255,255,255,0.06)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 9, fontWeight: 700, color: "#8BA4BC" }
-      }, "+" + extra)
-    )
-  );
 }
 
 function Section({ label, children, defaultOpen = false }) {
@@ -172,7 +100,6 @@ export default function LeadCard({
     return { matches: m, ranking: computeRanking(lead, m.length) };
   }, [lead, properties, captaciones]);
 
-  const nota   = getNotaClave(lead);
   const pedido = getPedidoResumen(lead);
   const dc     = diasConfig(lead.dias);
   const pc     = prioridadColor(ranking.prioridad);
@@ -181,159 +108,161 @@ export default function LeadCard({
     : s.label === "Tibio" ? "#FF8C42"
     : "#2A3A5A";
 
-  async function guardarNota(l, val)          { await updateLead(l.id, { nota: val }); }
-  async function guardarNotaInversor(l, n)    { await updateLead(l.id, { nota_inversor: n }); }
-  async function toggleInversor()             { await updateLead(lead.id, { inversor: !lead.inversor }); }
-  async function handleGuardarEdicion(id, d)  { await updateLead(id, d); setEditing(false); }
+  async function guardarNota(l, val)         { await updateLead(l.id, { nota: val }); }
+  async function guardarNotaInversor(l, n)   { await updateLead(l.id, { nota_inversor: n }); }
+  async function toggleInversor()            { await updateLead(lead.id, { inversor: !lead.inversor }); }
+  async function handleGuardarEdicion(id, d) { await updateLead(id, d); setEditing(false); }
 
   return (
-    <div
-      style={{
-        background:   "#0C1B2E",
-        border:       `1px solid ${open ? B.accent : "rgba(255,255,255,0.06)"}`,
-        borderLeft:   `3px solid ${borderLeftColor}`,
-        borderRadius: 12,
-        overflow:     "hidden",
-        opacity:      isBlurred ? 0.38 : 1,
-        transition:   "opacity 0.2s, border-color 0.15s, box-shadow 0.15s",
-      }}
-      onMouseEnter={e => {
-        if (!isBlurred && !open) {
-          e.currentTarget.style.borderColor = "rgba(255,255,255,0.11)";
-          e.currentTarget.style.boxShadow   = "0 4px 20px rgba(0,0,0,0.28)";
-        }
-      }}
-      onMouseLeave={e => {
-        if (!open) {
-          e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
-          e.currentTarget.style.boxShadow   = "none";
-        }
-      }}
-    >
+    <div style={{
+      background:   "#0C1B2E",
+      border:       `1px solid ${open ? B.accent : "rgba(255,255,255,0.06)"}`,
+      borderLeft:   `3px solid ${borderLeftColor}`,
+      borderRadius: 10,
+      overflow:     "hidden",
+      opacity:      isBlurred ? 0.38 : 1,
+      transition:   "opacity 0.2s, border-color 0.15s, box-shadow 0.15s",
+    }}
+    onMouseEnter={e => {
+      if (!isBlurred && !open) {
+        e.currentTarget.style.borderColor = "rgba(255,255,255,0.11)";
+        e.currentTarget.style.boxShadow   = "0 2px 12px rgba(0,0,0,0.25)";
+      }
+    }}
+    onMouseLeave={e => {
+      if (!open) {
+        e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
+        e.currentTarget.style.boxShadow   = "none";
+      }
+    }}>
 
+      {/* ── ZONA CERRADA ─────────────────────────────────── */}
       <div onClick={onToggle} style={{ cursor: "pointer" }}>
 
-        <div style={{ background: "#07111f", padding: "8px 14px",
-          display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.08em",
+        {/* Línea 1: badge · score · nombre · días */}
+        <div style={{
+          padding: "8px 12px 0",
+          display: "flex", alignItems: "center", gap: 8,
+        }}>
+          {/* Temperatura */}
+          <span style={{
+            fontSize: 9, fontWeight: 800, letterSpacing: "0.07em",
             color: badge.color, background: badge.bg,
-            padding: "2px 9px", borderRadius: 20, flexShrink: 0 }}>
-            {badge.text}
+            padding: "2px 7px", borderRadius: 20, flexShrink: 0,
+          }}>
+            {badge.dot} {s.label.toUpperCase()}
           </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1 }}>
-            <span style={{ fontSize: 14, fontWeight: 800, color: pc,
-              fontFamily: "Georgia,serif", lineHeight: 1 }}>
-              {ranking.prioridad}
-            </span>
-            <span style={{ fontSize: 9, color: ranking.confianza === "alta" ? B.ok
-              : ranking.confianza === "media" ? B.warm : "#4A6580" }}>
-              {ranking.confianza}
-            </span>
-            {ranking.tags.slice(0, 2).map(t => (
-              <span key={t.key} style={{ fontSize: 11 }} title={t.label}>{t.emoji}</span>
-            ))}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: dc.color }}>{dc.label}</span>
-            {lead.dias >= 3 && <span style={{ fontSize: 10 }}>⏰</span>}
-          </div>
+
+          {/* Score */}
+          <span style={{
+            fontSize: 13, fontWeight: 800, color: pc,
+            fontFamily: "Georgia,serif", lineHeight: 1, flexShrink: 0,
+          }}>
+            {ranking.prioridad}
+          </span>
+
+          {/* Nombre */}
+          <span style={{
+            fontSize: 14, fontWeight: 700, color: "#EAF0FB",
+            flex: 1, minWidth: 0,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {lead.nombre || "Sin nombre"}
+          </span>
+
+          {/* Días */}
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: dc.color, flexShrink: 0,
+          }}>
+            {dc.label}{lead.dias >= 3 ? " ⏰" : ""}
+          </span>
         </div>
 
-        <div style={{ padding: "10px 14px 12px" }}>
-
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-            marginBottom: 3, gap: 8 }}>
-            <span style={{ fontSize: mobile ? 15 : 14, fontWeight: 700, color: "#EAF0FB",
-              flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {lead.nombre || "Sin nombre"}
+        {/* Línea 2: rol · zona · precio */}
+        <div style={{
+          padding: "3px 12px 0",
+          display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap",
+        }}>
+          <span style={{ fontSize: 11, color: "#6A8AAE" }}>
+            {lead.inversor ? "💼 Inversor" : lead.op || "Compra"}
+          </span>
+          {lead.zona && (
+            <span style={{ fontSize: 11, color: "#6A8AAE" }}>· {lead.zona}</span>
+          )}
+          {lead.presup && (
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#C8D8F0", fontFamily: "Georgia,serif" }}>
+              · {precioLabel(lead.presup)}
             </span>
-            {lead.ag && AG[lead.ag] && (
-              <span style={{ fontSize: 9, fontWeight: 700, color: AG[lead.ag].c,
-                background: AG[lead.ag].c + "20", padding: "2px 7px", borderRadius: 4, flexShrink: 0 }}>
-                {AG[lead.ag].n}
-              </span>
-            )}
-          </div>
+          )}
+        </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-            <span style={{ fontSize: 11, color: "#8BA4BC" }}>
-              {lead.inversor ? "💼 Inversor" : lead.op || "Comprador"}
-            </span>
-            {lead.zona && <span style={{ fontSize: 11, color: "#8BA4BC" }}>· {lead.zona}</span>}
-            {lead.presup && (
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#EAF0FB",
-                fontFamily: "Georgia,serif", marginLeft: "auto" }}>
-                {precioLabel(lead.presup)}
-              </span>
-            )}
+        {/* Línea 3: pedido */}
+        {pedido && (
+          <div style={{ padding: "2px 12px 0", fontSize: 11, color: "#4A6580" }}>
+            {pedido}
           </div>
+        )}
+
+        {/* Línea 4: tel · WA · matches · ✓ Hoy */}
+        <div style={{
+          padding: "6px 12px 8px",
+          display: "flex", alignItems: "center", gap: 8,
+          flexWrap: "wrap",
+        }} onClick={e => e.stopPropagation()}>
 
           {lead.tel && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <span style={{ fontSize: 11, color: "#8BA4BC" }}>📞 {lead.tel}</span>
-              <a href={`https://wa.me/${lead.tel.replace(/\D/g, "")}`}
-                target="_blank" rel="noreferrer"
-                onClick={e => e.stopPropagation()}
-                style={{ padding: "2px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700,
-                  color: "#25D366", background: "rgba(37,211,102,0.10)",
-                  border: "1px solid rgba(37,211,102,0.30)", textDecoration: "none" }}>
-                WA
-              </a>
-            </div>
-          )}
-
-          {pedido && (
-            <div style={{ fontSize: 11, color: "#4A6580", marginBottom: 8 }}>{pedido}</div>
-          )}
-
-          {nota && (
-            <div style={{ background: "#091525", border: "1px solid rgba(255,255,255,0.06)",
-              borderRadius: 8, padding: "6px 10px", marginBottom: 10,
-              fontSize: 11, color: "#8BA4BC", lineHeight: 1.4,
-              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-              overflow: "hidden" }}>
-              {nota.emoji} {nota.texto}
-            </div>
-          )}
-
-          <MatchThumbs matches={matches} properties={properties} />
-
-        </div>
-
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", background: "#07111f",
-          padding: "7px 14px", display: "flex", alignItems: "center",
-          justifyContent: "space-between", gap: 8 }}>
-          <span style={{ fontSize: 10, color: "#4A6580" }}>
-            {lead.dias === null || lead.dias === undefined ? "Sin registro"
-              : lead.dias === 0 ? "Contactado hoy" : `Hace ${lead.dias}d`}
-          </span>
-          {lead.etapa && (
-            <span style={{ fontSize: 10, fontWeight: 600,
-              color: ECOL[lead.etapa] || "#4A6580",
-              background: (ECOL[lead.etapa] || "#4A6580") + "18",
-              padding: "2px 8px", borderRadius: 4 }}>
-              {lead.etapa}
+            <span style={{ fontSize: 11, color: "#6A8AAE" }}>
+              📞 {lead.tel.slice(0, 10)}{lead.tel.length > 10 ? "…" : ""}
             </span>
           )}
-          <div style={{ display: "flex", gap: 6 }} onClick={e => e.stopPropagation()}>
-            <button
-              onClick={() => updateLead(lead.id, { last_contact_at: new Date().toISOString() })}
-              style={{ padding: "3px 9px", borderRadius: 6, fontSize: 10, fontWeight: 700,
-                cursor: "pointer", border: `1px solid ${B.ok}30`,
-                background: `${B.ok}12`, color: B.ok }}>
-              ✓ Hoy
-            </button>
-            <button onClick={onToggle}
-              style={{ padding: "3px 8px", borderRadius: 6, fontSize: 10,
-                background: "transparent", border: "1px solid rgba(255,255,255,0.06)",
-                color: "#4A6580", cursor: "pointer" }}>
-              {open ? "▲" : "▼"}
-            </button>
-          </div>
+
+          {lead.tel && (
+            <a href={`https://wa.me/${lead.tel.replace(/\D/g, "")}`}
+              target="_blank" rel="noreferrer"
+              style={{
+                padding: "2px 9px", borderRadius: 5,
+                fontSize: 11, fontWeight: 700,
+                color: "#25D366", background: "rgba(37,211,102,0.10)",
+                border: "1px solid rgba(37,211,102,0.25)", textDecoration: "none",
+              }}>
+              WA
+            </a>
+          )}
+
+          <span style={{
+            fontSize: 11, fontWeight: 700,
+            color: matches.length > 0 ? "#4ADE80" : "#4A6580",
+            background: matches.length > 0 ? "rgba(74,222,128,0.08)" : "transparent",
+            padding: matches.length > 0 ? "2px 8px" : "0",
+            borderRadius: 20,
+          }}>
+            🏠 {matches.length} {matches.length === 1 ? "match" : "matches"}
+          </span>
+
+          <button
+            onClick={() => updateLead(lead.id, { last_contact_at: new Date().toISOString() })}
+            style={{
+              marginLeft: "auto", padding: "3px 10px", borderRadius: 6,
+              fontSize: 10, fontWeight: 700, cursor: "pointer",
+              border: `1px solid ${B.ok}35`, background: `${B.ok}12`, color: B.ok,
+            }}>
+            ✓ Hoy
+          </button>
+
+          <button onClick={e => { e.stopPropagation(); onToggle(); }}
+            style={{
+              padding: "3px 7px", borderRadius: 6, fontSize: 10,
+              background: "transparent", border: "1px solid rgba(255,255,255,0.06)",
+              color: "#4A6580", cursor: "pointer",
+            }}>
+            {open ? "▲" : "▼"}
+          </button>
+
         </div>
 
       </div>
 
+      {/* ── ZONA EXPANDIDA — intacta ──────────────────────── */}
       {open && (
         <div>
           {editing ? (
@@ -388,7 +317,7 @@ export default function LeadCard({
                 </Section>
               )}
 
-              <Section label="Calificación">
+              <Section label="Calificacion">
                 <LeadQualification lead={lead} onUpdate={updateLead} />
               </Section>
 
@@ -406,13 +335,13 @@ export default function LeadCard({
                       transition: "left 0.2s" }} />
                   </button>
                   <span style={{ fontSize: 11, color: lead.inversor ? "#9B6DC8" : "#8AAECC", fontWeight: 600 }}>
-                    💼 Inversor
+                    Inversor
                   </span>
                   {lead.inversor && <InversorNota lead={lead} onGuardar={guardarNotaInversor} />}
                 </div>
               </Section>
 
-              <Section label="Más acciones">
+              <Section label="Mas acciones">
                 <div style={{ paddingTop: 4 }}>
                   <LeadAcciones
                     lead={lead} mobile={mobile} updateLead={updateLead}
