@@ -51,6 +51,8 @@ export default function LlamaHoyCard({ lead, onContactado }) {
       borderLeft: "3px solid " + urgColor,
       borderRadius: 10,
       padding: "11px 14px",
+      overflow: "hidden",
+      minWidth: 0,
     }}>
 
       {/* Fila 1: nombre + agente + etapa */}
