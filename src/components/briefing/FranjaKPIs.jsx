@@ -319,7 +319,7 @@ export default function FranjaKPIs({ leads, activos, captaciones, compact }) {
       gridTemplateColumns: `repeat(${cols}, 1fr)`,
       gap: 12,
     }}>
-      {kpis.map(k => <KPICard key={k.label} {...k} compact={compact} />)}
+      {kpis.map(k => <KPICard key={k.label} {...k} />)}
     </div>
   );
 }
