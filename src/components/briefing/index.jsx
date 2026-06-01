@@ -228,7 +228,7 @@ export default function Briefing({ leads, properties, captaciones }) {
       }}>
 
         {/* Columna izquierda: OPERACIONES EN RIESGO + LLAMA HOY + OFERTA */}
-        <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 12 : 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 12 : 16, minWidth: 0 }}>
 
           <Sec titulo="🚨 Operaciones en riesgo" borderColor={"#FF4D4D30"}>
             <OperacionesRiesgo leads={activos} />
@@ -263,7 +263,7 @@ export default function Briefing({ leads, properties, captaciones }) {
         </div>
 
         {/* Columna derecha: ALERTAS + HOY */}
-        <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 12 : 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 12 : 16, minWidth: 0 }}>
 
           <Sec titulo="⚠️ Alertas" borderColor={B.border}>
             <AlertasHome leads={activos} />
