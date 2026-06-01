@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
-// ALBA CRM — FranjaKPIs
-// 6 KPIs premium — estilo Linear / Attio / Stripe Dashboard
-// Sparklines reales desde created_at de leads y captaciones.
+// ALBA CRM — FranjaKPIs v2
+// Réplica fiel de la referencia: número grande, sparkline con
+// eje Y, dots visibles, grid line, comparativa mes/semana.
 // ══════════════════════════════════════════════════════════════
 import React, { useMemo, useState, useEffect } from "react";
 
@@ -16,35 +16,80 @@ function useBreakpoint() {
   return w < 640 ? "mobile" : w < 1080 ? "tablet" : "desktop";
 }
 
-// ── Sparkline SVG ─────────────────────────────────────────────
+// ── Sparkline con eje Y y dots ────────────────────────────────
 function Sparkline({ data, color, id }) {
-  if (!data || data.length < 2) return <div style={{ height: 44 }} />;
-  const W = 100, H = 36, pad = 2;
-  const max = Math.max(...data, 1);
-  const min = Math.min(...data, 0);
-  const range = max - min || 1;
+  const max = Math.max(...(data || []), 1);
+  const mid = Math.round(max / 2);
+
+  if (!data || data.length < 2 || max === 0) {
+    return (
+      <div style={{ display: "flex", gap: 4, height: 68, alignItems: "center" }}>
+        <div style={{ width: 22, flexShrink: 0 }} />
+        <div style={{ flex: 1, height: 1, background: color + "30", borderRadius: 1 }} />
+      </div>
+    );
+  }
+
+  const W = 180, H = 52;
   const pts = data.map((v, i) => [
     (i / (data.length - 1)) * W,
-    H - pad - ((v - min) / range) * (H - 2 * pad),
+    H - (v / max) * (H - 4) - 2,
   ]);
   const line = pts.map((p, i) =>
     `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`
   ).join(" ");
   const area = `${line} L${W},${H} L0,${H} Z`;
-  const gid  = `kpi-${id}`;
+  const midY  = H - (mid / max) * (H - 4) - 2;
+  const gid   = `kpi2-${id}`;
+
   return (
-    <svg width="100%" height="44" viewBox={`0 0 ${W} ${H}`}
-      preserveAspectRatio="none" style={{ display: "block" }}>
-      <defs>
-        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor={color} stopOpacity="0.28" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-        </linearGradient>
-      </defs>
-      <path d={area} fill={`url(#${gid})`} />
-      <path d={line}  stroke={color} strokeWidth="1.5" fill="none"
-        strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <div style={{ display: "flex", gap: 4, height: 68, alignItems: "stretch" }}>
+      {/* Eje Y */}
+      <div style={{
+        width: 22, flexShrink: 0,
+        display: "flex", flexDirection: "column",
+        justifyContent: "space-between",
+        paddingTop: 2, paddingBottom: 2,
+      }}>
+        {[max, mid, 0].map(v => (
+          <span key={v} style={{
+            fontSize: 9, color: "#475569",
+            textAlign: "right", display: "block", lineHeight: 1,
+            fontFamily: "monospace",
+          }}>{v}</span>
+        ))}
+      </div>
+
+      {/* Gráfico */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <svg width="100%" height="68" viewBox={`0 0 ${W} ${H}`}
+          preserveAspectRatio="none" style={{ display: "block" }}>
+          <defs>
+            <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor={color} stopOpacity="0.28" />
+              <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+
+          {/* Grid line en el medio */}
+          <line x1="0" y1={midY} x2={W} y2={midY}
+            stroke="#1E293B" strokeWidth="0.8" />
+
+          {/* Área */}
+          <path d={area} fill={`url(#${gid})`} />
+
+          {/* Línea */}
+          <path d={line} stroke={color} strokeWidth="1.5" fill="none"
+            strokeLinecap="round" strokeLinejoin="round" />
+
+          {/* Dots */}
+          {pts.map(([x, y], i) => (
+            <circle key={i} cx={x} cy={y} r="2.8"
+              fill={color} stroke="#0F172A" strokeWidth="1.5" />
+          ))}
+        </svg>
+      </div>
+    </div>
   );
 }
 
@@ -60,32 +105,34 @@ const IcoDollar   = () => <svg {...S}><line x1="12" y1="1" x2="12" y2="23"/><pat
 const IcoUserPlus = () => <svg {...S}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>;
 
 // ── KPI Card ──────────────────────────────────────────────────
-function KPICard({ icon, color, valor, label, sub, subDir, sparkData, compLabel, compDir }) {
-  const subColor  = subDir === "up" ? color : subDir === "down" ? "#EF4444" : "#475569";
-  const compColor = compDir === "up" ? "#22C55E" : compDir === "down" ? "#EF4444" : "#475569";
+function KPICard({ icon, color, valor, label, sub, subDir, sparkData, compPeriodo, compLabel, compDir }) {
+  const subColor  = subDir === "up" ? color : subDir === "down" ? "#EF4444" : "#4B5563";
+  const compColor = compDir === "up" ? "#22C55E" : compDir === "down" ? "#EF4444" : "#4B5563";
+
   return (
     <div style={{
-      background: "#0F172A",
+      background: "#0C1527",
       border: "1px solid #1E293B",
-      borderRadius: 16,
-      padding: "18px 18px 14px",
+      borderRadius: 14,
+      padding: "20px 20px 16px",
       display: "flex", flexDirection: "column",
       minWidth: 0, overflow: "hidden",
     }}>
-      {/* Icono circular */}
+      {/* Icono */}
       <div style={{
-        width: 36, height: 36, borderRadius: "50%",
+        width: 38, height: 38, borderRadius: "50%",
         background: color + "18", border: `1px solid ${color}28`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        color, marginBottom: 14, flexShrink: 0,
+        color, marginBottom: 16, flexShrink: 0,
       }}>
-        <div style={{ width: 17, height: 17, display: "flex" }}>{icon}</div>
+        <div style={{ width: 18, height: 18, display: "flex" }}>{icon}</div>
       </div>
 
-      {/* Número principal */}
+      {/* Número */}
       <div style={{
-        fontSize: 32, fontWeight: 800, color: "#F1F5F9",
-        fontFamily: "Georgia,serif", lineHeight: 1, marginBottom: 4,
+        fontSize: 44, fontWeight: 800, color: "#F1F5F9",
+        fontFamily: "Georgia,serif", lineHeight: 1, marginBottom: 5,
+        letterSpacing: "-1px",
       }}>
         {valor}
       </div>
@@ -93,30 +140,30 @@ function KPICard({ icon, color, valor, label, sub, subDir, sparkData, compLabel,
       {/* Label */}
       <div style={{
         fontSize: 11, fontWeight: 600, color: "#64748B",
-        letterSpacing: "0.03em", marginBottom: 5,
+        letterSpacing: "0.03em", marginBottom: 4,
       }}>
         {label}
       </div>
 
       {/* Línea secundaria */}
       <div style={{
-        fontSize: 11, fontWeight: 600, color: subColor, minHeight: 15,
+        fontSize: 11, fontWeight: 600, color: subColor,
+        marginBottom: 12, minHeight: 14,
       }}>
         {sub}
       </div>
 
       {/* Sparkline */}
-      <div style={{ marginTop: 10, marginBottom: 8, marginLeft: -2, marginRight: -2 }}>
+      <div style={{ marginLeft: -2, marginRight: -2, marginBottom: 10 }}>
         <Sparkline data={sparkData} color={color} id={label.replace(/\s+/g,"_")} />
       </div>
 
-      {/* Comparativa inferior */}
+      {/* Comparativa */}
       <div style={{
-        borderTop: "1px solid #1E293B", paddingTop: 8,
-        fontSize: 10, color: "#334155",
-        display: "flex", gap: 4, alignItems: "center",
+        borderTop: "1px solid #1E293B", paddingTop: 10,
+        fontSize: 11, display: "flex", gap: 4, alignItems: "center",
       }}>
-        <span>vs. mes anterior</span>
+        <span style={{ color: "#374151" }}>vs. {compPeriodo}</span>
         <span style={{ color: compColor, fontWeight: 700 }}>{compLabel}</span>
       </div>
     </div>
@@ -145,9 +192,12 @@ function vsAnterior(items, field = "created_at") {
     const d = x[field] && new Date(x[field]);
     return d && d >= iniAnt && d < ini;
   }).length;
-  if (prev === 0) return { label: cur > 0 ? "primer mes" : "—", dir: cur > 0 ? "up" : "neutral" };
+  if (prev === 0) return { label: cur > 0 ? "primer mes" : "—", dir: "neutral" };
   const p = Math.round(((cur - prev) / prev) * 100);
-  return { label: p > 0 ? `+${p}%` : p < 0 ? `${p}%` : "0%", dir: p > 0 ? "up" : p < 0 ? "down" : "neutral" };
+  return {
+    label: p > 0 ? `+${p}%` : p < 0 ? `${p}%` : "0%",
+    dir:   p > 0 ? "up" : p < 0 ? "down" : "neutral",
+  };
 }
 
 // ── Componente principal ──────────────────────────────────────
@@ -156,12 +206,13 @@ export default function FranjaKPIs({ leads, activos, captaciones }) {
   const cols = bp === "mobile" ? 2 : bp === "tablet" ? 3 : 6;
 
   const stats = useMemo(() => {
-    const now        = new Date();
-    const ini        = new Date(now.getFullYear(), now.getMonth(), 1);
-    const iniSemana  = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
-    const nuevosMes  = (leads || []).filter(l => l.created_at && new Date(l.created_at) >= ini).length;
+    const now       = new Date();
+    const ini       = new Date(now.getFullYear(), now.getMonth(), 1);
+    const iniSemana = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+    const nuevosMes = (leads || []).filter(l => l.created_at && new Date(l.created_at) >= ini).length;
     const visitasSem = activos.filter(l =>
-      l.etapa === "Visita" && l.last_contact_at && new Date(l.last_contact_at) >= iniSemana
+      l.etapa === "Visita" &&
+      l.last_contact_at && new Date(l.last_contact_at) >= iniSemana
     ).length;
     return {
       activos:       activos.length,
@@ -183,57 +234,51 @@ export default function FranjaKPIs({ leads, activos, captaciones }) {
   const kpis = [
     {
       icon: <IcoUsers />, color: "#3B82F6",
-      valor: stats.activos,
-      label: "Leads activos",
+      valor: stats.activos, label: "Leads activos",
       sub:      stats.nuevosMes > 0 ? `↑ ${stats.nuevosMes} nuevos este mes` : "Sin altas este mes",
       subDir:   stats.nuevosMes > 0 ? "up" : "neutral",
       sparkData: sparkLeads,
-      compLabel: pLeads.label, compDir: pLeads.dir,
+      compPeriodo: "mes anterior", compLabel: pLeads.label, compDir: pLeads.dir,
     },
     {
       icon: <IcoCalendar />, color: "#22C55E",
-      valor: stats.visitas,
-      label: "Visitas activas",
+      valor: stats.visitas, label: "Visitas activas",
       sub:      stats.visitasSem > 0 ? `↑ ${stats.visitasSem} esta semana` : "— sin cambios",
       subDir:   stats.visitasSem > 0 ? "up" : "neutral",
       sparkData: flat(stats.visitas),
-      compLabel: "—", compDir: "neutral",
+      compPeriodo: "semana anterior", compLabel: "—", compDir: "neutral",
     },
     {
       icon: <IcoHandshake />, color: "#F97316",
-      valor: stats.negociaciones,
-      label: "Negociaciones",
+      valor: stats.negociaciones, label: "Negociaciones",
       sub:      stats.negociaciones > 0 ? `↑ ${stats.negociaciones} en curso` : "— 0 sin cambios",
       subDir:   stats.negociaciones > 0 ? "up" : "neutral",
       sparkData: flat(stats.negociaciones),
-      compLabel: "—", compDir: "neutral",
+      compPeriodo: "semana anterior", compLabel: "—", compDir: "neutral",
     },
     {
       icon: <IcoHome />, color: "#A855F7",
-      valor: stats.captMes,
-      label: "Captaciones",
+      valor: stats.captMes, label: "Captaciones",
       sub:      stats.captMes > 0 ? `↑ ${stats.captMes} este mes` : "Sin captaciones aún",
       subDir:   stats.captMes > 0 ? "up" : "neutral",
       sparkData: sparkCapt,
-      compLabel: pCapt.label, compDir: pCapt.dir,
+      compPeriodo: "mes anterior", compLabel: pCapt.label, compDir: pCapt.dir,
     },
     {
       icon: <IcoDollar />, color: "#06B6D4",
-      valor: "$0",
-      label: "Facturación mes",
+      valor: "$0", label: "Facturación mes",
       sub:      "— sin datos aún",
       subDir:   "neutral",
       sparkData: flat(0),
-      compLabel: "—", compDir: "neutral",
+      compPeriodo: "mes anterior", compLabel: "—", compDir: "neutral",
     },
     {
       icon: <IcoUserPlus />, color: "#60A5FA",
-      valor: stats.nuevosMes,
-      label: "Leads nuevos",
+      valor: stats.nuevosMes, label: "Leads nuevos",
       sub:      stats.nuevosMes > 0 ? `↑ ${stats.nuevosMes} este mes` : "Sin altas este mes",
       subDir:   stats.nuevosMes > 0 ? "up" : "neutral",
       sparkData: sparkLeads,
-      compLabel: pLeads.label, compDir: pLeads.dir,
+      compPeriodo: "mes anterior", compLabel: pLeads.label, compDir: pLeads.dir,
     },
   ];
 
