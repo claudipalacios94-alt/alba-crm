@@ -1,14 +1,15 @@
 // ══════════════════════════════════════════════════════════════
-// ALBA CRM — Home (centro de mando operativo)
-// Responde: ¿A quién llamo? ¿Qué es urgente? ¿Dónde captamos? ¿Qué tengo hoy?
+// ALBA CRM — Home v2 (centro de mando operativo)
+// Responde: ¿Cómo va el negocio? ¿A quién llamo? ¿Qué tengo hoy?
 // Ruta /  — /briefing redirige acá via Navigate en App.jsx
 // ══════════════════════════════════════════════════════════════
 import React, { useMemo, useEffect, useState } from "react";
 import { B } from "../../data/constants.js";
-import LlamaHoyCard  from "./LlamaHoyCard.jsx";
-import AlertasHome   from "./AlertasHome.jsx";
-import OfertaHome    from "./OfertaHome.jsx";
-import HoyHome       from "./HoyHome.jsx";
+import LlamaHoyCard       from "./LlamaHoyCard.jsx";
+import AlertasHome        from "./AlertasHome.jsx";
+import OfertaHome         from "./OfertaHome.jsx";
+import HoyHome            from "./HoyHome.jsx";
+import OperacionesRiesgo  from "./OperacionesRiesgo.jsx";
 
 // ── Utilidad mobile ───────────────────────────────────────────
 function useIsMobile(bp = 768) {
@@ -42,6 +43,62 @@ function Sec({ titulo, children, borderColor }) {
         </span>
       </div>
       <div style={{ padding: "14px 16px" }}>{children}</div>
+    </div>
+  );
+}
+
+// ── Franja de estado del negocio ─────────────────────────────
+function FranjaEstado({ activos, captaciones }) {
+  const hoy      = new Date();
+  const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+
+  const stats = useMemo(() => ({
+    leadsActivos:    activos.length,
+    visitas:         activos.filter(l => l.etapa === "Visita").length,
+    negociaciones:   activos.filter(l => l.etapa === "Negociación").length,
+    captacionesMes:  (captaciones || []).filter(c =>
+                       c.created_at && new Date(c.created_at) >= inicioMes
+                     ).length,
+  }), [activos, captaciones, inicioMes]);
+
+  const items = [
+    { label: "Leads activos",    valor: stats.leadsActivos,   color: B.accentL },
+    { label: "Visitas",          valor: stats.visitas,        color: "#E8A830" },
+    { label: "Negociaciones",    valor: stats.negociaciones,  color: B.ok },
+    { label: "Captaciones mes",  valor: stats.captacionesMes, color: "#9B6DC8" },
+    { label: "Facturación mes",  valor: "—",                  color: B.dim, sinDatos: true },
+  ];
+
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(5, 1fr)",
+      gap: 1,
+      background: B.border,
+      borderRadius: 10,
+      overflow: "hidden",
+      border: `1px solid ${B.border}`,
+    }}>
+      {items.map(({ label, valor, color, sinDatos }) => (
+        <div key={label} style={{
+          background: B.card,
+          padding: "12px 14px",
+          display: "flex", flexDirection: "column", gap: 4,
+        }}>
+          <div style={{
+            fontSize: sinDatos ? 20 : 26,
+            fontWeight: 800,
+            color: sinDatos ? B.dim : color,
+            fontFamily: "Georgia,serif",
+            lineHeight: 1,
+          }}>
+            {valor}
+          </div>
+          <div style={{ fontSize: 10, color: B.dim, fontWeight: 600, lineHeight: 1.3 }}>
+            {label}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -113,6 +170,9 @@ export default function Briefing({ leads, properties, captaciones }) {
         </div>
       </div>
 
+      {/* Franja de estado — ¿Cómo va el negocio? */}
+      <FranjaEstado activos={activos} captaciones={captaciones} />
+
       {/* Grid principal */}
       <div style={{
         display: "grid",
@@ -121,8 +181,12 @@ export default function Briefing({ leads, properties, captaciones }) {
         alignItems: "start",
       }}>
 
-        {/* Columna izquierda: LLAMA HOY + OFERTA */}
+        {/* Columna izquierda: OPERACIONES EN RIESGO + LLAMA HOY + OFERTA */}
         <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 12 : 16 }}>
+
+          <Sec titulo="🚨 Operaciones en riesgo" borderColor={"#FF4D4D30"}>
+            <OperacionesRiesgo leads={activos} />
+          </Sec>
 
           <Sec titulo="🔥 Llama hoy" borderColor={B.accentL + "30"}>
             {llamaHoy.length === 0 ? (
