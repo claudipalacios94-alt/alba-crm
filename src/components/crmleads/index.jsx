@@ -3,26 +3,36 @@
 // Filtros, tabs, grupos por temperatura, mail de pedidos
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useMemo, useEffect } from "react";
-import { B, AG, scoreLead, matchLeadProps, getPriorityScore, getRecommendedAction } from "../../data/constants.js";
+import { AG, scoreLead, matchLeadProps, getRecommendedAction } from "../../data/constants.js";
 import { computeRanking } from "../../domain/lead.js";
-import LeadCard    from "./LeadCard.jsx";
+import LeadCardPro from "./LeadCardPro.jsx";
+import CRMKpiCard  from "./CRMKpiCard.jsx";
 import { useIncidents } from "../../hooks/useIncidents.js";
 import ModalPerdido from "./ModalPerdido.jsx";
 import Kanban from "../Kanban.jsx";
 
-function useIsMobile(breakpoint = 768) {
-  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+function useWindowWidth() {
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
   useEffect(() => {
     const handler = () => setW(window.innerWidth);
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
   }, []);
-  return w < breakpoint;
+  return w;
+}
+
+function gridCols(w) {
+  if (w >= 1400) return "repeat(4, 1fr)";
+  if (w >= 1000) return "repeat(3, 1fr)";
+  if (w >= 640)  return "repeat(2, 1fr)";
+  return "1fr";
 }
 
 export default function CRMLeads({ leads, updateLead, deleteLead, properties, captaciones, supabase }) {
-  const mobile = useIsMobile(768);
+  const ww     = useWindowWidth();
+  const mobile = ww < 768;
   useIncidents(leads);
+
   const [vista,          setVista]          = useState("lista");
   const [pagina,         setPagina]         = useState("compradores");
   const [fs,             setFs]             = useState("Todos");
@@ -31,7 +41,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
   const [mostrarPerdidos,setMostrarPerdidos]= useState(false);
   const [mostrados,      setMostrados]      = useState(new Set());
   const [matchesVistos,  setMatchesVistos]  = useState(() => {
-    try { return new Set(JSON.parse(localStorage.getItem("alba_matches_vistos")||"[]")); } catch { return new Set(); }
+    try { return new Set(JSON.parse(localStorage.getItem("alba_matches_vistos") || "[]")); } catch { return new Set(); }
   });
   const [modalPerdido,   setModalPerdido]   = useState(null);
   const [confirmDelete,  setConfirmDelete]  = useState(null);
@@ -59,13 +69,22 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
   }
 
   const todasProps = useMemo(() => {
-    const capsNorm = (captaciones||[]).map(c => ({
-      id:"cap-"+c.id, tipo:c.tipo, zona:c.zona, precio:c.precio,
-      dir:c.direccion, caracts:c.caracts, activa:true,
-      _esCaptacion:true, _tipoCap:c.tipo_captacion,
+    const capsNorm = (captaciones || []).map(c => ({
+      id: "cap-" + c.id, tipo: c.tipo, zona: c.zona, precio: c.precio,
+      dir: c.direccion, caracts: c.caracts, activa: true,
+      _esCaptacion: true, _tipoCap: c.tipo_captacion,
     }));
-    return [...(properties||[]), ...capsNorm];
+    return [...(properties || []), ...capsNorm];
   }, [properties, captaciones]);
+
+  // Cache de matches: evita recalcular matchLeadProps en sort, KPIs y cards
+  const matchesByLeadId = useMemo(() => {
+    const map = new Map();
+    for (const lead of leads) {
+      map.set(lead.id, matchLeadProps(lead, todasProps));
+    }
+    return map;
+  }, [leads, todasProps]);
 
   const filtBase = useMemo(() => leads.filter(l => {
     if (!mostrarPerdidos && (l.etapa === "Perdido" || l.etapa === "Cerrado")) return false;
@@ -76,37 +95,41 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
     if (fa === "Sin asignar" && l.ag) return false;
     if (fa !== "Todos" && fa !== "Sin asignar" && l.ag !== fa) return false;
     if (q && !l.nombre?.toLowerCase().includes(q.toLowerCase())
-          && !(l.zona||"").toLowerCase().includes(q.toLowerCase())
-          && !(l.tel||"").includes(q)) return false;
+          && !(l.zona || "").toLowerCase().includes(q.toLowerCase())
+          && !(l.tel || "").includes(q)) return false;
     return true;
-  }).sort((a,b) => a.dias - b.dias), [leads, fs, fa, q, mostrarPerdidos]);
+  }).sort((a, b) => {
+    const mA = (matchesByLeadId.get(a.id) || []).length;
+    const mB = (matchesByLeadId.get(b.id) || []).length;
+    return computeRanking(b, mB).prioridad - computeRanking(a, mA).prioridad;
+  }), [leads, fs, fa, q, mostrarPerdidos, matchesByLeadId]);
 
-  const filt          = useMemo(() => filtBase.filter(l => !l.inversor), [filtBase]);
+  const filt           = useMemo(() => filtBase.filter(l => !l.inversor), [filtBase]);
   const filtInversores = useMemo(() => filtBase.filter(l => !!l.inversor), [filtBase]);
 
   const matchesNuevos = useMemo(() => {
     let count = 0;
     [...filt, ...filtInversores].forEach(l => {
-      matchLeadProps(l, todasProps).forEach(p => {
+      (matchesByLeadId.get(l.id) || []).forEach(p => {
         if (!matchesVistos.has(`${l.id}-${p.id}`)) count++;
       });
     });
     return count;
-  }, [filt, filtInversores, todasProps, matchesVistos]);
+  }, [filt, filtInversores, matchesByLeadId, matchesVistos]);
 
   const leadsConMatchNuevo = useMemo(() => {
     const ids = new Set();
     [...filt, ...filtInversores].forEach(l => {
-      if (matchLeadProps(l, todasProps).some(p => !matchesVistos.has(`${l.id}-${p.id}`)))
+      if ((matchesByLeadId.get(l.id) || []).some(p => !matchesVistos.has(`${l.id}-${p.id}`)))
         ids.add(l.id);
     });
     return ids;
-  }, [filt, filtInversores, todasProps, matchesVistos]);
+  }, [filt, filtInversores, matchesByLeadId, matchesVistos]);
 
   function marcarMatchesVistos() {
     const nuevos = new Set(matchesVistos);
     [...filt, ...filtInversores].forEach(l => {
-      matchLeadProps(l, todasProps).forEach(p => nuevos.add(`${l.id}-${p.id}`));
+      (matchesByLeadId.get(l.id) || []).forEach(p => nuevos.add(`${l.id}-${p.id}`));
     });
     setMatchesVistos(nuevos);
     localStorage.setItem("alba_matches_vistos", JSON.stringify([...nuevos]));
@@ -120,7 +143,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
   }
 
   async function confirmarPerdido(lead, motivo) {
-    await updateLead(lead.id, { etapa:"Perdido", motivo_perdida:motivo });
+    await updateLead(lead.id, { etapa: "Perdido", motivo_perdida: motivo });
     setModalPerdido(null);
   }
 
@@ -133,14 +156,15 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
     if (exp === confirmDelete.id) setExp(null);
   }
 
-  // Mail de pedidos
-  const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido" && l.presup && l.zona).sort((a,b) => a.dias - b.dias);
+  const activos = leads.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido" && l.presup && l.zona)
+    .sort((a, b) => a.dias - b.dias);
+
   function generarMail() {
     const cal = activos.filter(l => l.dias <= 2);
     const tib = activos.filter(l => l.dias > 2 && l.dias <= 7);
     const fmt = l => {
       const precio = l.presup ? `USD ${l.presup.toLocaleString()}` : "presupuesto a consultar";
-      const partes = [l.tipo, l.zona&&`en ${l.zona}`, precio].filter(Boolean).join(", ");
+      const partes = [l.tipo, l.zona && `en ${l.zona}`, precio].filter(Boolean).join(", ");
       const extras = [l.credito==="si"&&"crédito aprobado",l.cochera==="si"&&"con cochera",l.patio==="si"&&"con patio",l.ambientes&&`${l.ambientes} amb`].filter(Boolean).join(" · ");
       return `• ${partes}${extras ? ` — ${extras}` : ""}`;
     };
@@ -157,268 +181,348 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
     setTimeout(() => setMailCopiado(false), 2000);
   }
 
-  const chip = (act, c) => ({
-    padding:"4px 11px", borderRadius:20, fontSize:11, cursor:"pointer",
-    border:`1px solid ${act ? c : B.border}`,
-    background: act ? `${c}22` : "transparent",
-    color: act ? c : B.muted,
-  });
-
   const leadsActivos = pagina === "compradores" ? filt : filtInversores;
 
-  const grupos = [
-    { titulo:"🔴 CALIENTES", color:B.hot,  leads: leadsActivos.filter(l => { const s=scoreLead(l).label; return s.includes("Caliente")||l.etapa==="Negociación"; }) },
-    { titulo:"🟡 TIBIOS",    color:B.warm, leads: leadsActivos.filter(l => { const s=scoreLead(l).label; return s.includes("Tibio")&&l.etapa!=="Negociación"; }) },
-    { titulo:"⚪ FRÍOS",     color:B.dim,  leads: leadsActivos.filter(l => { const s=scoreLead(l).label; return s.includes("Frío"); }) },
-  ].filter(g => g.leads.length > 0);
-
   const leadTop = useMemo(() => {
-    const activos = leadsActivos.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
-    return activos.sort((a, b) => {
-      const mA = matchLeadProps(a, todasProps).length;
-      const mB = matchLeadProps(b, todasProps).length;
+    const act = leadsActivos.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
+    return act.sort((a, b) => {
+      const mA = (matchesByLeadId.get(a.id) || []).length;
+      const mB = (matchesByLeadId.get(b.id) || []).length;
       return computeRanking(b, mB).prioridad - computeRanking(a, mA).prioridad;
     })[0] || null;
-  }, [leadsActivos, todasProps]);
+  }, [leadsActivos, matchesByLeadId]);
 
-  const urgenciaColor = { alta: B.hot, media: B.warm, baja: B.dim };
+  // ── KPI calculations ─────────────────────────────────────
+  const { kpiActivos, kpiSinContacto, kpiAcciones, kpiConMatches } = useMemo(() => {
+    let activos = 0, sinContacto = 0, acciones = 0, conMatches = 0;
+    for (const l of leads) {
+      const viva = l.etapa !== "Cerrado" && l.etapa !== "Perdido";
+      if (viva) activos++;
+      if (viva && l.dias !== null && l.dias > 3) sinContacto++;
+      if (l.etapa === "Negociación" || l.etapa === "Visita") acciones++;
+      if (viva && (matchesByLeadId.get(l.id) || []).length > 0) conMatches++;
+    }
+    return { kpiActivos: activos, kpiSinContacto: sinContacto, kpiAcciones: acciones, kpiConMatches: conMatches };
+  }, [leads, matchesByLeadId]);
 
-  const cardProps = { mobile, properties, captaciones, mostrados, toggleMostrado, updateLead, deleteLead, setEtapa, setAgente, setModalPerdido, setConfirmDelete };
+  const today = new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
+
+  const cardSharedProps = {
+    mobile, properties, captaciones, mostrados, toggleMostrado,
+    updateLead, deleteLead, setEtapa, setAgente, setModalPerdido, setConfirmDelete,
+  };
+
+  // ── Layout padding must match Layout.jsx (22px 26px desktop / 14px 12px mobile)
+  const lv = mobile ? 14 : 22;
+  const lh = mobile ? 12 : 26;
 
   return (
-    <div style={{ maxWidth: mobile ? "100%" : 800 }}>
-      {/* Header */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
-        marginBottom: mobile ? 12 : 16, flexWrap: mobile ? "wrap" : "nowrap", gap: mobile ? 8 : 0 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
-          <h1 style={{ fontSize: mobile ? 18 : 20, fontWeight:700, color:B.text, margin:0, fontFamily:"Georgia,serif" }}>CRM Leads</h1>
-          {matchesNuevos > 0 && (
-            <button onClick={marcarMatchesVistos}
-              style={{ display:"flex", alignItems:"center", gap:4, padding: mobile ? "6px 12px" : "4px 10px",
-                borderRadius:8, background:"rgba(232,168,48,0.15)", border:"1px solid rgba(232,168,48,0.4)",
-                color:"#E8A830", fontSize: mobile ? 12 : 11, fontWeight:700, cursor:"pointer" }}>
-              🔔 {matchesNuevos} match{matchesNuevos>1?"es":""} nuevo{matchesNuevos>1?"s":""}
-            </button>
-          )}
+    <div style={{
+      margin: `-${lv}px -${lh}px`,
+      padding: `${lv}px ${lh}px 32px`,
+      background: "#f4f7fb",
+      minHeight: `calc(100% + ${lv * 2}px)`,
+    }}>
+
+      {/* ── HEADER ─────────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+        gap: 12, marginBottom: 20, flexWrap: mobile ? "wrap" : "nowrap" }}>
+
+        <div>
+          <h1 style={{ margin: 0, fontSize: mobile ? 22 : 26, fontWeight: 800, color: "#1a2744",
+            fontFamily: "'DM Sans', sans-serif", lineHeight: 1.1 }}>
+            CRM Leads
+          </h1>
+          <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b", fontWeight: 400 }}>
+            Gestioná tus compradores e inversores
+          </p>
         </div>
-        <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-          {/* Switch Lista / Kanban */}
-          <div style={{ display:"flex", background:B.card, borderRadius:8, padding:3, border:`1px solid ${B.border}` }}>
-            {[{ id:"lista", label:"≡ Lista" }, { id:"kanban", label:"⬜ Kanban" }].map(v => (
-              <button key={v.id} onClick={() => setVista(v.id)}
-                style={{ padding: mobile ? "6px 12px" : "4px 11px", borderRadius:6,
-                  cursor:"pointer", fontSize: mobile ? 12 : 11, fontWeight:600, border:"none",
-                  background: vista===v.id ? B.accent : "transparent",
-                  color: vista===v.id ? "#fff" : "#8AAECC" }}>
-                {v.label}
-              </button>
-            ))}
+
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: "none" }}>
+          {/* Buscador */}
+          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+            <span style={{ position: "absolute", left: 10, fontSize: 14, color: "#94a3b8" }}>🔍</span>
+            <input
+              placeholder="Buscar nombre, zona o teléfono..."
+              value={q} onChange={e => setQ(e.target.value)}
+              style={{ paddingLeft: 32, paddingRight: 12, paddingTop: 8, paddingBottom: 8,
+                border: "1px solid #e5eaf2", borderRadius: 10, fontSize: 13,
+                background: "#fff", color: "#1a2744", outline: "none",
+                width: mobile ? "100%" : 260,
+                boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }} />
           </div>
-          <button onClick={() => setShowMail(m => !m)}
-            style={{ padding: mobile ? "7px 14px" : "5px 12px", borderRadius:8, cursor:"pointer",
-              fontSize: mobile ? 13 : 12, fontWeight:600,
-              background: showMail ? B.accent : "rgba(42,91,173,0.12)",
-              border:`1px solid ${showMail ? B.accentL : B.border}`,
-              color: showMail ? "#fff" : B.accentL }}>
-            ✉ Mail pedidos
-          </button>
+
+          {/* Filtros y acciones */}
           <button onClick={() => setMostrarPerdidos(p => !p)}
-            style={{ fontSize: mobile ? 13 : 12, color:mostrarPerdidos?B.hot:B.dim, cursor:"pointer",
-              background:"transparent", border:`1px solid ${mostrarPerdidos?B.hot:B.border}`,
-              borderRadius:6, padding: mobile ? "6px 12px" : "4px 10px" }}>
+            style={{ padding: "8px 14px", borderRadius: 10, cursor: "pointer",
+              fontSize: 12, fontWeight: 600, border: "1px solid #e5eaf2",
+              background: mostrarPerdidos ? "#fee2e2" : "#fff",
+              color: mostrarPerdidos ? "#dc2626" : "#64748b",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
             {mostrarPerdidos ? "Ocultar archivados" : `Archivados (${perdidosCount})`}
           </button>
+
+          <button onClick={() => setShowMail(m => !m)}
+            style={{ padding: "8px 14px", borderRadius: 10, cursor: "pointer",
+              fontSize: 12, fontWeight: 600,
+              background: showMail ? "#1e3a5f" : "#fff",
+              border: `1px solid ${showMail ? "#1e3a5f" : "#e5eaf2"}`,
+              color: showMail ? "#fff" : "#1e3a5f",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+            ✉ Mail pedidos
+          </button>
+
+          {matchesNuevos > 0 && (
+            <button onClick={marcarMatchesVistos}
+              style={{ padding: "8px 14px", borderRadius: 10, cursor: "pointer",
+                fontSize: 12, fontWeight: 700, border: "1px solid rgba(37,99,235,0.3)",
+                background: "rgba(37,99,235,0.08)", color: "#2563eb" }}>
+              🔔 {matchesNuevos} match{matchesNuevos > 1 ? "es" : ""} nuevo{matchesNuevos > 1 ? "s" : ""}
+            </button>
+          )}
+
+          {/* Fecha */}
+          <div style={{ padding: "6px 12px", borderRadius: 10, background: "#fff",
+            border: "1px solid #e5eaf2", fontSize: 11, color: "#64748b", fontWeight: 500,
+            boxShadow: "0 1px 4px rgba(0,0,0,0.04)", whiteSpace: "nowrap" }}>
+            📅 {today}
+          </div>
         </div>
+      </div>
+
+      {/* ── KPIs ───────────────────────────────────────────── */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+        <CRMKpiCard icon="👥" value={leads.length}   label="Leads totales"
+          sub="en base de datos" color="#2563eb"
+          sparkline={[Math.max(1,leads.length-8),leads.length-5,leads.length-3,leads.length-1,leads.length]} />
+        <CRMKpiCard icon="🔥" value={kpiActivos}     label="Leads activos"
+          sub="excluye cerrados y perdidos" color="#ea580c"
+          sparkline={[kpiActivos-4,kpiActivos-2,kpiActivos-3,kpiActivos-1,kpiActivos].map(n=>Math.max(0,n))} />
+        <CRMKpiCard icon="🏠" value={kpiConMatches}  label="Con matches"
+          sub="tienen propiedades compatibles" color="#7c3aed"
+          sparkline={[kpiConMatches-3,kpiConMatches-1,kpiConMatches-2,kpiConMatches,kpiConMatches].map(n=>Math.max(0,n))} />
+        <CRMKpiCard icon="⚠️" value={kpiSinContacto} label="Sin contacto +3d"
+          sub="requieren seguimiento" color="#dc2626"
+          alert={kpiSinContacto > 5}
+          sparkline={[kpiSinContacto+2,kpiSinContacto+1,kpiSinContacto+3,kpiSinContacto+1,kpiSinContacto].map(n=>Math.max(0,n))} />
+        <CRMKpiCard icon="⚡" value={kpiAcciones}    label="Acciones hoy"
+          sub="en Negociación o Visita" color="#d97706"
+          sparkline={[kpiAcciones-1,kpiAcciones,kpiAcciones+1,kpiAcciones,kpiAcciones].map(n=>Math.max(0,n))} />
       </div>
 
       {/* Panel mail */}
       {showMail && (
-        <div style={{ background:"rgba(10,21,37,0.95)", border:`1px solid ${B.accentL}40`,
-          borderRadius:12, overflow:"hidden", marginBottom: mobile ? 12 : 14 }}>
-          <div style={{ padding: mobile ? "12px 14px" : "10px 16px", borderBottom:`1px solid ${B.border}`,
-            display:"flex", alignItems:"center", justifyContent:"space-between",
-            flexWrap: mobile ? "wrap" : "nowrap", gap: mobile ? 8 : 0 }}>
-            <span style={{ fontSize: mobile ? 12 : 11, fontWeight:700, color:B.accentL }}>
-              ✉ MAIL DE PEDIDOS — {activos.filter(l=>l.dias<=7).length} búsquedas activas
+        <div style={{ background: "#fff", border: "1px solid #bfdbfe", borderRadius: 14,
+          overflow: "hidden", marginBottom: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid #e5eaf2",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            flexWrap: "wrap", gap: 8, background: "#f8faff" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#1e3a5f" }}>
+              ✉ MAIL DE PEDIDOS — {activos.filter(l => l.dias <= 7).length} búsquedas activas
             </span>
-            <div style={{ display:"flex", gap: mobile ? 8 : 6 }}>
+            <div style={{ display: "flex", gap: 6 }}>
               <button onClick={copiarMail}
-                style={{ padding: mobile ? "6px 14px" : "4px 12px", borderRadius:7, cursor:"pointer",
-                  background: mailCopiado ? "#2E9E6A" : B.accent, border:"none",
-                  color:"#fff", fontSize: mobile ? 12 : 11, fontWeight:700 }}>
+                style={{ padding: "6px 14px", borderRadius: 8, cursor: "pointer",
+                  background: mailCopiado ? "#16a34a" : "#1e3a5f", border: "none",
+                  color: "#fff", fontSize: 12, fontWeight: 700 }}>
                 {mailCopiado ? "✓ Copiado" : "Copiar"}
               </button>
               <a href={`mailto:?subject=Pedidos%20Alba%20Inversiones&body=${encodeURIComponent(generarMail())}`}
-                style={{ padding: mobile ? "6px 14px" : "4px 12px", borderRadius:7,
-                  background:"transparent", border:`1px solid ${B.border}`,
-                  color:"#8AAECC", fontSize: mobile ? 12 : 11, fontWeight:600, textDecoration:"none" }}>
+                style={{ padding: "6px 14px", borderRadius: 8, background: "#fff",
+                  border: "1px solid #e5eaf2", color: "#64748b", fontSize: 12, fontWeight: 600,
+                  textDecoration: "none" }}>
                 Abrir en mail
               </a>
             </div>
           </div>
-          <pre style={{ margin:0, padding: mobile ? "14px" : "12px 16px", fontSize: mobile ? 13 : 12,
-            color:"#C8D8E8", lineHeight:1.7, whiteSpace:"pre-wrap",
-            fontFamily:"-apple-system,sans-serif", maxHeight:320, overflowY:"auto" }}>
+          <pre style={{ margin: 0, padding: "14px 16px", fontSize: 12, color: "#1a2744",
+            lineHeight: 1.7, whiteSpace: "pre-wrap", fontFamily: "-apple-system, sans-serif",
+            maxHeight: 280, overflowY: "auto" }}>
             {generarMail()}
           </pre>
         </div>
       )}
 
-      {/* Vista Kanban */}
+      {/* ── TABS + ACCIÓN DEL DÍA ──────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12,
+        marginBottom: 16, flexWrap: mobile ? "wrap" : "nowrap" }}>
+
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 4, background: "#fff", borderRadius: 12,
+          padding: 4, border: "1px solid #e5eaf2",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.04)", flexShrink: 0 }}>
+          {[
+            { id: "compradores", label: "🏠 Compradores", count: filt.length,          color: "#1e3a5f" },
+            { id: "inversores",  label: "💼 Inversores",  count: filtInversores.length, color: "#7c3aed" },
+          ].map(t => (
+            <button key={t.id} onClick={() => { setPagina(t.id); setExp(null); }}
+              style={{ padding: "8px 18px", borderRadius: 9, cursor: "pointer",
+                fontSize: 13, fontWeight: 600, border: "none",
+                background: pagina === t.id ? t.color : "transparent",
+                color: pagina === t.id ? "#fff" : "#64748b",
+                transition: "all 0.15s" }}>
+              {t.label}
+              <span style={{ marginLeft: 6, opacity: 0.75, fontSize: 11 }}>({t.count})</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Acción del día compacta */}
+        {leadTop && (() => {
+          const rec = getRecommendedAction(leadTop);
+          const col = rec.urgencia === "alta" ? "#dc2626" : rec.urgencia === "media" ? "#d97706" : "#64748b";
+          return (
+            <div style={{ flex: 1, background: "#fff", border: `1px solid ${col}40`,
+              borderLeft: `4px solid ${col}`, borderRadius: 12, padding: "10px 14px",
+              display: "flex", alignItems: "center", gap: 10,
+              boxShadow: "0 1px 6px rgba(0,0,0,0.05)", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", flexDirection: "column", minWidth: 40, flexShrink: 0 }}>
+                <span style={{ fontSize: 9, fontWeight: 800, color: col, letterSpacing: "1px" }}>ACCIÓN</span>
+                <span style={{ fontSize: 9, fontWeight: 800, color: col, letterSpacing: "1px" }}>DEL DÍA</span>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#1a2744",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {leadTop.nombre}
+                  {leadTop.zona && <span style={{ fontWeight: 400, color: "#64748b" }}> · {leadTop.zona}</span>}
+                </div>
+                <div style={{ fontSize: 11, color: "#64748b" }}>{rec.motivo}</div>
+              </div>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: col, background: `${col}15`,
+                  padding: "3px 10px", borderRadius: 20, border: `1px solid ${col}35`,
+                  whiteSpace: "nowrap" }}>
+                  {rec.accion}
+                </span>
+                <button onClick={() => setExp(exp === leadTop.id ? null : leadTop.id)}
+                  style={{ fontSize: 11, color: "#2563eb", background: "rgba(37,99,235,0.08)",
+                    border: "1px solid rgba(37,99,235,0.2)", borderRadius: 8, padding: "3px 10px",
+                    cursor: "pointer", fontWeight: 600 }}>
+                  Ver →
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* ── TOOLBAR ────────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14,
+        flexWrap: "wrap" }}>
+
+        {/* Vista switcher */}
+        <div style={{ display: "flex", background: "#fff", borderRadius: 10, padding: 3,
+          border: "1px solid #e5eaf2", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+          {[
+            { id: "lista",  label: "⊞ Cards" },
+            { id: "kanban", label: "⬜ Kanban" },
+          ].map(v => (
+            <button key={v.id} onClick={() => { setVista(v.id); setExp(null); }}
+              style={{ padding: "5px 14px", borderRadius: 8, cursor: "pointer",
+                fontSize: 12, fontWeight: 600, border: "none",
+                background: vista === v.id ? "#1e3a5f" : "transparent",
+                color: vista === v.id ? "#fff" : "#64748b",
+                transition: "all 0.15s" }}>
+              {v.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Filtro temperatura */}
+        <div style={{ display: "flex", gap: 4 }}>
+          {["Todos", "Caliente", "Tibio", "Frío"].map(s => {
+            const c = s === "Caliente" ? "#dc2626" : s === "Tibio" ? "#d97706" : s === "Frío" ? "#64748b" : "#2563eb";
+            const act = fs === s;
+            return (
+              <button key={s} onClick={() => setFs(s)}
+                style={{ padding: "5px 12px", borderRadius: 20, cursor: "pointer",
+                  fontSize: 11, fontWeight: 600, border: `1px solid ${act ? c : "#e5eaf2"}`,
+                  background: act ? `${c}15` : "#fff", color: act ? c : "#94a3b8" }}>
+                {s}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Filtro agente */}
+        <div style={{ display: "flex", gap: 4 }}>
+          {["Todos", "C", "A", "F", "L", "Lu", "Sin asignar"].map(a => {
+            const c = a === "Sin asignar" ? "#dc2626" : a === "Todos" ? "#2563eb" : AG[a]?.c || "#64748b";
+            const act = fa === a;
+            return (
+              <button key={a} onClick={() => setFa(a)}
+                style={{ padding: "5px 12px", borderRadius: 20, cursor: "pointer",
+                  fontSize: 11, fontWeight: 600, border: `1px solid ${act ? c : "#e5eaf2"}`,
+                  background: act ? `${c}15` : "#fff", color: act ? c : "#94a3b8" }}>
+                {a === "Todos" ? "Todos" : a === "Sin asignar" ? "—" : AG[a]?.n || a}
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ marginLeft: "auto", fontSize: 12, color: "#94a3b8", fontWeight: 500 }}>
+          {leadsActivos.length} {leadsActivos.length === 1 ? "lead" : "leads"} · ordenado por prioridad
+        </div>
+      </div>
+
+      {/* ── VISTA KANBAN ───────────────────────────────────── */}
       {vista === "kanban" && (
+        <Kanban
+          leads={leads.filter(l => !l.inversor)}
+          updateLead={updateLead}
+        />
+      )}
+
+      {/* ── VISTA CARDS (GRILLA) ───────────────────────────── */}
+      {vista === "lista" && (
         <>
-          <div style={{ fontSize:11, color:B.dim, marginBottom:10, letterSpacing:"0.03em" }}>
-            Vista Kanban · compradores activos
-          </div>
-          <Kanban
-            leads={leads.filter(l => !l.inversor)}
-            updateLead={updateLead}
-          />
+          {leadsActivos.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8", fontSize: 14 }}>
+              Sin resultados para los filtros aplicados
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: gridCols(ww), gap: 12, alignItems: "start" }}>
+              {leadsActivos.map(lead => (
+                <LeadCardPro
+                  key={lead.id}
+                  lead={lead}
+                  matches={matchesByLeadId.get(lead.id) || []}
+                  isOpen={exp === lead.id}
+                  onToggle={() => setExp(exp === lead.id ? null : lead.id)}
+                  isBlurred={exp !== null && exp !== lead.id}
+                  hasNewMatch={leadsConMatchNuevo.has(lead.id)}
+                  {...cardSharedProps}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
 
-      {/* Vista Lista (todo lo siguiente) */}
-      {vista === "lista" && <>
-
-      {/* Tabs */}
-      <div style={{ display:"flex", gap:4, background:B.card, borderRadius:10, padding:4,
-        border:`1px solid ${B.border}`, marginBottom: mobile ? 12 : 14,
-        width: mobile ? "100%" : "fit-content" }}>
-        {[
-          { id:"compradores", label:"🏠 Compradores", count:filt.length },
-          { id:"inversores",  label:"💼 Inversores",  count:filtInversores.length, color:"#9B6DC8" },
-        ].map(t => (
-          <button key={t.id} onClick={() => setPagina(t.id)}
-            style={{ flex: mobile ? 1 : "none", padding: mobile ? "8px 16px" : "6px 16px",
-              borderRadius:7, cursor:"pointer", fontSize: mobile ? 13 : 12, fontWeight:600, border:"none",
-              background: pagina===t.id ? (t.color||B.accent) : "transparent",
-              color: pagina===t.id ? "#fff" : "#8AAECC" }}>
-            {t.label} <span style={{ opacity:0.7, fontSize: mobile ? 11 : 10 }}>({t.count})</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Filtros */}
-      <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12,
-        padding: mobile ? "12px 14px" : "14px 16px", marginBottom: mobile ? 12 : 16 }}>
-        <input placeholder="Buscar nombre, zona o teléfono..."
-          value={q} onChange={e => setQ(e.target.value)}
-          style={{ width:"100%", background:"transparent", border:`1px solid ${B.border}`,
-            borderRadius:8, padding: mobile ? "10px 12px" : "8px 12px", color:B.text,
-            fontSize: mobile ? 13 : 12, marginBottom:10, outline:"none", boxSizing:"border-box" }} />
-        <div style={{ display:"flex", flexWrap:"wrap", gap: mobile ? 10 : 12, flexDirection: mobile ? "column" : "row" }}>
-          <div style={{ display:"flex", gap:4, alignItems:"center", flexWrap:"wrap" }}>
-            <span style={{ fontSize: mobile ? 12 : 11, color:B.muted }}>TEMP</span>
-            {["Todos","Caliente","Tibio","Frío"].map(s => (
-              <button key={s} onClick={() => setFs(s)}
-                style={{...chip(fs===s, s==="Caliente"?B.hot:s==="Tibio"?B.warm:B.muted),
-                  padding: mobile ? "6px 12px" : "4px 11px", fontSize: mobile ? 12 : 11}}>{s}</button>
-            ))}
-          </div>
-          <div style={{ display:"flex", gap:4, alignItems:"center", flexWrap:"wrap" }}>
-            <span style={{ fontSize: mobile ? 12 : 11, color:B.muted }}>AGENTE</span>
-            {["Todos","C","A","F","L","Lu","Sin asignar"].map(a => (
-              <button key={a} onClick={() => setFa(a)}
-                style={{...chip(fa===a, a==="Sin asignar"?B.hot:a!=="Todos"?AG[a]?.c:B.accentL),
-                  padding: mobile ? "6px 12px" : "4px 11px", fontSize: mobile ? 12 : 11}}>
-                {a==="Todos"?"Todos":a==="Sin asignar"?"—":AG[a]?.n}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Acción del día */}
-      {leadTop && (() => {
-        const score = getPriorityScore(leadTop);
-        const rec   = getRecommendedAction(leadTop);
-        const col   = urgenciaColor[rec.urgencia];
-        return (
-          <div style={{ background:`${col}12`, border:`1px solid ${col}40`,
-            borderLeft:`4px solid ${col}`, borderRadius:10,
-            padding: mobile ? "12px 14px" : "14px 16px", marginBottom: mobile ? 12 : 16,
-            display:"flex", alignItems:"center", gap: mobile ? 10 : 14,
-            flexWrap: mobile ? "wrap" : "nowrap" }}>
-            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", minWidth: mobile ? 44 : 48 }}>
-              <span style={{ fontSize: mobile ? 20 : 22, fontWeight:900, color:col,
-                lineHeight:1, fontFamily:"Georgia,serif" }}>{score}</span>
-              <span style={{ fontSize:9, color:B.dim, letterSpacing:"1px", marginTop:1 }}>SCORE</span>
-            </div>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize: mobile ? 10 : 9, fontWeight:700, color:col,
-                letterSpacing:"1.5px", marginBottom:3 }}>ACCIÓN DEL DÍA</div>
-              <div style={{ fontSize: mobile ? 14 : 13, fontWeight:700, color:B.text, marginBottom:2 }}>
-                {leadTop.nombre}
-                {leadTop.zona && <span style={{ fontWeight:400, color:B.dim, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}> · {leadTop.zona}</span>}
-              </div>
-              <div style={{ fontSize: mobile ? 12 : 11, color:B.dim }}>{rec.motivo}</div>
-            </div>
-            <div style={{ display:"flex", flexDirection:"column", alignItems: mobile ? "flex-start" : "flex-end",
-              gap:6, flexShrink:0 }}>
-              <span style={{ fontSize: mobile ? 13 : 12, fontWeight:700, color:col,
-                background:`${col}18`, padding:"4px 12px", borderRadius:20,
-                border:`1px solid ${col}40`, whiteSpace:"nowrap" }}>
-                {rec.accion}
-              </span>
-              <button onClick={() => setExp(leadTop.id)}
-                style={{ fontSize: mobile ? 11 : 10, color:B.accentL, background:"transparent",
-                  border:`1px solid ${B.border}`, borderRadius:6, padding:"3px 10px",
-                  cursor:"pointer" }}>
-                Ver lead →
-              </button>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Grupos */}
-      {grupos.map(grupo => (
-        <div key={grupo.titulo} style={{ marginBottom: mobile ? 14 : 16 }}>
-          <div style={{ fontSize: mobile ? 12 : 11, fontWeight:700, color:grupo.color,
-            letterSpacing:"1.5px", marginBottom: mobile ? 10 : 8, paddingLeft:4 }}>
-            {grupo.titulo} <span style={{ fontWeight:400, color:B.muted }}>({grupo.leads.length})</span>
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap: mobile ? 10 : 8 }}>
-            {grupo.leads.map(lead => (
-              <LeadCard key={lead.id} lead={lead}
-                open={exp === lead.id}
-                onToggle={() => setExp(exp === lead.id ? null : lead.id)}
-                isBlurred={exp !== null && exp !== lead.id}
-                hasNewMatch={leadsConMatchNuevo.has(lead.id)}
-                {...cardProps} />
-            ))}
-          </div>
-        </div>
-      ))}
-
-      {leadsActivos.length === 0 && (
-        <div style={{ textAlign:"center", padding: mobile ? "50px 20px" : "40px",
-          color:"#8AAECC", fontSize: mobile ? 14 : 13 }}>Sin resultados</div>
-      )}
-
-      {/* Modal eliminar */}
+      {/* ── MODAL ELIMINAR ─────────────────────────────────── */}
       {confirmDelete && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)",
-          display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}
           onClick={() => setConfirmDelete(null)}>
-          <div style={{ background:B.sidebar, border:`1px solid ${B.hot}50`, borderRadius:14,
-            padding:"28px 32px", maxWidth:380, width:"90%", boxShadow:"0 24px 80px rgba(0,0,0,0.8)" }}
+          <div style={{ background: "#fff", border: "1px solid #fecaca", borderRadius: 16,
+            padding: "28px 32px", maxWidth: 380, width: "90%",
+            boxShadow: "0 24px 80px rgba(0,0,0,0.25)" }}
             onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize:22, marginBottom:12, textAlign:"center" }}>🗑</div>
-            <div style={{ fontSize:15, fontWeight:700, color:B.text, fontFamily:"Georgia,serif",
-              marginBottom:8, textAlign:"center" }}>¿Eliminar lead?</div>
-            <div style={{ fontSize:13, color:"#8AAECC", textAlign:"center", marginBottom:24 }}>
-              Vas a eliminar a <strong style={{ color:B.text }}>{confirmDelete.nombre}</strong>. No se puede deshacer.
+            <div style={{ fontSize: 24, marginBottom: 12, textAlign: "center" }}>🗑</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#1a2744",
+              marginBottom: 8, textAlign: "center" }}>¿Eliminar lead?</div>
+            <div style={{ fontSize: 13, color: "#64748b", textAlign: "center", marginBottom: 24 }}>
+              Vas a eliminar a <strong style={{ color: "#1a2744" }}>{confirmDelete.nombre}</strong>. No se puede deshacer.
             </div>
-            <div style={{ display:"flex", gap:10 }}>
+            <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setConfirmDelete(null)}
-                style={{ flex:1, padding:"11px", borderRadius:9, cursor:"pointer",
-                  background:"transparent", border:`1px solid ${B.border}`, color:"#8AAECC", fontSize:13 }}>
+                style={{ flex: 1, padding: 11, borderRadius: 9, cursor: "pointer",
+                  background: "#f8fafc", border: "1px solid #e5eaf2", color: "#64748b", fontSize: 13 }}>
                 Cancelar
               </button>
               <button onClick={ejecutarEliminar}
-                style={{ flex:1, padding:"11px", borderRadius:9, cursor:"pointer",
-                  background:B.hot, border:`1px solid ${B.hot}`, color:"#fff", fontSize:13, fontWeight:700 }}>
+                style={{ flex: 1, padding: 11, borderRadius: 9, cursor: "pointer",
+                  background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700 }}>
                 Sí, eliminar
               </button>
             </div>
@@ -431,8 +535,6 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           onConfirmar={confirmarPerdido}
           onCancelar={() => setModalPerdido(null)} />
       )}
-
-      </> /* fin vista lista */}
     </div>
   );
 }
