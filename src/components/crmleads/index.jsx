@@ -22,10 +22,9 @@ function useWindowWidth() {
 }
 
 function gridCols(w) {
-  if (w >= 1400) return "repeat(4, 1fr)";
-  if (w >= 1000) return "repeat(3, 1fr)";
-  if (w >= 640)  return "repeat(2, 1fr)";
-  return "1fr";
+  if (w >= 1100) return "repeat(3, minmax(0, 1fr))";
+  if (w >= 640)  return "repeat(2, minmax(0, 1fr))";
+  return "minmax(0, 1fr)";
 }
 
 export default function CRMLeads({ leads, updateLead, deleteLead, properties, captaciones, supabase }) {
@@ -222,6 +221,8 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
       padding: `${lv}px ${lh}px 32px`,
       background: "#f4f7fb",
       minHeight: `calc(100% + ${lv * 2}px)`,
+      overflowX: "hidden",
+      boxSizing: "border-box",
     }}>
 
       {/* ── HEADER ─────────────────────────────────────────── */}

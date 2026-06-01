@@ -40,7 +40,7 @@ function diasColor(dias) {
 function DataPill({ label, value }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-      <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+      <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>
         {label}
       </div>
       <div style={{ fontSize: 12, fontWeight: 600, color: "#1e3a5f" }}>{value}</div>
@@ -70,29 +70,42 @@ export default function LeadCardPro({
 
   if (isOpen) {
     return (
-      <div style={{ gridColumn: "1 / -1" }}>
+      <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
         <div style={{
-          background: "#fff",
-          border: "1px solid #bfdbfe",
-          borderRadius: 16,
+          background: "#f8fafc",
+          border: "1px solid #dbeafe",
+          borderRadius: 18,
+          boxShadow: "0 4px 24px rgba(37,99,235,0.08)",
           overflow: "hidden",
-          boxShadow: "0 4px 24px rgba(37,99,235,0.10)",
         }}>
+          {/* Header claro con nombre y cerrar */}
           <div style={{
-            background: "#1e3a5f",
+            background: "#fff",
+            borderBottom: "1px solid #e5eaf2",
             padding: "10px 16px",
             display: "flex", alignItems: "center", justifyContent: "space-between",
           }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
-              {lead.nombre || "Sin nombre"}
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{
+                fontSize: 10, fontWeight: 800, letterSpacing: "0.08em",
+                color: badge.color, background: badge.bg,
+                padding: "2px 8px", borderRadius: 20,
+              }}>{badge.label}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#1a2744" }}>
+                {lead.nombre || "Sin nombre"}
+              </span>
+            </div>
             <button onClick={onToggle}
-              style={{ background: "rgba(255,255,255,0.12)", border: "none",
-                color: "#fff", borderRadius: 6, padding: "3px 10px", cursor: "pointer", fontSize: 12 }}>
+              style={{ background: "#f1f5f9", border: "1px solid #e5eaf2",
+                color: "#64748b", borderRadius: 8, padding: "4px 12px",
+                cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
               ✕ Cerrar
             </button>
           </div>
-          <LeadCard lead={lead} open={true} onToggle={onToggle} {...cardProps} />
+          {/* LeadCard original en contenedor con scroll controlado */}
+          <div style={{ maxHeight: "68vh", overflowY: "auto", overflowX: "hidden" }}>
+            <LeadCard lead={lead} open={true} onToggle={onToggle} {...cardProps} />
+          </div>
         </div>
       </div>
     );
@@ -104,17 +117,18 @@ export default function LeadCardPro({
       style={{
         background: "#fff",
         border: `1px solid ${hasNewMatch ? "#3b82f6" : "#e5eaf2"}`,
-        borderRadius: 16,
-        padding: "16px",
+        borderRadius: 14,
+        padding: "12px 14px",
         cursor: "pointer",
         opacity: isBlurred ? 0.38 : 1,
         transition: "opacity 0.15s, box-shadow 0.15s, border-color 0.15s",
         boxShadow: hasNewMatch
-          ? "0 0 0 3px rgba(59,130,246,0.15), 0 2px 10px rgba(0,0,0,0.07)"
-          : "0 1px 6px rgba(0,0,0,0.06)",
+          ? "0 0 0 3px rgba(59,130,246,0.15), 0 2px 8px rgba(0,0,0,0.06)"
+          : "0 1px 4px rgba(0,0,0,0.05)",
         display: "flex",
         flexDirection: "column",
-        gap: 10,
+        gap: 7,
+        minWidth: 0,
         minHeight: 0,
       }}
       onMouseEnter={e => {
@@ -155,11 +169,11 @@ export default function LeadCardPro({
 
       {/* Nombre + subtítulo */}
       <div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#1a2744", lineHeight: 1.25,
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#1a2744", lineHeight: 1.25,
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {lead.nombre || "Sin nombre"}
         </div>
-        <div style={{ fontSize: 11, color: "#64748b", marginTop: 2,
+        <div style={{ fontSize: 11, color: "#475569", marginTop: 1,
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {lead.inversor ? "💼 Inversor" : "🏠 Comprador"}
           {lead.zona ? ` · ${lead.zona}` : ""}
@@ -185,7 +199,7 @@ export default function LeadCardPro({
       )}
 
       {/* Datos en grid 2 cols */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "7px 14px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px 12px" }}>
         {precio     && <DataPill label="Presupuesto" value={precio} />}
         {lead.tipo  && <DataPill label="Tipo" value={lead.tipo} />}
         {lead.ambientes && <DataPill label="Ambientes" value={`${lead.ambientes} amb`} />}
@@ -198,7 +212,7 @@ export default function LeadCardPro({
       <div style={{
         background: matches.length > 0 ? "rgba(37,99,235,0.05)" : "#f8fafc",
         border: `1px solid ${matches.length > 0 ? "rgba(37,99,235,0.15)" : "#e5eaf2"}`,
-        borderRadius: 10, padding: "8px 10px",
+        borderRadius: 8, padding: "5px 9px",
         display: "flex", alignItems: "center", gap: 8,
       }}>
         <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.05em",
@@ -234,7 +248,7 @@ export default function LeadCardPro({
       </div>
 
       {/* Footer */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: 1 }}>
           <span style={{ fontSize: 11, color: diasColor(lead.dias), fontWeight: 500 }}>
             Último contacto: {diasLabel(lead.dias)}
