@@ -1,18 +1,18 @@
 // ══════════════════════════════════════════════════════════════
-// ALBA CRM — OfertaHome
-// TOP 3 zonas con mayor desequilibrio demanda/oferta.
-// Decisión de captación inmediata: Zona · Leads · Props · Estado
-// Reutiliza normZona() de domain/matching.js
+// ALBA CRM — OfertaHome v2
+// Zone cards 2 cols, compradores / propiedades / status badge.
 // ══════════════════════════════════════════════════════════════
 import React, { useMemo } from "react";
 import { B } from "../../data/constants.js";
 import { normZona } from "../../domain/matching.js";
+import { useNavigate } from "react-router-dom";
 
 export default function OfertaHome({ leads, properties, captaciones }) {
+  const navigate = useNavigate();
+
   const zonas = useMemo(() => {
     const map = {};
 
-    // Demanda: leads activos con zona
     leads.forEach(l => {
       if (!l.zona) return;
       l.zona.split(/[,/]/).map(z => normZona(z.trim())).filter(Boolean).forEach(z => {
@@ -21,7 +21,6 @@ export default function OfertaHome({ leads, properties, captaciones }) {
       });
     });
 
-    // Oferta: propiedades activas (peso 1.0)
     (properties || []).filter(p => p.activa !== false).forEach(p => {
       const z = normZona(p.zona || "");
       if (!z) return;
@@ -29,7 +28,6 @@ export default function OfertaHome({ leads, properties, captaciones }) {
       map[z].props += 1;
     });
 
-    // Oferta: captaciones (peso 0.5)
     (captaciones || []).forEach(c => {
       const z = normZona(c.zona || "");
       if (!z) return;
@@ -38,28 +36,20 @@ export default function OfertaHome({ leads, properties, captaciones }) {
     });
 
     return Object.entries(map)
-      .filter(([, v]) => v.leads >= 2) // mínimo 2 leads para ser relevante
+      .filter(([, v]) => v.leads >= 1)
       .map(([zona, v]) => {
-        const propsRedondeado = Math.round(v.props);
-        const desequilibrio = v.leads - v.props;
+        const props = Math.round(v.props);
+        const deq = v.leads - v.props;
         let estado;
-        if (desequilibrio >= 4) {
-          estado = { label: "Falta oferta", emoji: "🔴", color: "#FF4D4D" };
-        } else if (desequilibrio >= 2) {
-          estado = { label: "Alta demanda", emoji: "🟠", color: "#FF8C42" };
-        } else if (desequilibrio < -1) {
-          estado = { label: "Exceso oferta", emoji: "🟡", color: "#E8A830" };
-        } else {
-          estado = { label: "Equilibrado", emoji: "🟢", color: "#4ADE80" };
-        }
-        return { zona, leads: v.leads, props: propsRedondeado, desequilibrio, estado };
+        if (deq >= 4)       estado = { label: "Falta oferta",  color: "#EF4444" };
+        else if (deq >= 2)  estado = { label: "Alta demanda",  color: "#FF8C42" };
+        else if (deq < -1)  estado = { label: "Exceso oferta", color: "#E8A830" };
+        else                estado = { label: "Equilibrado",   color: "#4ADE80" };
+        return { zona, leads: v.leads, props, deq, estado };
       })
-      .sort((a, b) => b.desequilibrio - a.desequilibrio)
-      .slice(0, 3);
+      .sort((a, b) => b.deq - a.deq)
+      .slice(0, 6);
   }, [leads, properties, captaciones]);
-
-  // Captaciones sin zona (advertencia)
-  const capsSinZona = (captaciones || []).filter(c => !c.zona).length;
 
   if (zonas.length === 0) {
     return (
@@ -71,76 +61,63 @@ export default function OfertaHome({ leads, properties, captaciones }) {
 
   return (
     <div>
-      {/* Tabla de zonas */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "1fr auto auto auto",
-        gap: "0",
-        borderRadius: 8,
-        overflow: "hidden",
-        border: `1px solid ${B.border}`,
+        gridTemplateColumns: "1fr 1fr",
+        gap: 8,
+        marginBottom: 10,
       }}>
-        {/* Header */}
-        {["Zona", "Leads", "Props", "Estado"].map(h => (
-          <div key={h} style={{
-            padding: "6px 10px", fontSize: 10, fontWeight: 700,
-            color: B.dim, background: B.surface,
-            textTransform: "uppercase", letterSpacing: "0.7px",
-            borderBottom: `1px solid ${B.border}`,
+        {zonas.map(z => (
+          <div key={z.zona} style={{
+            background: "#0C1527",
+            border: "1px solid #1E293B",
+            borderRadius: 10,
+            padding: "12px 14px",
           }}>
-            {h}
-          </div>
-        ))}
-
-        {/* Filas */}
-        {zonas.map((z, i) => (
-          <React.Fragment key={z.zona}>
-            {/* Zona */}
+            {/* Nombre zona */}
             <div style={{
-              padding: "9px 10px", fontSize: 13, fontWeight: 600,
-              color: "#C8D8E8", textTransform: "capitalize",
-              background: i % 2 === 1 ? B.surface + "80" : "transparent",
-              borderBottom: i < zonas.length - 1 ? `1px solid ${B.border}40` : "none",
+              fontSize: 13, fontWeight: 700, color: "#E2E8F0",
+              textTransform: "capitalize", marginBottom: 6,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>
               {z.zona}
             </div>
-            {/* Leads */}
-            <div style={{
-              padding: "9px 10px", fontSize: 13, fontWeight: 700,
-              color: B.accentL, textAlign: "center",
-              background: i % 2 === 1 ? B.surface + "80" : "transparent",
-              borderBottom: i < zonas.length - 1 ? `1px solid ${B.border}40` : "none",
-            }}>
-              {z.leads}
+
+            {/* Conteos */}
+            <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
+              <div style={{ fontSize: 11, color: "#4A8AE8", fontWeight: 600 }}>
+                {z.leads} compradores
+              </div>
+              <div style={{ fontSize: 11, color: "#2E9E6A", fontWeight: 600 }}>
+                {z.props} propiedades
+              </div>
             </div>
-            {/* Props */}
+
+            {/* Badge estado */}
             <div style={{
-              padding: "9px 10px", fontSize: 13, fontWeight: 700,
-              color: "#2E9E6A", textAlign: "center",
-              background: i % 2 === 1 ? B.surface + "80" : "transparent",
-              borderBottom: i < zonas.length - 1 ? `1px solid ${B.border}40` : "none",
+              display: "inline-block",
+              fontSize: 10, fontWeight: 700, color: z.estado.color,
+              background: z.estado.color + "18",
+              border: `1px solid ${z.estado.color}30`,
+              padding: "2px 8px", borderRadius: 10,
             }}>
-              {z.props}
+              {z.estado.label}
             </div>
-            {/* Estado */}
-            <div style={{
-              padding: "9px 10px", fontSize: 11, fontWeight: 700,
-              color: z.estado.color, textAlign: "right", whiteSpace: "nowrap",
-              background: i % 2 === 1 ? B.surface + "80" : "transparent",
-              borderBottom: i < zonas.length - 1 ? `1px solid ${B.border}40` : "none",
-            }}>
-              {z.estado.emoji} {z.estado.label}
-            </div>
-          </React.Fragment>
+          </div>
         ))}
       </div>
 
-      {/* Advertencia captaciones sin zona */}
-      {capsSinZona > 0 && (
-        <div style={{ fontSize: 10, color: B.dim, marginTop: 8 }}>
-          {capsSinZona} captación{capsSinZona > 1 ? "es" : ""} sin zona no incluida{capsSinZona > 1 ? "s" : ""}
-        </div>
-      )}
+      {/* Footer link */}
+      <button
+        onClick={() => navigate("/captaciones")}
+        style={{
+          width: "100%", padding: "8px 0", borderRadius: 7, fontSize: 11,
+          fontWeight: 600, color: "#4A8AE8", background: "transparent",
+          border: "1px solid #1E293B", cursor: "pointer",
+          letterSpacing: "0.02em",
+        }}>
+        Ver todas las zonas ›
+      </button>
     </div>
   );
 }

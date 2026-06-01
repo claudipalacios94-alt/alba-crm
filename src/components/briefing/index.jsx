@@ -1,7 +1,6 @@
 // ══════════════════════════════════════════════════════════════
-// ALBA CRM — Home v2 (centro de mando operativo)
-// Responde: ¿Cómo va el negocio? ¿A quién llamo? ¿Qué tengo hoy?
-// Ruta /  — /briefing redirige acá via Navigate en App.jsx
+// ALBA CRM — Home v5 (centro de mando operativo)
+// Layout: KPIs full-width | Row A: 2 cols | Row B: 3 cols
 // ══════════════════════════════════════════════════════════════
 import React, { useMemo, useEffect, useState } from "react";
 import { B } from "../../data/constants.js";
@@ -12,7 +11,7 @@ import HoyHome            from "./HoyHome.jsx";
 import OperacionesRiesgo  from "./OperacionesRiesgo.jsx";
 import FranjaKPIs         from "./FranjaKPIs.jsx";
 
-// ── Utilidad mobile ───────────────────────────────────────────
+// ── Responsive ────────────────────────────────────────────────
 function useIsMobile(bp = 768) {
   const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
   useEffect(() => {
@@ -24,17 +23,19 @@ function useIsMobile(bp = 768) {
 }
 
 // ── Wrapper de sección ────────────────────────────────────────
-function Sec({ titulo, children, borderColor }) {
+function Sec({ titulo, children, borderColor, accion, onAccion }) {
   return (
     <div style={{
       background: B.card,
       border: `1px solid ${borderColor || B.border}`,
       borderRadius: 10,
       overflow: "hidden",
+      minWidth: 0,
     }}>
       <div style={{
         padding: "10px 16px 8px",
         borderBottom: `1px solid ${B.border}`,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <span style={{
           fontSize: 10, fontWeight: 700, color: B.dim,
@@ -42,6 +43,14 @@ function Sec({ titulo, children, borderColor }) {
         }}>
           {titulo}
         </span>
+        {accion && (
+          <button onClick={onAccion} style={{
+            fontSize: 10, color: "#4A8AE8", background: "transparent",
+            border: "none", cursor: "pointer", padding: 0, fontWeight: 600,
+          }}>
+            {accion}
+          </button>
+        )}
       </div>
       <div style={{ padding: "14px 16px" }}>{children}</div>
     </div>
@@ -66,9 +75,7 @@ export default function Briefing({ leads, properties, captaciones }) {
     [leads]
   );
 
-  // ── LLAMA HOY — top 5, orden transparente ─────────────────
-  // Incluir: tiene teléfono + (dias conocido O etapa avanzada)
-  // Orden: etapa rank ASC, luego dias DESC (null al final del grupo)
+  // ── LLAMA HOY ─────────────────────────────────────────────
   const [leadContactados, setLeadContactados] = useState({});
 
   const llamaHoy = useMemo(() => {
@@ -79,14 +86,12 @@ export default function Briefing({ leads, properties, captaciones }) {
       )
       .map(l => ({
         ...l,
-        // Si fue marcado contactado en esta sesión, forzar dias=0
         dias: leadContactados[l.id] ? 0 : l.dias,
       }))
       .sort((a, b) => {
         const ra = ETAPA_RANK[a.etapa] ?? 5;
         const rb = ETAPA_RANK[b.etapa] ?? 5;
         if (ra !== rb) return ra - rb;
-        // dias DESC, null al final
         const da = a.dias ?? -1;
         const db = b.dias ?? -1;
         return db - da;
@@ -105,7 +110,7 @@ export default function Briefing({ leads, properties, captaciones }) {
       gap: mobile ? 12 : 18, paddingBottom: 40,
     }}>
 
-      {/* Header — solo fecha */}
+      {/* Header */}
       <div style={{ paddingBottom: 14, borderBottom: `1px solid ${B.border}` }}>
         <div style={{
           fontSize: 10, color: B.dim, letterSpacing: "1.2px",
@@ -113,67 +118,60 @@ export default function Briefing({ leads, properties, captaciones }) {
         }}>
           {fechaLabel}
         </div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "#E2E8F0", marginTop: 4 }}>
+          Resumen del negocio
+        </div>
       </div>
 
-      {/* Franja de estado — ¿Cómo va el negocio? */}
+      {/* KPIs full-width */}
       <FranjaKPIs leads={leads} activos={activos} captaciones={captaciones} />
 
-      {/* Grid principal */}
+      {/* Row A: Operaciones en riesgo | Llama hoy */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: mobile ? "1fr" : "1.2fr 1fr",
+        gridTemplateColumns: mobile ? "1fr" : "1fr 1fr",
         gap: mobile ? 12 : 16,
         alignItems: "start",
       }}>
+        <Sec titulo="🚨 Operaciones en riesgo" borderColor={"#FF4D4D30"}>
+          <OperacionesRiesgo leads={activos} />
+        </Sec>
 
-        {/* Columna izquierda: OPERACIONES EN RIESGO + LLAMA HOY + OFERTA */}
-        <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 12 : 16, minWidth: 0 }}>
-
-          <Sec titulo="🚨 Operaciones en riesgo" borderColor={"#FF4D4D30"}>
-            <OperacionesRiesgo leads={activos} />
-          </Sec>
-
-          <Sec titulo="🔥 Llama hoy" borderColor={B.accentL + "30"}>
-            {llamaHoy.length === 0 ? (
-              <div style={{ fontSize: 12, color: B.muted, textAlign: "center", padding: "10px 0" }}>
-                Sin leads para llamar hoy
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {llamaHoy.map(l => (
-                  <LlamaHoyCard
-                    key={l.id}
-                    lead={l}
-                    onContactado={handleContactado}
-                  />
-                ))}
-              </div>
-            )}
-          </Sec>
-
-          <Sec titulo="📊 Oferta por zona">
-            <OfertaHome
-              leads={activos}
-              properties={properties}
-              captaciones={captaciones}
-            />
-          </Sec>
-
-        </div>
-
-        {/* Columna derecha: ALERTAS + HOY */}
-        <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 12 : 16, minWidth: 0 }}>
-
-          <Sec titulo="⚠️ Alertas" borderColor={B.border}>
-            <AlertasHome leads={activos} />
-          </Sec>
-
-          <Sec titulo="📅 Hoy">
-            <HoyHome />
-          </Sec>
-
-        </div>
+        <Sec titulo="🔥 Llama hoy" borderColor={B.accentL + "30"}>
+          {llamaHoy.length === 0 ? (
+            <div style={{ fontSize: 12, color: B.muted, textAlign: "center", padding: "10px 0" }}>
+              Sin leads para llamar hoy
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {llamaHoy.map(l => (
+                <LlamaHoyCard key={l.id} lead={l} onContactado={handleContactado} />
+              ))}
+            </div>
+          )}
+        </Sec>
       </div>
+
+      {/* Row B: Alertas | Oferta | Hoy */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: mobile ? "1fr" : "1fr 1fr 1fr",
+        gap: mobile ? 12 : 16,
+        alignItems: "start",
+      }}>
+        <Sec titulo="⚠️ Alertas" borderColor={B.border}>
+          <AlertasHome leads={activos} />
+        </Sec>
+
+        <Sec titulo="📊 Oferta por zona" borderColor={B.border}>
+          <OfertaHome leads={activos} properties={properties} captaciones={captaciones} />
+        </Sec>
+
+        <Sec titulo="📅 Hoy" borderColor={B.border}>
+          <HoyHome />
+        </Sec>
+      </div>
+
     </div>
   );
 }

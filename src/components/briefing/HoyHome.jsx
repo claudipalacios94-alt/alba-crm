@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
-// ALBA CRM — HoyHome
-// Compromisos del día: visitas, tareas vencidas, tareas de hoy.
-// Input directo para nueva tarea. Sin IA, sin análisis.
+// ALBA CRM — HoyHome v2
+// Resumen de conteos: vencidas, hoy, visitas, pendientes.
+// Input para nueva tarea al pie.
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useEffect } from "react";
 import { B } from "../../data/constants.js";
@@ -34,19 +34,12 @@ export default function HoyHome() {
   const [nuevaTxt, setNuevaTxt] = useState("");
   const [saving,   setSaving]   = useState(false);
 
-  useEffect(() => {
-    setTareas(tareasDb);
-  }, [tareasDb]);
+  useEffect(() => { setTareas(tareasDb); }, [tareasDb]);
 
-  const vencidas = tareas.filter(t => t.fecha && t.fecha < hoyISO);
-  const deHoy    = tareas.filter(t => t.fecha === hoyISO);
-  const visitas  = deHoy.filter(esVisita);
-  const resto    = deHoy.filter(t => !esVisita(t));
-
-  async function completar(id) {
-    setTareas(prev => prev.filter(t => t.id !== id));
-    await supabase.from("tareas").update({ completada: true }).eq("id", id);
-  }
+  const vencidas  = tareas.filter(t => t.fecha && t.fecha < hoyISO);
+  const deHoy     = tareas.filter(t => t.fecha === hoyISO);
+  const visitasHoy = deHoy.filter(esVisita);
+  const pendientes = tareas.filter(t => !t.completada);
 
   async function agregarTarea() {
     const titulo = nuevaTxt.trim();
@@ -62,76 +55,52 @@ export default function HoyHome() {
     setSaving(false);
   }
 
-  function handleKeyDown(e) {
-    if (e.key === "Enter") agregarTarea();
-  }
-
-  const empty = vencidas.length === 0 && deHoy.length === 0;
+  const filas = [
+    { icon: "⏰", label: "Tareas vencidas", count: vencidas.length,  color: "#EF4444" },
+    { icon: "📋", label: "Tareas de hoy",   count: deHoy.length,     color: "#4A8AE8" },
+    { icon: "🏠", label: "Visitas de hoy",  count: visitasHoy.length, color: "#E8A830" },
+    { icon: "⏳", label: "Pendientes",      count: pendientes.length, color: "#64748B" },
+  ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
 
-      {/* Visitas del día — destacadas */}
-      {visitas.length > 0 && (
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#E8A830",
-            textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 5 }}>
-            Visitas
+      {/* Filas de conteo */}
+      <div style={{
+        display: "flex", flexDirection: "column",
+        border: "1px solid #1E293B", borderRadius: 10,
+        overflow: "hidden", marginBottom: 10,
+      }}>
+        {filas.map((f, i) => (
+          <div key={f.label} style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "11px 14px",
+            borderTop: i > 0 ? "1px solid #1E293B" : "none",
+            background: "#0C1527",
+          }}>
+            <span style={{ fontSize: 14, flexShrink: 0 }}>{f.icon}</span>
+            <span style={{ flex: 1, fontSize: 13, color: "#C8D8E8", fontWeight: 500 }}>
+              {f.label}
+            </span>
+            <span style={{
+              fontSize: 13, fontWeight: 700, color: f.count > 0 ? f.color : "#374151",
+              minWidth: 20, textAlign: "right",
+            }}>
+              {f.count}
+            </span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            {visitas.map(t => (
-              <TareaRow key={t.id} tarea={t} onCompletar={completar} accent="#E8A830" />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tareas vencidas */}
-      {vencidas.length > 0 && (
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#CC2233",
-            textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 5 }}>
-            Vencidas
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            {vencidas.map(t => (
-              <TareaRow key={t.id} tarea={t} onCompletar={completar} accent="#CC2233" />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tareas de hoy (sin visitas) */}
-      {resto.length > 0 && (
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: B.dim,
-            textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 5 }}>
-            Hoy
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            {resto.map(t => (
-              <TareaRow key={t.id} tarea={t} onCompletar={completar} accent={B.accentL} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Vacío */}
-      {empty && (
-        <div style={{ fontSize: 12, color: B.muted, textAlign: "center", padding: "8px 0" }}>
-          Sin compromisos para hoy
-        </div>
-      )}
+        ))}
+      </div>
 
       {/* Nueva tarea */}
-      <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+      <div style={{ display: "flex", gap: 8 }}>
         <input
           value={nuevaTxt}
           onChange={e => setNuevaTxt(e.target.value)}
-          onKeyDown={handleKeyDown}
+          onKeyDown={e => e.key === "Enter" && agregarTarea()}
           placeholder="+ Nueva tarea..."
           style={{
-            flex: 1, padding: "7px 10px", borderRadius: 7, fontSize: 12,
+            flex: 1, padding: "8px 10px", borderRadius: 7, fontSize: 12,
             background: B.surface, border: `1px solid ${B.border}`,
             color: "#C8D8E8", outline: "none",
           }}
@@ -140,49 +109,15 @@ export default function HoyHome() {
           onClick={agregarTarea}
           disabled={saving || !nuevaTxt.trim()}
           style={{
-            padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 700,
+            padding: "8px 14px", borderRadius: 7, fontSize: 12, fontWeight: 700,
             cursor: saving || !nuevaTxt.trim() ? "default" : "pointer",
-            background: "rgba(74,173,232,0.12)", border: `1px solid ${B.accentL}40`,
-            color: B.accentL, opacity: saving ? 0.5 : 1, transition: "opacity 0.15s",
+            background: "rgba(74,138,232,0.12)", border: "1px solid rgba(74,138,232,0.3)",
+            color: "#4A8AE8", opacity: saving ? 0.5 : 1,
           }}
         >
           {saving ? "..." : "Agregar"}
         </button>
       </div>
-    </div>
-  );
-}
-
-// ── Fila de tarea ─────────────────────────────────────────────
-function TareaRow({ tarea, onCompletar, accent }) {
-  return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 10,
-      padding: "7px 10px", borderRadius: 7,
-      background: accent + "08", border: `1px solid ${accent}20`,
-    }}>
-      <button
-        onClick={() => onCompletar(tarea.id)}
-        title="Completar"
-        style={{
-          width: 18, height: 18, borderRadius: "50%", flexShrink: 0,
-          border: `2px solid ${accent}60`, background: "transparent",
-          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-        }}
-      >
-        <span style={{ fontSize: 9, color: accent }}>✓</span>
-      </button>
-      <span style={{
-        flex: 1, fontSize: 12, color: "#C8D8E8",
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-      }}>
-        {tarea.titulo}
-      </span>
-      {tarea.fecha && tarea.fecha < new Date().toISOString().split("T")[0] && (
-        <span style={{ fontSize: 10, color: "#CC2233", flexShrink: 0 }}>
-          {tarea.fecha.slice(5)}
-        </span>
-      )}
     </div>
   );
 }
