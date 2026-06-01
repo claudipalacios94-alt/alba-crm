@@ -193,6 +193,7 @@ function vsAnterior(items, field = "created_at") {
     return d && d >= iniAnt && d < ini;
   }).length;
   if (prev === 0) return { label: cur > 0 ? "primer mes" : "—", dir: "neutral" };
+  if (cur === 0)  return { label: "—", dir: "neutral" };
   const p = Math.round(((cur - prev) / prev) * 100);
   return {
     label: p > 0 ? `+${p}%` : p < 0 ? `${p}%` : "0%",
