@@ -219,7 +219,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
     <div style={{
       margin: `-${lv}px -${lh}px`,
       padding: `${lv}px ${lh}px 32px`,
-      background: "#f4f7fb",
+      background: "#dfe7ef",
       minHeight: `calc(100% + ${lv * 2}px)`,
       overflowX: "hidden",
       boxSizing: "border-box",
@@ -230,11 +230,11 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
         gap: 12, marginBottom: 20, flexWrap: mobile ? "wrap" : "nowrap" }}>
 
         <div>
-          <h1 style={{ margin: 0, fontSize: mobile ? 22 : 26, fontWeight: 800, color: "#1a2744",
+          <h1 style={{ margin: 0, fontSize: mobile ? 22 : 26, fontWeight: 800, color: "#102033",
             fontFamily: "'DM Sans', sans-serif", lineHeight: 1.1 }}>
             CRM Leads
           </h1>
-          <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b", fontWeight: 400 }}>
+          <p style={{ margin: "4px 0 0", fontSize: 13, color: "#46596d", fontWeight: 400 }}>
             Gestioná tus compradores e inversores
           </p>
         </div>
@@ -247,8 +247,8 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
               placeholder="Buscar nombre, zona o teléfono..."
               value={q} onChange={e => setQ(e.target.value)}
               style={{ paddingLeft: 32, paddingRight: 12, paddingTop: 8, paddingBottom: 8,
-                border: "1px solid #e5eaf2", borderRadius: 10, fontSize: 13,
-                background: "#fff", color: "#1a2744", outline: "none",
+                border: "1px solid #c7d3df", borderRadius: 10, fontSize: 13,
+                background: "#f2f6fa", color: "#102033", outline: "none",
                 width: mobile ? "100%" : 260,
                 boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }} />
           </div>
@@ -256,9 +256,9 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           {/* Filtros y acciones */}
           <button onClick={() => setMostrarPerdidos(p => !p)}
             style={{ padding: "8px 14px", borderRadius: 10, cursor: "pointer",
-              fontSize: 12, fontWeight: 600, border: "1px solid #e5eaf2",
-              background: mostrarPerdidos ? "#fee2e2" : "#fff",
-              color: mostrarPerdidos ? "#dc2626" : "#64748b",
+              fontSize: 12, fontWeight: 600, border: "1px solid #c7d3df",
+              background: mostrarPerdidos ? "#fad8d8" : "#f2f6fa",
+              color: mostrarPerdidos ? "#dc5050" : "#46596d",
               boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
             {mostrarPerdidos ? "Ocultar archivados" : `Archivados (${perdidosCount})`}
           </button>
@@ -266,9 +266,9 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           <button onClick={() => setShowMail(m => !m)}
             style={{ padding: "8px 14px", borderRadius: 10, cursor: "pointer",
               fontSize: 12, fontWeight: 600,
-              background: showMail ? "#1e3a5f" : "#fff",
-              border: `1px solid ${showMail ? "#1e3a5f" : "#e5eaf2"}`,
-              color: showMail ? "#fff" : "#1e3a5f",
+              background: showMail ? "#12355b" : "#f2f6fa",
+              border: `1px solid ${showMail ? "#12355b" : "#c7d3df"}`,
+              color: showMail ? "#fff" : "#12355b",
               boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
             ✉ Mail pedidos
           </button>
@@ -283,8 +283,8 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           )}
 
           {/* Fecha */}
-          <div style={{ padding: "6px 12px", borderRadius: 10, background: "#fff",
-            border: "1px solid #e5eaf2", fontSize: 11, color: "#64748b", fontWeight: 500,
+          <div style={{ padding: "6px 12px", borderRadius: 10, background: "#f2f6fa",
+            border: "1px solid #c7d3df", fontSize: 11, color: "#46596d", fontWeight: 500,
             boxShadow: "0 1px 4px rgba(0,0,0,0.04)", whiteSpace: "nowrap" }}>
             📅 {today}
           </div>
@@ -313,11 +313,11 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
 
       {/* Panel mail */}
       {showMail && (
-        <div style={{ background: "#fff", border: "1px solid #bfdbfe", borderRadius: 14,
-          overflow: "hidden", marginBottom: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid #e5eaf2",
+        <div style={{ background: "#f2f6fa", border: "1px solid #c7d3df", borderRadius: 14,
+          overflow: "hidden", marginBottom: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid #c7d3df",
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            flexWrap: "wrap", gap: 8, background: "#f8faff" }}>
+            flexWrap: "wrap", gap: 8, background: "#eef4f8" }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: "#1e3a5f" }}>
               ✉ MAIL DE PEDIDOS — {activos.filter(l => l.dias <= 7).length} búsquedas activas
             </span>
@@ -349,12 +349,12 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
         marginBottom: 16, flexWrap: mobile ? "wrap" : "nowrap" }}>
 
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 4, background: "#fff", borderRadius: 12,
-          padding: 4, border: "1px solid #e5eaf2",
+        <div style={{ display: "flex", gap: 4, background: "#f2f6fa", borderRadius: 12,
+          padding: 4, border: "1px solid #c7d3df",
           boxShadow: "0 1px 4px rgba(0,0,0,0.04)", flexShrink: 0 }}>
           {[
-            { id: "compradores", label: "🏠 Compradores", count: filt.length,          color: "#1e3a5f" },
-            { id: "inversores",  label: "💼 Inversores",  count: filtInversores.length, color: "#7c3aed" },
+            { id: "compradores", label: "🏠 Compradores", count: filt.length,          color: "#12355b" },
+            { id: "inversores",  label: "💼 Inversores",  count: filtInversores.length, color: "#7c5cc4" },
           ].map(t => (
             <button key={t.id} onClick={() => { setPagina(t.id); setExp(null); }}
               style={{ padding: "8px 18px", borderRadius: 9, cursor: "pointer",
@@ -373,7 +373,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           const rec = getRecommendedAction(leadTop);
           const col = rec.urgencia === "alta" ? "#dc2626" : rec.urgencia === "media" ? "#d97706" : "#64748b";
           return (
-            <div style={{ flex: 1, background: "#fff", border: `1px solid ${col}40`,
+            <div style={{ flex: 1, background: "#f2f6fa", border: `1px solid ${col}40`,
               borderLeft: `4px solid ${col}`, borderRadius: 12, padding: "10px 14px",
               display: "flex", alignItems: "center", gap: 10,
               boxShadow: "0 1px 6px rgba(0,0,0,0.05)", flexWrap: "wrap" }}>
@@ -412,8 +412,8 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
         flexWrap: "wrap" }}>
 
         {/* Vista switcher */}
-        <div style={{ display: "flex", background: "#fff", borderRadius: 10, padding: 3,
-          border: "1px solid #e5eaf2", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+        <div style={{ display: "flex", background: "#f2f6fa", borderRadius: 10, padding: 3,
+          border: "1px solid #c7d3df", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
           {[
             { id: "lista",  label: "⊞ Cards" },
             { id: "kanban", label: "⬜ Kanban" },
@@ -421,7 +421,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
             <button key={v.id} onClick={() => { setVista(v.id); setExp(null); }}
               style={{ padding: "5px 14px", borderRadius: 8, cursor: "pointer",
                 fontSize: 12, fontWeight: 600, border: "none",
-                background: vista === v.id ? "#1e3a5f" : "transparent",
+                background: vista === v.id ? "#12355b" : "transparent",
                 color: vista === v.id ? "#fff" : "#64748b",
                 transition: "all 0.15s" }}>
               {v.label}
@@ -429,39 +429,40 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           ))}
         </div>
 
-        {/* Filtro temperatura */}
-        <div style={{ display: "flex", gap: 4 }}>
-          {["Todos", "Caliente", "Tibio", "Frío"].map(s => {
-            const c = s === "Caliente" ? "#dc2626" : s === "Tibio" ? "#d97706" : s === "Frío" ? "#64748b" : "#2563eb";
-            const act = fs === s;
-            return (
-              <button key={s} onClick={() => setFs(s)}
-                style={{ padding: "5px 12px", borderRadius: 20, cursor: "pointer",
-                  fontSize: 11, fontWeight: 600, border: `1px solid ${act ? c : "#e5eaf2"}`,
-                  background: act ? `${c}15` : "#fff", color: act ? c : "#94a3b8" }}>
-                {s}
-              </button>
-            );
-          })}
-        </div>
+        {/* Filtro estado */}
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12,
+          color: "#46596d", fontWeight: 600, flexShrink: 0 }}>
+          Estado:
+          <select value={fs} onChange={e => setFs(e.target.value)}
+            style={{ padding: "5px 10px", borderRadius: 8, border: "1px solid #c7d3df",
+              background: "#f2f6fa", color: "#102033", fontSize: 12, fontWeight: 600,
+              cursor: "pointer", outline: "none" }}>
+            <option value="Todos">Todos</option>
+            <option value="Caliente">Caliente</option>
+            <option value="Tibio">Tibio</option>
+            <option value="Frío">Frío</option>
+          </select>
+        </label>
 
         {/* Filtro agente */}
-        <div style={{ display: "flex", gap: 4 }}>
-          {["Todos", "C", "A", "F", "L", "Lu", "Sin asignar"].map(a => {
-            const c = a === "Sin asignar" ? "#dc2626" : a === "Todos" ? "#2563eb" : AG[a]?.c || "#64748b";
-            const act = fa === a;
-            return (
-              <button key={a} onClick={() => setFa(a)}
-                style={{ padding: "5px 12px", borderRadius: 20, cursor: "pointer",
-                  fontSize: 11, fontWeight: 600, border: `1px solid ${act ? c : "#e5eaf2"}`,
-                  background: act ? `${c}15` : "#fff", color: act ? c : "#94a3b8" }}>
-                {a === "Todos" ? "Todos" : a === "Sin asignar" ? "—" : AG[a]?.n || a}
-              </button>
-            );
-          })}
-        </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12,
+          color: "#46596d", fontWeight: 600, flexShrink: 0 }}>
+          Agente:
+          <select value={fa} onChange={e => setFa(e.target.value)}
+            style={{ padding: "5px 10px", borderRadius: 8, border: "1px solid #c7d3df",
+              background: "#f2f6fa", color: "#102033", fontSize: 12, fontWeight: 600,
+              cursor: "pointer", outline: "none" }}>
+            <option value="Todos">Todos</option>
+            <option value="C">Claudi</option>
+            <option value="A">Alejandra</option>
+            <option value="F">Flor</option>
+            <option value="L">Lucas</option>
+            <option value="Lu">Luján</option>
+            <option value="Sin asignar">Sin asignar</option>
+          </select>
+        </label>
 
-        <div style={{ marginLeft: "auto", fontSize: 12, color: "#94a3b8", fontWeight: 500 }}>
+        <div style={{ marginLeft: "auto", fontSize: 12, color: "#5a6f84", fontWeight: 500 }}>
           {leadsActivos.length} {leadsActivos.length === 1 ? "lead" : "leads"} · ordenado por prioridad
         </div>
       </div>
@@ -518,7 +519,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setConfirmDelete(null)}
                 style={{ flex: 1, padding: 11, borderRadius: 9, cursor: "pointer",
-                  background: "#f8fafc", border: "1px solid #e5eaf2", color: "#64748b", fontSize: 13 }}>
+                  background: "#f2f6fa", border: "1px solid #c7d3df", color: "#46596d", fontSize: 13 }}>
                 Cancelar
               </button>
               <button onClick={ejecutarEliminar}

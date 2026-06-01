@@ -19,8 +19,8 @@ function MiniSparkline({ data, color }) {
 export default function CRMKpiCard({ icon, value, label, sub, color = "#2A5BAD", sparkline, alert }) {
   return (
     <div style={{
-      background: "#fff",
-      border: `1px solid ${alert ? "rgba(220,38,38,0.25)" : "#e5eaf2"}`,
+      background: "#f2f6fa",
+      border: `1px solid ${alert ? "rgba(220,38,38,0.3)" : "#c7d3df"}`,
       borderRadius: 16,
       padding: "16px 18px 14px",
       display: "flex",
@@ -36,11 +36,11 @@ export default function CRMKpiCard({ icon, value, label, sub, color = "#2A5BAD",
         <span style={{ fontSize: 22, lineHeight: 1 }}>{icon}</span>
         {sparkline && <MiniSparkline data={sparkline} color={color} />}
       </div>
-      <div style={{ fontSize: 32, fontWeight: 800, color: alert ? "#dc2626" : "#1a2744", lineHeight: 1.05, marginTop: 6 }}>
+      <div style={{ fontSize: 32, fontWeight: 800, color: alert ? "#dc2626" : "#102033", lineHeight: 1.05, marginTop: 6 }}>
         {value}
       </div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: "#4a6080" }}>{label}</div>
-      {sub && <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 1 }}>{sub}</div>}
+      <div style={{ fontSize: 12, fontWeight: 600, color: "#46596d" }}>{label}</div>
+      {sub && <div style={{ fontSize: 11, color: "#5a6f84", marginTop: 1 }}>{sub}</div>}
     </div>
   );
 }

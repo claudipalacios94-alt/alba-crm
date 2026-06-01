@@ -4,14 +4,27 @@ import { computeRanking } from "../../domain/lead.js";
 import LeadCard from "./LeadCard.jsx";
 
 function badgePro(lead, ranking) {
-  if (lead.etapa === "Negociación") return { label: "NEGOCIACIÓN", bg: "#EDE9FE", color: "#7C3AED" };
-  if (lead.etapa === "Visita")      return { label: "VISITA",      bg: "#FEF3C7", color: "#D97706" };
-  if (lead.etapa === "Calificado")  return { label: "CALIFICADO",  bg: "#DBEAFE", color: "#1D4ED8" };
-  if (ranking.prioridad >= 75)     return { label: "URGENTE",     bg: "#FEE2E2", color: "#DC2626" };
-  if (ranking.prioridad >= 50)     return { label: "ALTA",        bg: "#FFEDD5", color: "#EA580C" };
-  if (ranking.prioridad >= 25)     return { label: "MEDIA",       bg: "#FEF9C3", color: "#CA8A04" };
-  if (lead.dias !== null && lead.dias > 6) return { label: "FRÍO", bg: "#F1F5F9", color: "#64748B" };
-  return { label: "BAJA", bg: "#DCFCE7", color: "#16A34A" };
+  if (lead.etapa === "Negociación") return { label: "NEGOCIACIÓN", bg: "#e8e3f8", color: "#7c5cc4" };
+  if (lead.etapa === "Visita")      return { label: "VISITA",      bg: "#f5eec5", color: "#d99a22" };
+  if (lead.etapa === "Calificado")  return { label: "CALIFICADO",  bg: "#d4e5f7", color: "#3a8bc4" };
+  if (ranking.prioridad >= 75)     return { label: "URGENTE",     bg: "#fad8d8", color: "#dc5050" };
+  if (ranking.prioridad >= 50)     return { label: "ALTA",        bg: "#f7e4cd", color: "#e9823a" };
+  if (ranking.prioridad >= 25)     return { label: "MEDIA",       bg: "#f5f0c0", color: "#d99a22" };
+  if (lead.dias !== null && lead.dias > 6) return { label: "FRÍO", bg: "#e8edf3", color: "#64748b" };
+  return { label: "BAJA", bg: "#d0f2e0", color: "#2d9e6b" };
+}
+
+function sideColor(badge) {
+  switch (badge.label) {
+    case "NEGOCIACIÓN": return "#7c5cc4";
+    case "VISITA":      return "#d99a22";
+    case "CALIFICADO":  return "#3a8bc4";
+    case "URGENTE":     return "#dc5050";
+    case "ALTA":        return "#e9823a";
+    case "MEDIA":       return "#d99a22";
+    case "FRÍO":        return "#64748b";
+    default:            return "#b0bec5";
+  }
 }
 
 function precioLabel(presup) {
@@ -43,7 +56,7 @@ function DataPill({ label, value }) {
       <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>
         {label}
       </div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: "#1e3a5f" }}>{value}</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: "#102033" }}>{value}</div>
     </div>
   );
 }
@@ -57,6 +70,7 @@ export default function LeadCardPro({
 }) {
   const ranking = useMemo(() => computeRanking(lead, matches.length), [lead, matches.length]);
   const badge   = badgePro(lead, ranking);
+  const sc      = sideColor(badge);
   const ag      = AG[lead.ag];
   const precio  = precioLabel(lead.presup);
 
@@ -72,16 +86,16 @@ export default function LeadCardPro({
     return (
       <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
         <div style={{
-          background: "#f8fafc",
-          border: "1px solid #dbeafe",
+          background: "#eef4f8",
+          border: "1px solid #c7d3df",
           borderRadius: 18,
           boxShadow: "0 4px 24px rgba(37,99,235,0.08)",
           overflow: "hidden",
         }}>
           {/* Header claro con nombre y cerrar */}
           <div style={{
-            background: "#fff",
-            borderBottom: "1px solid #e5eaf2",
+            background: "#f2f6fa",
+            borderBottom: "1px solid #c7d3df",
             padding: "10px 16px",
             display: "flex", alignItems: "center", justifyContent: "space-between",
           }}>
@@ -96,8 +110,8 @@ export default function LeadCardPro({
               </span>
             </div>
             <button onClick={onToggle}
-              style={{ background: "#f1f5f9", border: "1px solid #e5eaf2",
-                color: "#64748b", borderRadius: 8, padding: "4px 12px",
+              style={{ background: "#eef4f8", border: "1px solid #c7d3df",
+                color: "#46596d", borderRadius: 8, padding: "4px 12px",
                 cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
               ✕ Cerrar
             </button>
@@ -115,16 +129,17 @@ export default function LeadCardPro({
     <div
       onClick={onToggle}
       style={{
-        background: "#fff",
-        border: `1px solid ${hasNewMatch ? "#3b82f6" : "#e5eaf2"}`,
+        background: "#f2f6fa",
+        border: `1px solid ${hasNewMatch ? "#3b82f6" : "#c7d3df"}`,
+        borderLeft: `4px solid ${hasNewMatch ? "#3b82f6" : sc}`,
         borderRadius: 14,
         padding: "12px 14px",
         cursor: "pointer",
         opacity: isBlurred ? 0.38 : 1,
-        transition: "opacity 0.15s, box-shadow 0.15s, border-color 0.15s",
+        transition: "opacity 0.15s, box-shadow 0.15s",
         boxShadow: hasNewMatch
-          ? "0 0 0 3px rgba(59,130,246,0.15), 0 2px 8px rgba(0,0,0,0.06)"
-          : "0 1px 4px rgba(0,0,0,0.05)",
+          ? "0 0 0 3px rgba(59,130,246,0.12), 0 2px 8px rgba(0,0,0,0.05)"
+          : "0 1px 4px rgba(0,0,0,0.04)",
         display: "flex",
         flexDirection: "column",
         gap: 7,
@@ -133,16 +148,14 @@ export default function LeadCardPro({
       }}
       onMouseEnter={e => {
         if (!isBlurred) {
-          e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.13)";
-          e.currentTarget.style.borderColor = "#bfdbfe";
+          e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.10)";
         }
       }}
       onMouseLeave={e => {
         if (!isBlurred) {
           e.currentTarget.style.boxShadow = hasNewMatch
-            ? "0 0 0 3px rgba(59,130,246,0.15), 0 2px 10px rgba(0,0,0,0.07)"
-            : "0 1px 6px rgba(0,0,0,0.06)";
-          e.currentTarget.style.borderColor = hasNewMatch ? "#3b82f6" : "#e5eaf2";
+            ? "0 0 0 3px rgba(59,130,246,0.12), 0 2px 10px rgba(0,0,0,0.05)"
+            : "0 1px 4px rgba(0,0,0,0.04)";
         }
       }}
     >
@@ -210,8 +223,8 @@ export default function LeadCardPro({
 
       {/* Matches strip */}
       <div style={{
-        background: matches.length > 0 ? "rgba(37,99,235,0.05)" : "#f8fafc",
-        border: `1px solid ${matches.length > 0 ? "rgba(37,99,235,0.15)" : "#e5eaf2"}`,
+        background: matches.length > 0 ? "#e4edf6" : "#eef4f8",
+        border: `1px solid ${matches.length > 0 ? "#c5d8eb" : "#c7d3df"}`,
         borderRadius: 8, padding: "5px 9px",
         display: "flex", alignItems: "center", gap: 8,
       }}>
