@@ -105,9 +105,39 @@ const IcoDollar   = () => <svg {...S}><line x1="12" y1="1" x2="12" y2="23"/><pat
 const IcoUserPlus = () => <svg {...S}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>;
 
 // ── KPI Card ──────────────────────────────────────────────────
-function KPICard({ icon, color, valor, label, sub, subDir, sparkData, compPeriodo, compLabel, compDir }) {
+function KPICard({ icon, color, valor, label, sub, subDir, sparkData, compPeriodo, compLabel, compDir, compact }) {
   const subColor  = subDir === "up" ? color : subDir === "down" ? "#EF4444" : "#4B5563";
   const compColor = compDir === "up" ? "#22C55E" : compDir === "down" ? "#EF4444" : "#4B5563";
+
+  if (compact) {
+    return (
+      <div style={{
+        background: "#0C1527", border: "1px solid #1E293B",
+        borderRadius: 10, padding: "10px 14px",
+        display: "flex", alignItems: "center", gap: 10,
+        minWidth: 0, overflow: "hidden",
+      }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+          background: color + "18", border: `1px solid ${color}28`,
+          display: "flex", alignItems: "center", justifyContent: "center", color,
+        }}>
+          <div style={{ width: 13, height: 13, display: "flex" }}>{icon}</div>
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{
+            fontSize: 22, fontWeight: 800, color: "#F1F5F9",
+            fontFamily: "Georgia,serif", lineHeight: 1, letterSpacing: "-0.5px",
+          }}>{valor}</div>
+          <div style={{ fontSize: 10, color: "#64748B", fontWeight: 600, marginTop: 1 }}>{label}</div>
+        </div>
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <div style={{ fontSize: 10, color: subColor, fontWeight: 600 }}>{sub}</div>
+          <div style={{ fontSize: 10, color: compColor, fontWeight: 700, marginTop: 2 }}>{compLabel}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -202,7 +232,7 @@ function vsAnterior(items, field = "created_at") {
 }
 
 // ── Componente principal ──────────────────────────────────────
-export default function FranjaKPIs({ leads, activos, captaciones }) {
+export default function FranjaKPIs({ leads, activos, captaciones, compact }) {
   const bp   = useBreakpoint();
   const cols = bp === "mobile" ? 2 : bp === "tablet" ? 3 : 6;
 
@@ -289,7 +319,7 @@ export default function FranjaKPIs({ leads, activos, captaciones }) {
       gridTemplateColumns: `repeat(${cols}, 1fr)`,
       gap: 12,
     }}>
-      {kpis.map(k => <KPICard key={k.label} {...k} />)}
+      {kpis.map(k => <KPICard key={k.label} {...k} compact={compact} />)}
     </div>
   );
 }
