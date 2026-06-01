@@ -5,6 +5,13 @@ import * as Sentry from '@sentry/react'
 import { SupabaseProvider } from './context/SupabaseContext.jsx'
 import App from './App.jsx'
 
+// Forzar unregister de SWs viejos que bloquean assets nuevos
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => r.unregister());
+  });
+}
+
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
   environment: import.meta.env.MODE,
