@@ -10,6 +10,7 @@ import AlertasHome        from "./AlertasHome.jsx";
 import OfertaHome         from "./OfertaHome.jsx";
 import HoyHome            from "./HoyHome.jsx";
 import OperacionesRiesgo  from "./OperacionesRiesgo.jsx";
+import FranjaKPIs         from "./FranjaKPIs.jsx";
 
 // ── Utilidad mobile ───────────────────────────────────────────
 function useIsMobile(bp = 768) {
@@ -43,108 +44,6 @@ function Sec({ titulo, children, borderColor }) {
         </span>
       </div>
       <div style={{ padding: "14px 16px" }}>{children}</div>
-    </div>
-  );
-}
-
-// ── Franja de estado del negocio ─────────────────────────────
-function FranjaEstado({ activos, captaciones }) {
-  const hoy       = new Date();
-  const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-
-  const stats = useMemo(() => {
-    const nuevosMes = activos.filter(
-      l => l.created_at && new Date(l.created_at) >= inicioMes
-    ).length;
-    return {
-      leadsActivos:   activos.length,
-      nuevosMes,
-      visitas:        activos.filter(l => l.etapa === "Visita").length,
-      negociaciones:  activos.filter(l => l.etapa === "Negociación").length,
-      captacionesMes: (captaciones || []).filter(c =>
-                        c.created_at && new Date(c.created_at) >= inicioMes
-                      ).length,
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activos, captaciones]);
-
-  const items = [
-    {
-      label:    "Leads activos",
-      valor:    stats.leadsActivos,
-      color:    B.accentL,
-      sub:      stats.nuevosMes > 0 ? `+${stats.nuevosMes} nuevos este mes` : "Sin altas este mes",
-      subColor: stats.nuevosMes > 0 ? B.accentL : B.dim,
-    },
-    {
-      label: "En visita",
-      valor: stats.visitas,
-      color: "#E8A830",
-      sub:   stats.visitas > 0 ? "Para agendar seguimiento" : "Ninguna activa",
-      subColor: stats.visitas > 0 ? "#E8A830" : B.dim,
-    },
-    {
-      label: "Negociaciones",
-      valor: stats.negociaciones,
-      color: B.ok,
-      sub:   stats.negociaciones > 0 ? "Cierres en proceso" : "Ninguna activa",
-      subColor: stats.negociaciones > 0 ? B.ok : B.dim,
-    },
-    {
-      label:    "Captaciones mes",
-      valor:    stats.captacionesMes,
-      color:    "#9B6DC8",
-      sub:      stats.captacionesMes > 0 ? "Propiedades ingresadas" : "Sin captaciones aún",
-      subColor: stats.captacionesMes > 0 ? "#9B6DC8" : B.dim,
-    },
-    {
-      label:    "Facturación mes",
-      valor:    "—",
-      color:    B.dim,
-      sub:      "Sin datos disponibles",
-      subColor: B.dim,
-      sinDatos: true,
-    },
-  ];
-
-  return (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(5, 1fr)",
-      gap: 1,
-      background: B.border,
-      borderRadius: 10,
-      overflow: "hidden",
-    }}>
-      {items.map(({ label, valor, color, sub, subColor, sinDatos }) => (
-        <div key={label} style={{
-          background: B.card,
-          borderTop: `3px solid ${sinDatos ? B.border : color}`,
-          padding: "16px 16px 14px",
-          display: "flex", flexDirection: "column", gap: 6,
-        }}>
-          <div style={{
-            fontSize: sinDatos ? 22 : 30,
-            fontWeight: 800,
-            color: sinDatos ? B.dim : color,
-            fontFamily: "Georgia,serif",
-            lineHeight: 1,
-          }}>
-            {valor}
-          </div>
-          <div style={{
-            fontSize: 11, color: "#8AAECC", fontWeight: 600,
-            lineHeight: 1.2,
-          }}>
-            {label}
-          </div>
-          <div style={{
-            fontSize: 10, color: subColor, lineHeight: 1.3, marginTop: 2,
-          }}>
-            {sub}
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -217,7 +116,7 @@ export default function Briefing({ leads, properties, captaciones }) {
       </div>
 
       {/* Franja de estado — ¿Cómo va el negocio? */}
-      <FranjaEstado activos={activos} captaciones={captaciones} />
+      <FranjaKPIs leads={leads} activos={activos} captaciones={captaciones} />
 
       {/* Grid principal */}
       <div style={{
