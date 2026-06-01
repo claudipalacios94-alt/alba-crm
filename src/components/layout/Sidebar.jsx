@@ -9,7 +9,6 @@ import { useAIStore }      from "../../store/useAIStore.js";
 const NAV_DEFAULT = [
   { id: "",            label: "Inicio" },
   { id: "cuaderno",    label: "Cuaderno de campo" },
-  { id: "kanban",      label: "Kanban" },
   { id: "crm",         label: "CRM Leads" },
   { id: "propiedades", label: "Propiedades" },
   { id: "mapa",        label: "Mapa" },
@@ -23,9 +22,12 @@ function loadNav() {
     const saved = localStorage.getItem("alba_nav");
     if (!saved) return NAV_DEFAULT;
     const parsed = JSON.parse(saved);
-    const ids = parsed.map(n => n.id);
+    const validIds = new Set(NAV_DEFAULT.map(n => n.id));
+    // Filtrar ítems guardados que ya no existen en NAV_DEFAULT (ej: kanban)
+    const filtrado = parsed.filter(n => validIds.has(n.id));
+    const ids = filtrado.map(n => n.id);
     const missing = NAV_DEFAULT.filter(n => !ids.includes(n.id));
-    return [...parsed, ...missing];
+    return [...filtrado, ...missing];
   } catch (e) { return NAV_DEFAULT; }
 }
 

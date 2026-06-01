@@ -8,6 +8,7 @@ import { computeRanking } from "../../domain/lead.js";
 import LeadCard    from "./LeadCard.jsx";
 import { useIncidents } from "../../hooks/useIncidents.js";
 import ModalPerdido from "./ModalPerdido.jsx";
+import Kanban from "../Kanban.jsx";
 
 function useIsMobile(breakpoint = 768) {
   const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
@@ -22,6 +23,7 @@ function useIsMobile(breakpoint = 768) {
 export default function CRMLeads({ leads, updateLead, deleteLead, properties, captaciones, supabase }) {
   const mobile = useIsMobile(768);
   useIncidents(leads);
+  const [vista,          setVista]          = useState("lista");
   const [pagina,         setPagina]         = useState("compradores");
   const [fs,             setFs]             = useState("Todos");
   const [fa,             setFa]             = useState("Todos");
@@ -200,6 +202,18 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           )}
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+          {/* Switch Lista / Kanban */}
+          <div style={{ display:"flex", background:B.card, borderRadius:8, padding:3, border:`1px solid ${B.border}` }}>
+            {[{ id:"lista", label:"≡ Lista" }, { id:"kanban", label:"⬜ Kanban" }].map(v => (
+              <button key={v.id} onClick={() => setVista(v.id)}
+                style={{ padding: mobile ? "6px 12px" : "4px 11px", borderRadius:6,
+                  cursor:"pointer", fontSize: mobile ? 12 : 11, fontWeight:600, border:"none",
+                  background: vista===v.id ? B.accent : "transparent",
+                  color: vista===v.id ? "#fff" : "#8AAECC" }}>
+                {v.label}
+              </button>
+            ))}
+          </div>
           <button onClick={() => setShowMail(m => !m)}
             style={{ padding: mobile ? "7px 14px" : "5px 12px", borderRadius:8, cursor:"pointer",
               fontSize: mobile ? 13 : 12, fontWeight:600,
@@ -249,6 +263,22 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           </pre>
         </div>
       )}
+
+      {/* Vista Kanban */}
+      {vista === "kanban" && (
+        <>
+          <div style={{ fontSize:11, color:B.dim, marginBottom:10, letterSpacing:"0.03em" }}>
+            Vista Kanban · compradores activos
+          </div>
+          <Kanban
+            leads={leads.filter(l => !l.inversor)}
+            updateLead={updateLead}
+          />
+        </>
+      )}
+
+      {/* Vista Lista (todo lo siguiente) */}
+      {vista === "lista" && <>
 
       {/* Tabs */}
       <div style={{ display:"flex", gap:4, background:B.card, borderRadius:10, padding:4,
@@ -401,6 +431,8 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
           onConfirmar={confirmarPerdido}
           onCancelar={() => setModalPerdido(null)} />
       )}
+
+      </> /* fin vista lista */}
     </div>
   );
 }
