@@ -87,21 +87,22 @@ export default function Briefing({ leads, properties, captaciones }) {
 
   return (
     <div style={{
-      width: "100%", maxWidth: 1200, margin: "0 auto",
+      width: "100%", maxWidth: 1480, margin: "0 auto",
       display: "flex", flexDirection: "column",
-      gap: 10, paddingBottom: 16,
+      gap: 10, paddingTop: 16, paddingBottom: 16,
     }}>
 
       {/* Header */}
       <div style={{
-        display: "flex", alignItems: "center", gap: 12,
-        paddingBottom: 8, borderBottom: `1px solid ${B.border}`,
+        display: "flex", alignItems: "center", gap: 14,
+        paddingBottom: 10, borderBottom: `1px solid ${B.border}`,
       }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#E2E8F0", letterSpacing: "0.02em" }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: "#E2E8F0", letterSpacing: "0.08em", textTransform: "uppercase" }}>
           Resumen del negocio
         </div>
-        <div style={{ fontSize: 10, color: B.dim, letterSpacing: "0.8px", textTransform: "uppercase" }}>
-          {fechaLabel}
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ fontSize: 10, color: "#64748B", letterSpacing: "0.04em" }}>Actualizado ahora</span>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22C55E", display: "inline-block", boxShadow: "0 0 5px #22C55E" }} />
         </div>
       </div>
 

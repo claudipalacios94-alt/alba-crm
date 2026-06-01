@@ -23,7 +23,7 @@ function Sparkline({ data, color, id }) {
 
   if (!data || data.length < 2 || max === 0) {
     return (
-      <div style={{ display: "flex", gap: 4, height: 68, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 4, height: 54, alignItems: "center" }}>
         <div style={{ width: 22, flexShrink: 0 }} />
         <div style={{ flex: 1, height: 1, background: color + "30", borderRadius: 1 }} />
       </div>
@@ -43,7 +43,7 @@ function Sparkline({ data, color, id }) {
   const gid   = `kpi2-${id}`;
 
   return (
-    <div style={{ display: "flex", gap: 4, height: 68, alignItems: "stretch" }}>
+    <div style={{ display: "flex", gap: 4, height: 54, alignItems: "stretch" }}>
       {/* Eje Y */}
       <div style={{
         width: 22, flexShrink: 0,
@@ -62,7 +62,7 @@ function Sparkline({ data, color, id }) {
 
       {/* Gráfico */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <svg width="100%" height="68" viewBox={`0 0 ${W} ${H}`}
+        <svg width="100%" height="54" viewBox={`0 0 ${W} ${H}`}
           preserveAspectRatio="none" style={{ display: "block" }}>
           <defs>
             <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
@@ -143,55 +143,55 @@ function KPICard({ icon, color, valor, label, sub, subDir, sparkData, compPeriod
     <div style={{
       background: "#0C1527",
       border: "1px solid #1E293B",
-      borderRadius: 14,
-      padding: "20px 20px 16px",
+      borderRadius: 12,
+      padding: "14px 16px 12px",
       display: "flex", flexDirection: "column",
       minWidth: 0, overflow: "hidden",
     }}>
       {/* Icono */}
       <div style={{
-        width: 38, height: 38, borderRadius: "50%",
+        width: 32, height: 32, borderRadius: "50%",
         background: color + "18", border: `1px solid ${color}28`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        color, marginBottom: 16, flexShrink: 0,
+        color, marginBottom: 10, flexShrink: 0,
       }}>
-        <div style={{ width: 18, height: 18, display: "flex" }}>{icon}</div>
+        <div style={{ width: 15, height: 15, display: "flex" }}>{icon}</div>
       </div>
 
       {/* Número */}
       <div style={{
-        fontSize: 44, fontWeight: 800, color: "#F1F5F9",
-        fontFamily: "Georgia,serif", lineHeight: 1, marginBottom: 5,
-        letterSpacing: "-1px",
+        fontSize: 34, fontWeight: 800, color: "#F1F5F9",
+        fontFamily: "Georgia,serif", lineHeight: 1, marginBottom: 4,
+        letterSpacing: "-0.5px",
       }}>
         {valor}
       </div>
 
       {/* Label */}
       <div style={{
-        fontSize: 11, fontWeight: 600, color: "#64748B",
-        letterSpacing: "0.03em", marginBottom: 4,
+        fontSize: 10, fontWeight: 600, color: "#64748B",
+        letterSpacing: "0.03em", marginBottom: 3,
       }}>
         {label}
       </div>
 
       {/* Línea secundaria */}
       <div style={{
-        fontSize: 11, fontWeight: 600, color: subColor,
-        marginBottom: 12, minHeight: 14,
+        fontSize: 10, fontWeight: 600, color: subColor,
+        marginBottom: 8, minHeight: 12,
       }}>
         {sub}
       </div>
 
       {/* Sparkline */}
-      <div style={{ marginLeft: -2, marginRight: -2, marginBottom: 10 }}>
+      <div style={{ marginLeft: -2, marginRight: -2, marginBottom: 8 }}>
         <Sparkline data={sparkData} color={color} id={label.replace(/\s+/g,"_")} />
       </div>
 
       {/* Comparativa */}
       <div style={{
-        borderTop: "1px solid #1E293B", paddingTop: 10,
-        fontSize: 11, display: "flex", gap: 4, alignItems: "center",
+        borderTop: "1px solid #1E293B", paddingTop: 8,
+        fontSize: 10, display: "flex", gap: 4, alignItems: "center",
       }}>
         <span style={{ color: "#374151" }}>vs. {compPeriodo}</span>
         <span style={{ color: compColor, fontWeight: 700 }}>{compLabel}</span>
@@ -298,10 +298,10 @@ export default function FranjaKPIs({ leads, activos, captaciones, compact }) {
     {
       icon: <IcoDollar />, color: "#06B6D4",
       valor: "$0", label: "Facturación mes",
-      sub:      "— sin datos aún",
+      sub:      "Pendiente conectar operaciones",
       subDir:   "neutral",
       sparkData: flat(0),
-      compPeriodo: "mes anterior", compLabel: "—", compDir: "neutral",
+      compPeriodo: "mes anterior", compLabel: "sin histórico", compDir: "neutral",
     },
     {
       icon: <IcoUserPlus />, color: "#60A5FA",
