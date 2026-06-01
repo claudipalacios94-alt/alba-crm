@@ -1,7 +1,13 @@
-import React, { useMemo } from "react";
-import { AG } from "../../data/constants.js";
+// ══════════════════════════════════════════════════════════════
+// ALBA CRM — LeadCardPro v3
+// Card cerrada + Ficha expandida única (sin LeadCard legacy)
+// ══════════════════════════════════════════════════════════════
+import React, { useMemo, useState } from "react";
+import { AG, ETAPAS, getRecommendedAction } from "../../data/constants.js";
 import { computeRanking } from "../../domain/lead.js";
-import LeadCard from "./LeadCard.jsx";
+import { parsearNotas, TIPO_NOTA } from "../../domain/nota.js";
+
+// ── Helpers ───────────────────────────────────────────────────
 
 function badgePro(lead, ranking) {
   if (lead.etapa === "Negociación") return { label: "NEGOCIACIÓN", bg: "#e8e3f8", color: "#7c5cc4" };
@@ -50,16 +56,82 @@ function diasColor(dias) {
   return "#dc2626";
 }
 
+function formatFecha(fecha) {
+  if (!fecha) return null;
+  try {
+    const d = new Date(fecha);
+    if (isNaN(d)) return String(fecha);
+    return d.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
+  } catch { return String(fecha); }
+}
+
+function generarPedido(lead, formato) {
+  const tipo   = lead.tipo   || null;
+  const amb    = lead.ambientes ? `${lead.ambientes} amb` : null;
+  const linea1 = [tipo, amb].filter(Boolean).join(" · ");
+  const zona   = lead.zona   || null;
+  const presup = lead.presup ? `USD ${Number(lead.presup).toLocaleString("es-AR")}` : null;
+  const reqs   = [
+    lead.cochera === "si" && "cochera",
+    lead.patio   === "si" && "patio",
+    lead.balcon  === "si" && "balcón",
+    lead.credito === "si" && "crédito aprobado",
+    lead.m2min   && `min ${lead.m2min}m²`,
+  ].filter(Boolean);
+
+  if (formato === "discreto") {
+    return [
+      "Estoy buscando para un cliente activo:",
+      [linea1, zona && `zona ${zona}`, presup && `hasta ${presup}`].filter(Boolean).join(", ") + ".",
+      reqs.length ? `Ideal con ${reqs.join(", ")}.` : null,
+      "Si saben de algo, me escriben por privado.",
+    ].filter(Boolean).join("\n");
+  }
+  if (formato === "colegas") {
+    return [
+      linea1 ? `Tengo cliente activo buscando ${linea1}` : "Tengo cliente activo",
+      zona   ? `📍 Zona: ${zona}` : null,
+      presup ? `💰 Hasta ${presup}` : null,
+      reqs.length ? `✅ ${reqs.join(" · ")}` : null,
+      "Colegas, si tienen algo compatible, coordinamos. Comparto honorarios.",
+    ].filter(Boolean).join("\n");
+  }
+  // formal (default)
+  return [
+    "BUSCO para cliente activo",
+    linea1 || null,
+    zona   ? `Zona: ${zona}` : null,
+    presup ? `Presupuesto: hasta ${presup}` : null,
+    reqs.length ? `Requisitos: ${reqs.join(", ")}` : null,
+    "Cualquier dato, me escriben por privado.",
+  ].filter(Boolean).join("\n");
+}
+
+// ── Sub-componentes ───────────────────────────────────────────
+
 function DataPill({ label, value }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-      <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+      <div style={{ fontSize: 10, color: "#5a6f84", fontWeight: 700,
+        letterSpacing: "0.06em", textTransform: "uppercase" }}>
         {label}
       </div>
       <div style={{ fontSize: 12, fontWeight: 600, color: "#102033" }}>{value}</div>
     </div>
   );
 }
+
+// Estilos compartidos para secciones de la ficha expandida
+const SL = {
+  fontSize: 10, fontWeight: 800, color: "#5a6f84",
+  letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8,
+};
+const SB = {
+  background: "#eef4f8", border: "1px solid #c7d3df",
+  borderRadius: 12, padding: "12px 14px",
+};
+
+// ── Componente principal ──────────────────────────────────────
 
 export default function LeadCardPro({
   lead, matches = [], isOpen, onToggle,
@@ -76,55 +148,436 @@ export default function LeadCardPro({
 
   const matchesConFoto = matches.filter(m => m.fotos?.[0]);
 
-  const cardProps = {
-    mobile, properties, captaciones, mostrados, toggleMostrado,
-    updateLead, deleteLead, setEtapa, setAgente, setModalPerdido, setConfirmDelete,
-    isBlurred: false, hasNewMatch,
-  };
+  const [copiadoTipo, setCopiadoTipo] = useState(null);
+  const rec   = getRecommendedAction(lead);
+  const notas = parsearNotas(lead.nota).slice(-3).reverse();
 
+  function copiar(formato) {
+    navigator.clipboard.writeText(generarPedido(lead, formato));
+    setCopiadoTipo(formato);
+    setTimeout(() => setCopiadoTipo(null), 2000);
+  }
+
+  // ── FICHA EXPANDIDA ──────────────────────────────────────────
   if (isOpen) {
+    const recUrgColor = rec.urgencia === "alta" ? "#dc5050"
+                      : rec.urgencia === "media" ? "#e9823a"
+                      : "#46596d";
+
     return (
       <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
         <div style={{
-          background: "#eef4f8",
+          background: "#f2f6fa",
           border: "1px solid #c7d3df",
+          borderLeft: `4px solid ${sc}`,
           borderRadius: 18,
-          boxShadow: "0 4px 24px rgba(37,99,235,0.08)",
+          boxShadow: "0 4px 24px rgba(0,0,0,0.07)",
           overflow: "hidden",
         }}>
-          {/* Header claro con nombre y cerrar */}
+
+          {/* ── HEADER OPERATIVO ──────────────────────────────── */}
           <div style={{
-            background: "#f2f6fa",
+            background: "#eef4f8",
             borderBottom: "1px solid #c7d3df",
             padding: "10px 16px",
-            display: "flex", alignItems: "center", justifyContent: "space-between",
+            display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{
-                fontSize: 10, fontWeight: 800, letterSpacing: "0.08em",
-                color: badge.color, background: badge.bg,
-                padding: "2px 8px", borderRadius: 20,
-              }}>{badge.label}</span>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#1a2744" }}>
+            {/* Identidad */}
+            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em",
+              color: badge.color, background: badge.bg,
+              padding: "2px 8px", borderRadius: 20, flexShrink: 0 }}>
+              {badge.label}
+            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#102033",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {lead.nombre || "Sin nombre"}
               </span>
+              <span style={{ fontSize: 11, color: "#5a6f84", flexShrink: 0 }}>
+                {lead.inversor ? "💼 Inversor" : "🏠 Comprador"}
+              </span>
+              {lead.zona && (
+                <span style={{ fontSize: 11, color: "#46596d", flexShrink: 0,
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>
+                  · {lead.zona}
+                </span>
+              )}
             </div>
+            {/* Contacto */}
+            {lead.tel && (
+              <span style={{ fontSize: 11, color: "#46596d", flexShrink: 0, whiteSpace: "nowrap" }}>
+                📞 {lead.tel.slice(0, 13)}{lead.tel.length > 13 ? "…" : ""}
+              </span>
+            )}
+            {lead.tel && (
+              <a href={`https://wa.me/${lead.tel.replace(/\D/g, "")}`}
+                target="_blank" rel="noreferrer"
+                onClick={e => e.stopPropagation()}
+                style={{ padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                  color: "#16a34a", background: "rgba(22,163,74,0.1)",
+                  border: "1px solid rgba(22,163,74,0.25)", textDecoration: "none", flexShrink: 0 }}>
+                WA
+              </a>
+            )}
+            {/* Acciones rápidas */}
+            <button
+              onClick={e => { e.stopPropagation(); updateLead(lead.id, { last_contact_at: new Date().toISOString() }); }}
+              style={{ padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                border: "1px solid rgba(22,163,74,0.25)", background: "rgba(22,163,74,0.08)",
+                color: "#16a34a", cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}>
+              ✓ Contacté hoy
+            </button>
+            <button
+              onClick={e => { e.stopPropagation(); copiar("formal"); }}
+              style={{ padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                border: "1px solid #c7d3df",
+                background: copiadoTipo === "formal" ? "#d4e5f7" : "#f2f6fa",
+                color: copiadoTipo === "formal" ? "#1763d1" : "#46596d",
+                cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}>
+              {copiadoTipo === "formal" ? "✓ Copiado" : "📋 Copiar pedido"}
+            </button>
             <button onClick={onToggle}
-              style={{ background: "#eef4f8", border: "1px solid #c7d3df",
+              style={{ background: "#f2f6fa", border: "1px solid #c7d3df",
                 color: "#46596d", borderRadius: 8, padding: "4px 12px",
-                cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                cursor: "pointer", fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
               ✕ Cerrar
             </button>
           </div>
-          {/* LeadCard original en contenedor con scroll controlado */}
-          <div style={{ maxHeight: "68vh", overflowY: "auto", overflowX: "hidden" }}>
-            <LeadCard lead={lead} open={true} onToggle={onToggle} {...cardProps} />
+
+          {/* ── BODY SCROLLABLE ───────────────────────────────── */}
+          <div style={{ maxHeight: "60vh", overflowY: "auto", overflowX: "hidden",
+            padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+
+            {/* ── ROW 1: Brief · Datos · Grupos ─────────────── */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: mobile ? "1fr" : "1fr 1fr 1fr",
+              gap: 12, alignItems: "start",
+            }}>
+
+              {/* COL 1: Brief comercial + Gestión */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+
+                {/* Brief comercial */}
+                <div style={{ ...SB, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={SL}>Brief comercial</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: recUrgColor,
+                      background: `${recUrgColor}18`, padding: "2px 9px", borderRadius: 20,
+                      border: `1px solid ${recUrgColor}30`, flexShrink: 0 }}>
+                      {rec.accion}
+                    </span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: recUrgColor, letterSpacing: "0.06em" }}>
+                      {rec.urgencia?.toUpperCase()}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#46596d", lineHeight: 1.45 }}>{rec.motivo}</div>
+                  <div style={{ fontSize: 11, color: diasColor(lead.dias), fontWeight: 500 }}>
+                    Último contacto: {diasLabel(lead.dias)}
+                  </div>
+                  {lead.proxaccion && (
+                    <div style={{ fontSize: 11, color: "#5a6f84", padding: "6px 10px",
+                      background: "#f2f6fa", borderRadius: 7, border: "1px solid #c7d3df",
+                      display: "flex", flexDirection: "column", gap: 2 }}>
+                      <span>📌 {lead.proxaccion}</span>
+                      {lead.proxaccion_tipo && (
+                        <span style={{ fontSize: 10, color: "#94a3b8" }}>{lead.proxaccion_tipo}</span>
+                      )}
+                      {lead.proxaccion_fecha && (
+                        <span style={{ fontSize: 10, color: "#94a3b8" }}>
+                          {formatFecha(lead.proxaccion_fecha)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {lead.nota_imp && (
+                    <div style={{ fontSize: 11, color: "#dc5050", padding: "5px 9px",
+                      background: "#fad8d8", borderRadius: 7, border: "1px solid #f5c0c0" }}>
+                      ⚠️ {lead.nota_imp}
+                    </div>
+                  )}
+                </div>
+
+                {/* Gestión */}
+                <div style={SB}>
+                  <div style={SL}>Gestión</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div>
+                      <label style={{ fontSize: 10, color: "#5a6f84", fontWeight: 700,
+                        display: "block", marginBottom: 4,
+                        textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        Etapa
+                      </label>
+                      <select
+                        value={lead.etapa || ""}
+                        onChange={e => { e.stopPropagation(); setEtapa(lead.id, e.target.value); }}
+                        onClick={e => e.stopPropagation()}
+                        style={{ width: "100%", padding: "5px 8px", borderRadius: 7,
+                          border: "1px solid #c7d3df", background: "#f2f6fa",
+                          color: "#102033", fontSize: 12, fontWeight: 600,
+                          cursor: "pointer", outline: "none" }}>
+                        {ETAPAS.map(e => <option key={e} value={e}>{e}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 10, color: "#5a6f84", fontWeight: 700,
+                        display: "block", marginBottom: 4,
+                        textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        Agente
+                      </label>
+                      <select
+                        value={lead.ag || ""}
+                        onChange={e => { e.stopPropagation(); setAgente(lead.id, e.target.value); }}
+                        onClick={e => e.stopPropagation()}
+                        style={{ width: "100%", padding: "5px 8px", borderRadius: 7,
+                          border: "1px solid #c7d3df", background: "#f2f6fa",
+                          color: "#102033", fontSize: 12, fontWeight: 600,
+                          cursor: "pointer", outline: "none" }}>
+                        <option value="">Sin asignar</option>
+                        {Object.entries(AG).map(([key, val]) => (
+                          <option key={key} value={key}>{val.n}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* COL 2: Datos del pedido */}
+              <div style={SB}>
+                <div style={SL}>Datos del pedido</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 14px" }}>
+                  {precio                && <DataPill label="Presupuesto" value={precio} />}
+                  {lead.tipo             && <DataPill label="Tipo"        value={lead.tipo} />}
+                  {lead.op               && <DataPill label="Operación"   value={lead.op} />}
+                  {lead.ambientes        && <DataPill label="Ambientes"   value={`${lead.ambientes} amb`} />}
+                  {lead.zona             && <DataPill label="Zona"        value={lead.zona} />}
+                  {lead.m2min            && <DataPill label="M² mín."     value={`${lead.m2min} m²`} />}
+                  {lead.cochera === "si" && <DataPill label="Cochera"     value="✓ Sí" />}
+                  {lead.balcon  === "si" && <DataPill label="Balcón"      value="✓ Sí" />}
+                  {lead.patio   === "si" && <DataPill label="Patio"       value="✓ Sí" />}
+                  {lead.credito === "si" && <DataPill label="Crédito"     value="✓ Aprobado" />}
+                  {lead.etapa            && <DataPill label="Etapa"       value={lead.etapa} />}
+                  {ag                    && <DataPill label="Agente"      value={ag.n} />}
+                </div>
+              </div>
+
+              {/* COL 3: Pedido para grupos */}
+              <div style={{ ...SB, display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={SL}>Pedido para grupos</div>
+                <pre style={{ margin: 0, fontSize: 11, color: "#102033", lineHeight: 1.6,
+                  whiteSpace: "pre-wrap", background: "#f2f6fa", borderRadius: 8,
+                  padding: "8px 10px", border: "1px solid #c7d3df", fontFamily: "inherit",
+                  maxHeight: 130, overflowY: "auto" }}>
+                  {generarPedido(lead, "formal")}
+                </pre>
+                <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                  {[
+                    { fmt: "formal",   label: "Pedido" },
+                    { fmt: "discreto", label: "Discreto" },
+                    { fmt: "colegas",  label: "Colegas" },
+                  ].map(({ fmt, label }) => (
+                    <button key={fmt}
+                      onClick={e => { e.stopPropagation(); copiar(fmt); }}
+                      style={{ padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600,
+                        border: "1px solid #c7d3df", flex: 1,
+                        background: copiadoTipo === fmt ? "#d4e5f7" : "#f2f6fa",
+                        color: copiadoTipo === fmt ? "#1763d1" : "#46596d",
+                        cursor: "pointer", whiteSpace: "nowrap" }}>
+                      {copiadoTipo === fmt ? "✓ Copiado" : label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ── ROW 2: Matches ────────────────────────────── */}
+            {matches.length > 0 && (
+              <div style={SB}>
+                <div style={SL}>Propiedades compatibles · {matches.length}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  {matches.slice(0, 4).map(m => {
+                    const mKey  = `${lead.id}-${m.id}`;
+                    const visto = mostrados.has(mKey);
+                    const esCap = String(m.id).startsWith("cap-");
+                    return (
+                      <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8,
+                        padding: "7px 10px", background: "#e4edf6",
+                        borderRadius: 8, border: "1px solid #c5d8eb" }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: "#102033" }}>
+                            {[m.tipo, m.zona,
+                              m.precio ? `USD ${Number(m.precio).toLocaleString("es-AR")}` : null,
+                            ].filter(Boolean).join(" · ")}
+                          </span>
+                          {m.dir && (
+                            <span style={{ fontSize: 11, color: "#46596d" }}>
+                              {" · "}{m.dir.slice(0, 30)}{m.dir.length > 30 ? "…" : ""}
+                            </span>
+                          )}
+                          {esCap && (
+                            <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700,
+                              color: "#7c5cc4", background: "#e8e3f8",
+                              padding: "1px 5px", borderRadius: 4 }}>
+                              {m._tipoCap === "colega" ? "colega" : "captación"}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={e => { e.stopPropagation(); toggleMostrado(lead.id, m.id); }}
+                          style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, flexShrink: 0,
+                            border: `1px solid ${visto ? "#c7d3df" : "#3a8bc4"}`,
+                            background: visto ? "#f2f6fa" : "#d4e5f7",
+                            color: visto ? "#5a6f84" : "#1763d1",
+                            cursor: "pointer", fontWeight: 600 }}>
+                          {visto ? "✓ Visto" : "Marcar"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {matches.length > 4 && (
+                    <div style={{ fontSize: 11, color: "#3a8bc4", fontWeight: 600, padding: "3px 4px" }}>
+                      +{matches.length - 4} más compatibles
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── ROW 3: Notas + Calificación/Perfil ────────── */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: mobile ? "1fr" : "1fr 1fr",
+              gap: 12,
+            }}>
+
+              {/* Notas — últimas 3, solo lectura */}
+              <div style={SB}>
+                <div style={SL}>Notas recientes</div>
+                {notas.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>
+                    Sin notas recientes
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {notas.map((n, i) => {
+                      const cfg   = TIPO_NOTA[n.tipo] || TIPO_NOTA.seguimiento;
+                      const fecha = n.createdAt
+                        ? new Date(n.createdAt).toLocaleDateString("es-AR", { day: "numeric", month: "short" })
+                        : "";
+                      return (
+                        <div key={i} style={{
+                          display: "flex", gap: 8, alignItems: "flex-start",
+                          padding: "7px 10px", background: "#f2f6fa", borderRadius: 8,
+                          borderTop: "1px solid #c7d3df", borderRight: "1px solid #c7d3df",
+                          borderBottom: "1px solid #c7d3df", borderLeft: `3px solid ${cfg.color}`,
+                        }}>
+                          <span style={{ fontSize: 13, flexShrink: 0, lineHeight: 1.4 }}>{cfg.emoji}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                              <span style={{ fontSize: 9, fontWeight: 700, color: cfg.color,
+                                textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                {cfg.label}
+                              </span>
+                              {fecha && <span style={{ fontSize: 9, color: "#94a3b8" }}>{fecha}</span>}
+                            </div>
+                            <div style={{ fontSize: 11, color: "#102033", lineHeight: 1.4 }}>{n.texto}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Calificación (comprador) o Perfil inversor */}
+              {lead.inversor ? (
+                <div style={SB}>
+                  <div style={SL}>Perfil inversor</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {lead.nota_inversor ? (
+                      <div style={{ fontSize: 12, color: "#102033", lineHeight: 1.5,
+                        padding: "7px 10px", background: "#f2f6fa",
+                        borderRadius: 8, border: "1px solid #c7d3df" }}>
+                        {lead.nota_inversor}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>
+                        Sin perfil cargado
+                      </div>
+                    )}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px" }}>
+                      {precio    && <DataPill label="Presupuesto"  value={precio} />}
+                      {lead.tipo && <DataPill label="Tipo buscado" value={lead.tipo} />}
+                      {lead.zona && <DataPill label="Zona"         value={lead.zona} />}
+                      {lead.op   && <DataPill label="Operación"    value={lead.op} />}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={SB}>
+                  <div style={SL}>Calificación</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    {[
+                      { key: "q_visitas_previas",   icon: "🕐", label: "¿Cuánto lleva buscando?" },
+                      { key: "q_freno",             icon: "🚧", label: "¿Qué le frenó antes?" },
+                      { key: "q_tiene_para_vender", icon: "🔄", label: "¿Tiene algo para vender?" },
+                      { key: "q_fecha_limite",      icon: "📅", label: "¿Hay fecha límite?" },
+                    ].map(s => (
+                      <div key={s.key} style={{ display: "flex", alignItems: "flex-start", gap: 6,
+                        padding: "5px 8px", borderRadius: 7,
+                        background: lead[s.key] ? "rgba(58,139,196,0.06)" : "rgba(148,163,184,0.07)",
+                        border: `1px solid ${lead[s.key] ? "#c5d8eb" : "#dde3ec"}` }}>
+                        <span style={{ fontSize: 11, flexShrink: 0, marginTop: 1 }}>{s.icon}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 10, color: "#5a6f84", fontWeight: 600 }}>{s.label}</div>
+                          {lead[s.key] ? (
+                            <div style={{ fontSize: 11, color: "#102033", marginTop: 1, lineHeight: 1.4 }}>
+                              {lead[s.key]}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: 10, color: "#94a3b8", fontStyle: "italic" }}>sin dato</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── ROW 4: Más acciones ────────────────────────── */}
+            <div style={{ ...SB, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <span style={{ fontSize: 10, fontWeight: 800, color: "#5a6f84",
+                textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Acciones
+              </span>
+              <button
+                onClick={e => { e.stopPropagation(); setModalPerdido(lead); }}
+                style={{ padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600,
+                  border: "1px solid rgba(233,130,58,0.35)", background: "#fff7f0",
+                  color: "#e9823a", cursor: "pointer" }}>
+                Marcar perdido
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); setConfirmDelete(lead); }}
+                style={{ padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600,
+                  border: "1px solid rgba(220,80,80,0.35)", background: "#fff5f5",
+                  color: "#dc5050", cursor: "pointer" }}>
+                Eliminar lead
+              </button>
+              <span style={{ fontSize: 10, color: "#b0bec5", marginLeft: "auto", fontStyle: "italic" }}>
+                Edición de notas · próxima versión
+              </span>
+            </div>
+
           </div>
         </div>
       </div>
     );
   }
 
+  // ── CARD CERRADA ─────────────────────────────────────────────
   return (
     <div
       onClick={onToggle}
@@ -147,25 +600,19 @@ export default function LeadCardPro({
         minHeight: 0,
       }}
       onMouseEnter={e => {
-        if (!isBlurred) {
-          e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.10)";
-        }
+        if (!isBlurred) e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.10)";
       }}
       onMouseLeave={e => {
-        if (!isBlurred) {
-          e.currentTarget.style.boxShadow = hasNewMatch
-            ? "0 0 0 3px rgba(59,130,246,0.12), 0 2px 10px rgba(0,0,0,0.05)"
-            : "0 1px 4px rgba(0,0,0,0.04)";
-        }
+        if (!isBlurred) e.currentTarget.style.boxShadow = hasNewMatch
+          ? "0 0 0 3px rgba(59,130,246,0.12), 0 2px 10px rgba(0,0,0,0.05)"
+          : "0 1px 4px rgba(0,0,0,0.04)";
       }}
     >
       {/* Badge + nuevo match */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{
-          fontSize: 10, fontWeight: 800, letterSpacing: "0.08em",
+        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em",
           color: badge.color, background: badge.bg,
-          padding: "3px 9px", borderRadius: 20, flexShrink: 0,
-        }}>
+          padding: "3px 9px", borderRadius: 20, flexShrink: 0 }}>
           {badge.label}
         </span>
         <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
@@ -182,7 +629,7 @@ export default function LeadCardPro({
 
       {/* Nombre + subtítulo */}
       <div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#1a2744", lineHeight: 1.25,
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#102033", lineHeight: 1.25,
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {lead.nombre || "Sin nombre"}
         </div>
@@ -214,11 +661,11 @@ export default function LeadCardPro({
       {/* Datos en grid 2 cols */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px 12px" }}>
         {precio     && <DataPill label="Presupuesto" value={precio} />}
-        {lead.tipo  && <DataPill label="Tipo" value={lead.tipo} />}
+        {lead.tipo  && <DataPill label="Tipo"        value={lead.tipo} />}
         {lead.ambientes && <DataPill label="Ambientes" value={`${lead.ambientes} amb`} />}
         {lead.cochera === "si" && <DataPill label="Cochera" value="✓ Sí" />}
         {lead.credito === "si" && <DataPill label="Crédito" value="✓ Aprobado" />}
-        {lead.etapa  && <DataPill label="Etapa" value={lead.etapa} />}
+        {lead.etapa  && <DataPill label="Etapa"      value={lead.etapa} />}
       </div>
 
       {/* Matches strip */}
@@ -229,31 +676,33 @@ export default function LeadCardPro({
         display: "flex", alignItems: "center", gap: 8,
       }}>
         <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.05em",
-          color: matches.length > 0 ? "#2563eb" : "#94a3b8" }}>
-          {matches.length === 0 ? "0 MATCHES" : `${matches.length} MATCH${matches.length !== 1 ? "ES" : ""}`}
+          color: matches.length > 0 ? "#1763d1" : "#94a3b8" }}>
+          {matches.length === 0
+            ? "0 MATCHES"
+            : `${matches.length} MATCH${matches.length !== 1 ? "ES" : ""}`}
         </span>
         <div style={{ display: "flex", gap: 4, alignItems: "center", flex: 1, minWidth: 0 }}>
           {matchesConFoto.slice(0, 2).map(m => (
             <img key={m.id} src={Array.isArray(m.fotos) ? m.fotos[0] : m.fotos}
               alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: "cover",
-                border: "1px solid #e5eaf2", flexShrink: 0 }} />
+                border: "1px solid #c7d3df", flexShrink: 0 }} />
           ))}
           {matchesConFoto.length > 2 && (
-            <span style={{ fontSize: 10, color: "#64748b", background: "#f1f5f9",
+            <span style={{ fontSize: 10, color: "#5a6f84", background: "#f2f6fa",
               borderRadius: 6, padding: "2px 6px", fontWeight: 600, flexShrink: 0 }}>
               +{matchesConFoto.length - 2}
             </span>
           )}
           {matches.length > 0 && matchesConFoto.length === 0 && (
-            <span style={{ fontSize: 10, color: "#64748b" }}>
+            <span style={{ fontSize: 10, color: "#5a6f84" }}>
               {matches.length === 1 ? "1 prop sin foto" : `${matches.length} props sin foto`}
             </span>
           )}
         </div>
         {matches.length > 0 && (
           <button onClick={e => { e.stopPropagation(); onToggle(); }}
-            style={{ fontSize: 10, color: "#2563eb", background: "rgba(37,99,235,0.08)",
-              border: "1px solid rgba(37,99,235,0.2)", borderRadius: 6, padding: "2px 8px",
+            style={{ fontSize: 10, color: "#1763d1", background: "#d4e5f7",
+              border: "1px solid #c5d8eb", borderRadius: 6, padding: "2px 8px",
               cursor: "pointer", flexShrink: 0, fontWeight: 600 }}>
             Ver →
           </button>
@@ -281,11 +730,9 @@ export default function LeadCardPro({
         {ag && (
           <div style={{
             width: 32, height: 32, borderRadius: "50%",
-            background: ag.bg,
-            border: `2px solid ${ag.c}`,
+            background: ag.bg, border: `2px solid ${ag.c}`,
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 12, fontWeight: 800, color: ag.c,
-            flexShrink: 0,
+            fontSize: 12, fontWeight: 800, color: ag.c, flexShrink: 0,
           }}>
             {lead.ag}
           </div>
