@@ -116,74 +116,61 @@ function getMatchUrl(match) {
   return typeof url === 'string' && url ? url : null;
 }
 
+const HIGHLIGHTS_PUBLICOS = [
+  "Luminoso", "Buen estado", "Patio", "Balcón", "Cochera",
+  "Al frente", "Vista abierta", "Reciclado", "Apto crédito",
+  "A una cuadra del mar", "Bajas expensas",
+];
+
 function getPropertyHighlights(match) {
-  const out = [];
+  const found = [];
 
-  // Boolean fields
-  if (match.cochera === "si" || match.cochera === true) out.push("Cochera");
-  if (match.balcon  === "si" || match.balcon  === true) out.push("Balcón");
-  if (match.patio   === "si" || match.patio   === true) out.push("Patio");
+  // Campos booleanos estructurados
+  if ((match.cochera === "si" || match.cochera === true) && !found.includes("Cochera")) found.push("Cochera");
+  if ((match.balcon  === "si" || match.balcon  === true) && !found.includes("Balcón"))  found.push("Balcón");
+  if ((match.patio   === "si" || match.patio   === true) && !found.includes("Patio"))   found.push("Patio");
 
-  // Numeric fields
-  if (match.m2tot) out.push(`${match.m2tot} m²`);
-  if (match.ambientes) out.push(`${match.ambientes} amb`);
+  if (found.length >= 3) return found;
 
-  // Estado / categoría
-  if (match.estado)    out.push(match.estado);
-  if (match.categoria && match.categoria !== match.estado) out.push(match.categoria);
+  // Buscar términos públicos en texto libre
+  const text = [
+    typeof match.caracts     === "string" ? match.caracts     : "",
+    typeof match.descripcion === "string" ? match.descripcion : "",
+    typeof match.contenido   === "string" ? match.contenido   : "",
+    typeof match.info        === "string" ? match.info        : "",
+  ].join(" ").toLowerCase();
 
-  // Captación context
-  if (match._esCaptacion) {
-    if (match._tipoCap === "colega") out.push("Captación colega");
-    else if (match._tipoCap === "honorarios") out.push("Honorarios");
+  for (const h of HIGHLIGHTS_PUBLICOS) {
+    if (found.length >= 3) break;
+    if (!found.includes(h) && text.includes(h.toLowerCase())) found.push(h);
   }
 
-  if (out.length >= 4) return out.slice(0, 4);
-
-  // Text sources: separar por coma/punto, tomar fragmentos cortos
-  const textSources = [
-    typeof match.caracts      === "string" ? match.caracts      : null,
-    typeof match.descripcion  === "string" ? match.descripcion  : null,
-    typeof match.contenido    === "string" ? match.contenido    : null,
-    typeof match.info         === "string" ? match.info         : null,
-  ].filter(Boolean);
-
-  for (const src of textSources) {
-    if (out.length >= 4) break;
-    const parts = src.split(/[,.\n]/)
-      .map(s => s.trim())
-      .filter(s => s.length > 2 && s.length <= 30);
-    for (const p of parts) {
-      if (out.length >= 4) break;
-      if (!out.includes(p)) out.push(p);
-    }
-  }
-
-  return out.slice(0, 4);
+  return found;
 }
 
 function generarWhatsappMatch(lead, match) {
-  const nombre = lead.nombre ? lead.nombre.split(" ")[0] : "te";
-  const lines  = [`Hola ${nombre}, te paso una opción que puede encajar:`, ""];
+  const lines = [];
 
-  const encabezado = [match.tipo, match.zona].filter(Boolean).join(" en ");
+  const encabezado = [match.tipo, match.zona].filter(Boolean).join(" · ");
   if (encabezado) lines.push(encabezado);
   if (match.dir)   lines.push(match.dir);
   if (match.precio) lines.push(`USD ${Number(match.precio).toLocaleString("es-AR")}`);
 
+  const m2str = match.m2cub
+    ? `${match.m2cub} m² cub`
+    : match.m2tot ? `${match.m2tot} m²` : null;
   const dims = [
     match.ambientes ? `${match.ambientes} amb` : null,
-    match.m2tot     ? `${match.m2tot} m²`      : null,
+    m2str,
   ].filter(Boolean).join(" · ");
   if (dims) lines.push(dims);
 
   const highlights = getPropertyHighlights(match);
-  if (highlights.length) { lines.push(""); highlights.forEach(h => lines.push(h)); }
+  if (highlights.length) lines.push(highlights.join(" · "));
 
   const url = getMatchUrl(match);
-  if (url) { lines.push(""); lines.push(url); }
+  if (url) lines.push(url);
 
-  lines.push("", "¿Querés que la veamos?");
   return lines.join("\n");
 }
 
