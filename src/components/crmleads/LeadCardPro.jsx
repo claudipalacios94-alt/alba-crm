@@ -108,9 +108,12 @@ function generarPedido(lead, formato) {
 }
 
 function getMatchUrl(match) {
-  return match._url || match.url
-    || match.info?.url || match.info?.link
+  const url = match._url || match.url
+    || (typeof match.info === 'object' && match.info !== null
+        ? match.info.url || match.info.link
+        : null)
     || null;
+  return typeof url === 'string' && url ? url : null;
 }
 
 function getPropertyHighlights(match) {
