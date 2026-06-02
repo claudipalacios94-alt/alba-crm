@@ -107,6 +107,89 @@ function generarPedido(lead, formato) {
   ].filter(Boolean).join("\n");
 }
 
+function getMatchUrl(match) {
+  return match._url || match.url
+    || match.info?.url || match.info?.link
+    || null;
+}
+
+function getPropertyHighlights(match) {
+  const out = [];
+
+  // Boolean fields
+  if (match.cochera === "si" || match.cochera === true) out.push("Cochera");
+  if (match.balcon  === "si" || match.balcon  === true) out.push("Balcón");
+  if (match.patio   === "si" || match.patio   === true) out.push("Patio");
+
+  // Numeric fields
+  if (match.m2tot) out.push(`${match.m2tot} m²`);
+  if (match.ambientes) out.push(`${match.ambientes} amb`);
+
+  // Estado / categoría
+  if (match.estado)    out.push(match.estado);
+  if (match.categoria && match.categoria !== match.estado) out.push(match.categoria);
+
+  // Captación context
+  if (match._esCaptacion) {
+    if (match._tipoCap === "colega") out.push("Captación colega");
+    else if (match._tipoCap === "honorarios") out.push("Honorarios");
+  }
+
+  if (out.length >= 4) return out.slice(0, 4);
+
+  // Text sources: separar por coma/punto, tomar fragmentos cortos
+  const textSources = [
+    typeof match.caracts      === "string" ? match.caracts      : null,
+    typeof match.descripcion  === "string" ? match.descripcion  : null,
+    typeof match.contenido    === "string" ? match.contenido    : null,
+    typeof match.info         === "string" ? match.info         : null,
+  ].filter(Boolean);
+
+  for (const src of textSources) {
+    if (out.length >= 4) break;
+    const parts = src.split(/[,.\n]/)
+      .map(s => s.trim())
+      .filter(s => s.length > 2 && s.length <= 30);
+    for (const p of parts) {
+      if (out.length >= 4) break;
+      if (!out.includes(p)) out.push(p);
+    }
+  }
+
+  return out.slice(0, 4);
+}
+
+function generarWhatsappMatch(lead, match) {
+  const nombre = lead.nombre ? lead.nombre.split(" ")[0] : "te";
+  const lines  = [`Hola ${nombre}, te paso una opción que puede encajar:`, ""];
+
+  const encabezado = [match.tipo, match.zona].filter(Boolean).join(" en ");
+  if (encabezado) lines.push(encabezado);
+  if (match.dir)   lines.push(match.dir);
+  if (match.precio) lines.push(`USD ${Number(match.precio).toLocaleString("es-AR")}`);
+
+  const dims = [
+    match.ambientes ? `${match.ambientes} amb` : null,
+    match.m2tot     ? `${match.m2tot} m²`      : null,
+  ].filter(Boolean).join(" · ");
+  if (dims) lines.push(dims);
+
+  const highlights = getPropertyHighlights(match);
+  if (highlights.length) { lines.push(""); highlights.forEach(h => lines.push(h)); }
+
+  const url = getMatchUrl(match);
+  if (url) { lines.push(""); lines.push(url); }
+
+  lines.push("", "¿Querés que la veamos?");
+  return lines.join("\n");
+}
+
+function getWhatsappUrl(lead, match) {
+  const tel = lead.tel ? lead.tel.replace(/\D/g, "") : "";
+  if (!tel) return null;
+  return `https://wa.me/${tel}?text=${encodeURIComponent(generarWhatsappMatch(lead, match))}`;
+}
+
 // ── Sub-componentes ───────────────────────────────────────────
 
 function DataPill({ label, value }) {
@@ -395,43 +478,89 @@ export default function LeadCardPro({
             {matches.length > 0 && (
               <div style={SB}>
                 <div style={SL}>Propiedades compatibles · {matches.length}</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {matches.slice(0, 4).map(m => {
-                    const mKey  = `${lead.id}-${m.id}`;
-                    const visto = mostrados.has(mKey);
-                    const esCap = String(m.id).startsWith("cap-");
+                    const mKey    = `${lead.id}-${m.id}`;
+                    const visto   = mostrados.has(mKey);
+                    const esCap   = String(m.id).startsWith("cap-");
+                    const waUrl   = getWhatsappUrl(lead, m);
+                    const propUrl = getMatchUrl(m);
+                    const chips   = getPropertyHighlights(m);
                     return (
-                      <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8,
-                        padding: "7px 10px", background: "#e4edf6",
-                        borderRadius: 8, border: "1px solid #c5d8eb" }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: "#102033" }}>
+                      <div key={m.id} style={{
+                        padding: "8px 10px", background: "#e4edf6",
+                        borderRadius: 8, border: "1px solid #c5d8eb",
+                        display: "flex", flexDirection: "column", gap: 4,
+                      }}>
+                        {/* Línea 1: Tipo · Zona · Precio + botones */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 6,
+                          flexWrap: "wrap", minWidth: 0 }}>
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 600,
+                            color: "#102033", overflow: "hidden",
+                            textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {[m.tipo, m.zona,
                               m.precio ? `USD ${Number(m.precio).toLocaleString("es-AR")}` : null,
                             ].filter(Boolean).join(" · ")}
                           </span>
-                          {m.dir && (
-                            <span style={{ fontSize: 11, color: "#46596d" }}>
-                              {" · "}{m.dir.slice(0, 30)}{m.dir.length > 30 ? "…" : ""}
-                            </span>
-                          )}
                           {esCap && (
-                            <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700,
-                              color: "#7c5cc4", background: "#e8e3f8",
-                              padding: "1px 5px", borderRadius: 4 }}>
+                            <span style={{ fontSize: 9, fontWeight: 700, color: "#7c5cc4",
+                              background: "#e8e3f8", padding: "1px 5px",
+                              borderRadius: 4, flexShrink: 0 }}>
                               {m._tipoCap === "colega" ? "colega" : "captación"}
                             </span>
                           )}
+                          <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                            {waUrl && (
+                              <a href={waUrl} target="_blank" rel="noopener noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10,
+                                  fontWeight: 700, color: "#16a34a",
+                                  background: "rgba(22,163,74,0.1)",
+                                  border: "1px solid rgba(22,163,74,0.3)",
+                                  textDecoration: "none", whiteSpace: "nowrap" }}>
+                                WA
+                              </a>
+                            )}
+                            {propUrl && (
+                              <a href={propUrl} target="_blank" rel="noopener noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10,
+                                  fontWeight: 700, color: "#3a8bc4",
+                                  background: "rgba(58,139,196,0.1)",
+                                  border: "1px solid rgba(58,139,196,0.3)",
+                                  textDecoration: "none", whiteSpace: "nowrap" }}>
+                                Ver
+                              </a>
+                            )}
+                            <button
+                              onClick={e => { e.stopPropagation(); toggleMostrado(lead.id, m.id); }}
+                              style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6,
+                                border: `1px solid ${visto ? "#c7d3df" : "#3a8bc4"}`,
+                                background: visto ? "#f2f6fa" : "#d4e5f7",
+                                color: visto ? "#5a6f84" : "#1763d1",
+                                cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
+                              {visto ? "✓ Visto" : "Marcar"}
+                            </button>
+                          </div>
                         </div>
-                        <button
-                          onClick={e => { e.stopPropagation(); toggleMostrado(lead.id, m.id); }}
-                          style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, flexShrink: 0,
-                            border: `1px solid ${visto ? "#c7d3df" : "#3a8bc4"}`,
-                            background: visto ? "#f2f6fa" : "#d4e5f7",
-                            color: visto ? "#5a6f84" : "#1763d1",
-                            cursor: "pointer", fontWeight: 600 }}>
-                          {visto ? "✓ Visto" : "Marcar"}
-                        </button>
+                        {/* Línea 2: Dirección */}
+                        {m.dir && (
+                          <div style={{ fontSize: 11, color: "#46596d" }}>
+                            {m.dir.slice(0, 50)}{m.dir.length > 50 ? "…" : ""}
+                          </div>
+                        )}
+                        {/* Línea 3: chips de características */}
+                        {chips.length > 0 && (
+                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                            {chips.map((ch, i) => (
+                              <span key={i} style={{ fontSize: 10, color: "#46596d",
+                                background: "#f2f6fa", border: "1px solid #c7d3df",
+                                borderRadius: 20, padding: "1px 7px", fontWeight: 500 }}>
+                                {ch}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
