@@ -116,6 +116,50 @@ function getMatchUrl(match) {
   return typeof url === 'string' && url ? url : null;
 }
 
+// ── Helpers de dimensiones ────────────────────────────────────
+
+function _textoLibre(match) {
+  return [
+    typeof match.caracts     === "string" ? match.caracts     : "",
+    typeof match.descripcion === "string" ? match.descripcion : "",
+    typeof match.contenido   === "string" ? match.contenido   : "",
+    typeof match.info        === "string" ? match.info        : "",
+  ].join(" ");
+}
+
+function getAmbientesLabel(match) {
+  // Campo estructurado primero
+  if (match.ambientes) return `${match.ambientes} amb`;
+  // Regex en texto: "3 amb", "3amb", "3 ambientes"
+  const m = _textoLibre(match).match(/(\d+)\s*amb(?:ientes?)?/i);
+  return m ? `${m[1]} amb` : null;
+}
+
+function getM2Label(match) {
+  // Campos estructurados: preferir cubiertos
+  if (match.m2cub)              return `${match.m2cub} m² cub`;
+  if (match.m2tot)              return `${match.m2tot} m²`;
+  if (match.metros)             return `${match.metros} m²`;
+  if (match.superficie_cubierta) return `${match.superficie_cubierta} m² cub`;
+  if (match.superficie_total)   return `${match.superficie_total} m²`;
+  if (match.superficie)         return `${match.superficie} m²`;
+  // info como objeto
+  if (typeof match.info === "object" && match.info !== null) {
+    if (match.info.m2cub) return `${match.info.m2cub} m² cub`;
+    if (match.info.m2tot) return `${match.info.m2tot} m²`;
+    if (match.info.m2)    return `${match.info.m2} m²`;
+  }
+  // Regex en texto libre — cubiertos primero
+  const text = _textoLibre(match);
+  const cubMatch = text.match(/(\d+)\s*m[²2]?t?s?\.?\s*(?:cub(?:iertos?)?)/i);
+  if (cubMatch) return `${cubMatch[1]} m² cub`;
+  const totMatch = text.match(/(\d+)\s*(?:m[²2]|metros?|mts?)(?!\w)/i);
+  if (totMatch) return `${totMatch[1]} m²`;
+  return null;
+}
+
+// ── Highlights públicos ───────────────────────────────────────
+
 const HIGHLIGHTS_PUBLICOS = [
   "Luminoso", "Buen estado", "Patio", "Balcón", "Cochera",
   "Al frente", "Vista abierta", "Reciclado", "Apto crédito",
@@ -132,14 +176,8 @@ function getPropertyHighlights(match) {
 
   if (found.length >= 3) return found;
 
-  // Buscar términos públicos en texto libre
-  const text = [
-    typeof match.caracts     === "string" ? match.caracts     : "",
-    typeof match.descripcion === "string" ? match.descripcion : "",
-    typeof match.contenido   === "string" ? match.contenido   : "",
-    typeof match.info        === "string" ? match.info        : "",
-  ].join(" ").toLowerCase();
-
+  // Buscar términos públicos en texto libre (excluye datos internos por diseño del whitelist)
+  const text = _textoLibre(match).toLowerCase();
   for (const h of HIGHLIGHTS_PUBLICOS) {
     if (found.length >= 3) break;
     if (!found.includes(h) && text.includes(h.toLowerCase())) found.push(h);
@@ -156,13 +194,7 @@ function generarWhatsappMatch(lead, match) {
   if (match.dir)   lines.push(match.dir);
   if (match.precio) lines.push(`USD ${Number(match.precio).toLocaleString("es-AR")}`);
 
-  const m2str = match.m2cub
-    ? `${match.m2cub} m² cub`
-    : match.m2tot ? `${match.m2tot} m²` : null;
-  const dims = [
-    match.ambientes ? `${match.ambientes} amb` : null,
-    m2str,
-  ].filter(Boolean).join(" · ");
+  const dims = [getAmbientesLabel(match), getM2Label(match)].filter(Boolean).join(" · ");
   if (dims) lines.push(dims);
 
   const highlights = getPropertyHighlights(match);
