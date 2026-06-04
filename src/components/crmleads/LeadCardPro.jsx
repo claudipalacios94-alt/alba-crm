@@ -818,7 +818,7 @@ Respondé con:
               <div style={SB}>
                 <div style={SL}>Propiedades compatibles · {matches.length}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {matches.slice(0, 4).map(m => {
+                  {matches.map(m => {
                     const mKey    = `${lead.id}-${m.id}`;
                     const visto   = mostrados.has(mKey);
                     const esCap   = String(m.id).startsWith("cap-");
@@ -903,11 +903,6 @@ Respondé con:
                       </div>
                     );
                   })}
-                  {matches.length > 4 && (
-                    <div style={{ fontSize: 11, color: "#3a8bc4", fontWeight: 600, padding: "3px 4px" }}>
-                      +{matches.length - 4} más compatibles
-                    </div>
-                  )}
                 </div>
               </div>
             )}
