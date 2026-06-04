@@ -1,0 +1,406 @@
+{
+  "App.jsx": [
+    "components/Login.jsx",
+    "components/layout/Layout.jsx",
+    "context/SupabaseContext.jsx",
+    "data/constants.js",
+    "hooks/useSupabase.js",
+    "pages/AlquileresPage.jsx",
+    "pages/BriefingPage.jsx",
+    "pages/CRMLeadsPage.jsx",
+    "pages/CaptacionZonasPage.jsx",
+    "pages/CaptacionesPage.jsx",
+    "pages/CuadernoPage.jsx",
+    "pages/FlyerPage.jsx",
+    "pages/KanbanPage.jsx",
+    "pages/MapaPage.jsx",
+    "pages/PropiedadesPage.jsx",
+    "pages/Reportes.jsx"
+  ],
+  "components/AIFloatingChat.jsx": [
+    "context/SupabaseContext.jsx",
+    "data/constants.js",
+    "hooks/useSupabase.js",
+    "store/useAIStore.js",
+    "store/useCaptacionStore.js",
+    "store/useLeadStore.js",
+    "store/usePropertyStore.js",
+    "store/useRentalStore.js"
+  ],
+  "components/Alquileres.jsx": [
+    "data/constants.js"
+  ],
+  "components/Asistente.jsx": [
+    "config/ai.js",
+    "data/constants.js"
+  ],
+  "components/Briefing.jsx": [
+    "components/Tareas.jsx",
+    "data/constants.js"
+  ],
+  "components/Buscador.jsx": [
+    "data/constants.js"
+  ],
+  "components/CRMLeads.jsx": [
+    "components/Buscador.jsx",
+    "data/constants.js"
+  ],
+  "components/CaptacionZonas.jsx": [
+    "data/constants.js"
+  ],
+  "components/Captaciones.jsx": [
+    "data/constants.js",
+    "hooks/useLeaflet.js"
+  ],
+  "components/Cuaderno.jsx": [
+    "data/constants.js"
+  ],
+  "components/Flyer.jsx": [
+    "data/constants.js"
+  ],
+  "components/Kanban.jsx": [
+    "data/constants.js"
+  ],
+  "components/Login.jsx": [
+    "data/constants.js"
+  ],
+  "components/Mapa.jsx": [
+    "data/constants.js",
+    "hooks/useLeaflet.js"
+  ],
+  "components/Propiedades.jsx": [
+    "data/constants.js"
+  ],
+  "components/SupabaseStatus.jsx": [
+    "data/constants.js"
+  ],
+  "components/Tareas.jsx": [
+    "data/constants.js"
+  ],
+  "components/briefing/AlertasHome.jsx": [
+    "data/constants.js"
+  ],
+  "components/briefing/BriefingCalendario.jsx": [
+    "data/constants.js",
+    "hooks/useTareas.js"
+  ],
+  "components/briefing/BriefingCanales.jsx": [
+    "data/constants.js"
+  ],
+  "components/briefing/BriefingCaptacionZonas.jsx": [
+    "data/constants.js",
+    "hooks/useCaptacionZonaSemana.js"
+  ],
+  "components/briefing/BriefingGauge.jsx": [
+    "data/constants.js"
+  ],
+  "components/briefing/BriefingLeadCard.jsx": [
+    "data/constants.js",
+    "domain/lead.js"
+  ],
+  "components/briefing/BriefingMercado.jsx": [
+    "data/constants.js"
+  ],
+  "components/briefing/FranjaKPIs.jsx": [],
+  "components/briefing/HoyHome.jsx": [
+    "context/SupabaseContext.jsx",
+    "data/constants.js",
+    "hooks/supabaseClient.js",
+    "hooks/useTareas.js"
+  ],
+  "components/briefing/LlamaHoyCard.jsx": [
+    "data/constants.js",
+    "domain/nota.js",
+    "hooks/supabaseClient.js"
+  ],
+  "components/briefing/OfertaHome.jsx": [
+    "data/constants.js",
+    "domain/matching.js"
+  ],
+  "components/briefing/OperacionesRiesgo.jsx": [
+    "data/constants.js"
+  ],
+  "components/briefing/OportunidadesCaptacion.jsx": [
+    "data/constants.js",
+    "domain/opportunity.js"
+  ],
+  "components/briefing/index.jsx": [
+    "components/briefing/AlertasHome.jsx",
+    "components/briefing/FranjaKPIs.jsx",
+    "components/briefing/HoyHome.jsx",
+    "components/briefing/LlamaHoyCard.jsx",
+    "components/briefing/OfertaHome.jsx",
+    "components/briefing/OperacionesRiesgo.jsx",
+    "data/constants.js"
+  ],
+  "components/crmleads/CRMKpiCard.jsx": [],
+  "components/crmleads/InversorNota.jsx": [
+    "data/constants.js"
+  ],
+  "components/crmleads/LeadAcciones.jsx": [
+    "data/constants.js"
+  ],
+  "components/crmleads/LeadCard.backup.jsx": [
+    "components/Buscador.jsx",
+    "components/crmleads/InversorNota.jsx",
+    "components/crmleads/LeadAcciones.jsx",
+    "components/crmleads/LeadForm.jsx",
+    "components/crmleads/LeadMatches.jsx",
+    "components/crmleads/LeadQualification.jsx",
+    "components/crmleads/NotaLead.jsx",
+    "data/constants.js",
+    "domain/lead.js",
+    "domain/nota.js"
+  ],
+  "components/crmleads/LeadCard.jsx": [
+    "components/Buscador.jsx",
+    "components/crmleads/InversorNota.jsx",
+    "components/crmleads/LeadAcciones.jsx",
+    "components/crmleads/LeadForm.jsx",
+    "components/crmleads/LeadMatches.jsx",
+    "components/crmleads/LeadQualification.jsx",
+    "components/crmleads/NotaLead.jsx",
+    "data/constants.js",
+    "domain/lead.js",
+    "domain/nota.js"
+  ],
+  "components/crmleads/LeadCardPro.jsx": [
+    "data/constants.js",
+    "domain/lead.js",
+    "domain/nota.js",
+    "hooks/supabaseClient.js"
+  ],
+  "components/crmleads/LeadForm.jsx": [
+    "data/constants.js"
+  ],
+  "components/crmleads/LeadMatches.jsx": [
+    "data/constants.js"
+  ],
+  "components/crmleads/LeadQualification.jsx": [
+    "data/constants.js",
+    "domain/lead.js"
+  ],
+  "components/crmleads/ModalPerdido.jsx": [
+    "data/constants.js"
+  ],
+  "components/crmleads/NotaLead.jsx": [
+    "data/constants.js",
+    "domain/nota.js"
+  ],
+  "components/crmleads/index.jsx": [
+    "components/Kanban.jsx",
+    "components/crmleads/CRMKpiCard.jsx",
+    "components/crmleads/LeadCardPro.jsx",
+    "components/crmleads/ModalPerdido.jsx",
+    "data/constants.js",
+    "domain/lead.js",
+    "hooks/useIncidents.js"
+  ],
+  "components/layout/Layout.jsx": [
+    "components/AIFloatingChat.jsx",
+    "components/layout/Sidebar.jsx",
+    "data/constants.js",
+    "modals/Modal.jsx",
+    "modals/QuickAddLead.jsx",
+    "modals/QuickAddProp.jsx",
+    "store/useLeadStore.js",
+    "store/usePropertyStore.js"
+  ],
+  "components/layout/Sidebar.jsx": [
+    "components/SupabaseStatus.jsx",
+    "context/SupabaseContext.jsx",
+    "data/constants.js",
+    "store/useAIStore.js",
+    "store/useLeadStore.js"
+  ],
+  "components/propiedades/AlquileresView.jsx": [
+    "data/constants.js",
+    "domain/rental.js"
+  ],
+  "components/propiedades/PropCard.jsx": [
+    "components/propiedades/PropDocumentos.jsx",
+    "data/constants.js",
+    "domain/matching.js",
+    "domain/property.js",
+    "hooks/useLeaflet.js"
+  ],
+  "components/propiedades/PropDocumentos.jsx": [
+    "data/constants.js"
+  ],
+  "components/propiedades/PropSeccion.jsx": [
+    "components/propiedades/PropCard.jsx"
+  ],
+  "components/propiedades/index.jsx": [
+    "components/propiedades/AlquileresView.jsx",
+    "components/propiedades/PropSeccion.jsx",
+    "data/constants.js",
+    "domain/property.js"
+  ],
+  "config/agents.js": [],
+  "config/ai.js": [],
+  "context/SupabaseContext.jsx": [
+    "hooks/useAuth.js",
+    "hooks/useSupabase.js",
+    "store/useAIStore.js",
+    "store/useCaptacionStore.js",
+    "store/useLeadStore.js",
+    "store/usePropertyStore.js",
+    "store/useRentalStore.js"
+  ],
+  "data/constants.js": [
+    "config/agents.js",
+    "domain/lead.js"
+  ],
+  "domain/__test__/lead.test.js": [
+    "domain/lead.js"
+  ],
+  "domain/captacion.js": [
+    "domain/matching.js"
+  ],
+  "domain/formatting.js": [],
+  "domain/lead.js": [
+    "data/constants.js",
+    "domain/matching.js",
+    "domain/nota.js"
+  ],
+  "domain/matching.js": [],
+  "domain/nota.js": [],
+  "domain/opportunity.js": [
+    "domain/matching.js",
+    "domain/nota.js"
+  ],
+  "domain/property.js": [
+    "domain/formatting.js"
+  ],
+  "domain/rental.js": [],
+  "hooks/supabaseClient.js": [],
+  "hooks/useAuth.js": [
+    "hooks/supabaseClient.js"
+  ],
+  "hooks/useCaptacionZonaSemana.js": [
+    "hooks/supabaseClient.js"
+  ],
+  "hooks/useIncidents.js": [
+    "domain/lead.js",
+    "hooks/supabaseClient.js"
+  ],
+  "hooks/useLeads.js": [
+    "data/constants.js",
+    "hooks/supabaseClient.js"
+  ],
+  "hooks/useLeaflet.js": [],
+  "hooks/useProperties.js": [
+    "data/constants.js",
+    "hooks/supabaseClient.js"
+  ],
+  "hooks/useRentals.js": [
+    "data/constants.js",
+    "hooks/supabaseClient.js"
+  ],
+  "hooks/useSupabase.js": [
+    "hooks/supabaseClient.js",
+    "hooks/useAuth.js",
+    "hooks/useLeads.js",
+    "hooks/useProperties.js",
+    "hooks/useRentals.js"
+  ],
+  "hooks/useTareas.js": [
+    "hooks/supabaseClient.js"
+  ],
+  "main.jsx": [
+    "App.jsx",
+    "context/SupabaseContext.jsx"
+  ],
+  "modals/Modal.jsx": [
+    "data/constants.js"
+  ],
+  "modals/QuickAddLead.jsx": [
+    "data/constants.js"
+  ],
+  "modals/QuickAddProp.jsx": [
+    "data/constants.js"
+  ],
+  "pages/AlquileresPage.jsx": [
+    "components/Alquileres.jsx",
+    "store/useRentalStore.js"
+  ],
+  "pages/BriefingPage.jsx": [
+    "components/briefing/index.jsx",
+    "hooks/useSupabase.js",
+    "store/useAIStore.js",
+    "store/useCaptacionStore.js",
+    "store/useLeadStore.js",
+    "store/usePropertyStore.js",
+    "store/useRentalStore.js"
+  ],
+  "pages/CRMLeadsPage.jsx": [
+    "components/crmleads/index.jsx",
+    "hooks/useSupabase.js",
+    "store/useCaptacionStore.js",
+    "store/useLeadStore.js",
+    "store/usePropertyStore.js"
+  ],
+  "pages/CaptacionZonasPage.jsx": [
+    "components/CaptacionZonas.jsx",
+    "hooks/useSupabase.js"
+  ],
+  "pages/CaptacionesPage.jsx": [
+    "components/Captaciones.jsx",
+    "hooks/useSupabase.js"
+  ],
+  "pages/CuadernoPage.jsx": [
+    "components/Cuaderno.jsx",
+    "hooks/useSupabase.js",
+    "store/useAIStore.js",
+    "store/useCaptacionStore.js",
+    "store/useLeadStore.js",
+    "store/usePropertyStore.js",
+    "store/useRentalStore.js"
+  ],
+  "pages/FlyerPage.jsx": [
+    "components/Flyer.jsx",
+    "hooks/useSupabase.js",
+    "store/usePropertyStore.js"
+  ],
+  "pages/KanbanPage.jsx": [
+    "components/Kanban.jsx",
+    "store/useLeadStore.js"
+  ],
+  "pages/MapaPage.jsx": [
+    "components/Mapa.jsx",
+    "hooks/useSupabase.js",
+    "store/useLeadStore.js",
+    "store/usePropertyStore.js"
+  ],
+  "pages/PropiedadesPage.jsx": [
+    "components/propiedades/index.jsx",
+    "hooks/useSupabase.js",
+    "store/useLeadStore.js",
+    "store/usePropertyStore.js",
+    "store/useRentalStore.js"
+  ],
+  "pages/Reportes.jsx": [
+    "data/constants.js",
+    "hooks/useSupabase.js"
+  ],
+  "store/useAIStore.js": [
+    "hooks/supabaseClient.js"
+  ],
+  "store/useCaptacionStore.js": [
+    "hooks/supabaseClient.js"
+  ],
+  "store/useLeadStore.js": [
+    "data/constants.js",
+    "hooks/supabaseClient.js"
+  ],
+  "store/usePropertyStore.js": [
+    "data/constants.js",
+    "hooks/supabaseClient.js"
+  ],
+  "store/useRentalStore.js": [
+    "data/constants.js",
+    "hooks/supabaseClient.js"
+  ],
+  "store/useUIStore.js": [],
+  "test/setup.js": []
+}
