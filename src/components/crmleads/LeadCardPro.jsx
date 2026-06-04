@@ -746,27 +746,36 @@ Respondé con:
               {/* COL 3: Pedido para grupos */}
               <div style={{ ...SB, display: "flex", flexDirection: "column", gap: 10 }}>
                 <div style={SL}>Pedido para grupos</div>
-                {/* Variantes — cargan el texto sin copiar */}
+                {/* Variantes — cargan texto en textarea y copian */}
                 <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                   {[
                     { fmt: "formal",   label: "Pedido" },
                     { fmt: "discreto", label: "Discreto" },
                     { fmt: "colegas",  label: "Colegas" },
-                  ].map(({ fmt, label }) => (
-                    <button key={fmt}
-                      onClick={e => {
-                        e.stopPropagation();
-                        setPcFormat(fmt);
-                        setPcText(generarPedido(lead, fmt));
-                      }}
-                      style={{ padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600,
-                        border: `1px solid ${pcFormat === fmt ? "#3a8bc4" : "#c7d3df"}`, flex: 1,
-                        background: pcFormat === fmt ? "#e8f1fb" : "#f2f6fa",
-                        color: pcFormat === fmt ? "#12355b" : "#46596d",
-                        cursor: "pointer", whiteSpace: "nowrap" }}>
-                      {label}
-                    </button>
-                  ))}
+                  ].map(({ fmt, label }) => {
+                    const activo = pcFormat === fmt;
+                    const copiado = copiadoTipo === fmt;
+                    return (
+                      <button key={fmt}
+                        onClick={e => {
+                          e.stopPropagation();
+                          const texto = generarPedido(lead, fmt);
+                          setPcFormat(fmt);
+                          setPcText(texto);
+                          navigator.clipboard.writeText(texto);
+                          setCopiadoTipo(fmt);
+                          setTimeout(() => setCopiadoTipo(null), 1500);
+                        }}
+                        style={{ padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600,
+                          border: `1px solid ${copiado ? "#16a34a" : activo ? "#3a8bc4" : "#c7d3df"}`,
+                          flex: 1,
+                          background: copiado ? "rgba(22,163,74,0.1)" : activo ? "#e8f1fb" : "#f2f6fa",
+                          color: copiado ? "#16a34a" : activo ? "#12355b" : "#46596d",
+                          cursor: "pointer", whiteSpace: "nowrap" }}>
+                        {copiado ? "✓ Copiado" : label}
+                      </button>
+                    );
+                  })}
                 </div>
                 {/* Textarea editable */}
                 <textarea
