@@ -3,7 +3,7 @@
 // Card cerrada + Ficha expandida (centro operativo)
 // ══════════════════════════════════════════════════════════════
 import React, { useMemo, useState } from "react";
-import { AG, ETAPAS, TIPOS_PROP_LEAD, getRecommendedAction } from "../../data/constants.js";
+import { AG, ETAPAS, ECOL, TIPOS_PROP_LEAD, getRecommendedAction } from "../../data/constants.js";
 import { computeRanking } from "../../domain/lead.js";
 import { parsearNotas, serializarNotas, crearNota, TIPO_NOTA } from "../../domain/nota.js";
 import { supabase } from "../../hooks/supabaseClient.js";
@@ -1250,6 +1250,8 @@ Respondé con:
   }
 
   // ── CARD CERRADA ─────────────────────────────────────────────
+  const showStrip = !!lead.etapa && lead.etapa !== "Perdido";
+
   return (
     <div
       onClick={onToggle}
@@ -1258,16 +1260,13 @@ Respondé con:
         border: `1px solid ${hasNewMatch ? "#3b82f6" : "#c7d3df"}`,
         borderLeft: `4px solid ${hasNewMatch ? "#3b82f6" : sc}`,
         borderRadius: 14,
-        padding: "12px 14px",
+        overflow: "hidden",
         cursor: "pointer",
         opacity: isBlurred ? 0.38 : 1,
         transition: "opacity 0.15s, box-shadow 0.15s",
         boxShadow: hasNewMatch
           ? "0 0 0 3px rgba(59,130,246,0.12), 0 2px 8px rgba(0,0,0,0.05)"
           : "0 1px 4px rgba(0,0,0,0.04)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 7,
         minWidth: 0,
         minHeight: 0,
       }}
@@ -1280,6 +1279,25 @@ Respondé con:
           : "0 1px 4px rgba(0,0,0,0.04)";
       }}
     >
+      {/* Barra de estado — solo Calificado / Visita / Negociación */}
+      {showStrip && (
+        <div style={{
+          background: ECOL[lead.etapa] || sc,
+          padding: "3px 14px",
+          textAlign: "center",
+          fontSize: 9,
+          fontWeight: 800,
+          color: "#fff",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+        }}>
+          {lead.etapa}
+        </div>
+      )}
+
+      {/* Contenido */}
+      <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 7 }}>
+
       {/* Badge + nuevo match */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em",
@@ -1410,6 +1428,7 @@ Respondé con:
           </div>
         )}
       </div>
+      </div>{/* fin contenido */}
     </div>
   );
 }
