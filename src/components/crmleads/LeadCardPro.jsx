@@ -245,6 +245,73 @@ async function fetchAI(prompt) {
   return data.content?.[0]?.text || "Sin respuesta";
 }
 
+// ── Pedido para colegas — helpers de módulo ──────────────────
+
+function buildPedidoInterno(lead, notas) {
+  const lineas = [];
+  const partes = [
+    lead.tipo,
+    lead.ambientes && `${lead.ambientes} amb`,
+    lead.zona && `en ${lead.zona}`,
+    lead.presup && `hasta USD ${Number(lead.presup).toLocaleString("es-AR")}`,
+  ].filter(Boolean);
+  if (partes.length) lineas.push("Busca: " + partes.join(", ") + ".");
+
+  const reqs = [
+    lead.cochera === "si" && "cochera",
+    lead.balcon  === "si" && "balcón",
+    lead.patio   === "si" && "patio",
+    lead.credito === "si" && "crédito aprobado",
+    lead.m2min   && `mínimo ${lead.m2min} m²`,
+  ].filter(Boolean);
+  if (reqs.length) lineas.push("Requiere: " + reqs.join(", ") + ".");
+
+  const estado = [lead.etapa, lead.prob && `${lead.prob}% prob`].filter(Boolean).join(" · ");
+  if (estado) lineas.push("Estado: " + estado + ".");
+
+  if (lead.q_visitas_previas)    lineas.push(`Lleva buscando: ${lead.q_visitas_previas}.`);
+  if (lead.q_freno)              lineas.push(`Freno previo: ${lead.q_freno}.`);
+  if (lead.q_tiene_para_vender)  lineas.push(`Para vender: ${lead.q_tiene_para_vender}.`);
+  if (lead.q_fecha_limite)       lineas.push(`Fecha límite: ${lead.q_fecha_limite}.`);
+
+  if (notas.length) {
+    const n   = notas[notas.length - 1];
+    const cfg = TIPO_NOTA[n.tipo] || TIPO_NOTA.seguimiento;
+    const txt = n.texto.length > 90 ? n.texto.slice(0, 90) + "…" : n.texto;
+    lineas.push(`Última nota [${cfg.label}]: "${txt}"`);
+  }
+  if (lead.inversor && lead.nota_inversor) {
+    lineas.push(`Perfil inversor: ${lead.nota_inversor}`);
+  }
+  return lineas.join("\n") || "(sin datos cargados)";
+}
+
+function buildPedidoBase(lead) {
+  const tipo   = lead.tipo || null;
+  const amb    = lead.ambientes ? `${lead.ambientes} amb` : null;
+  const zona   = lead.zona || null;
+  const presup = lead.presup ? `USD ${Number(lead.presup).toLocaleString("es-AR")}` : null;
+  const reqs   = [
+    lead.cochera === "si" && "cochera",
+    lead.balcon  === "si" && "balcón",
+    lead.patio   === "si" && "patio",
+    lead.credito === "si" && "apto crédito",
+    lead.m2min   && `mínimo ${lead.m2min} m²`,
+  ].filter(Boolean);
+
+  const encabezado = [
+    lead.inversor ? "Busco oportunidad para inversor" : "Busco para cliente real:",
+    [tipo, amb].filter(Boolean).join(" "),
+    zona,
+    presup && `hasta ${presup}`,
+  ].filter(Boolean).join(" ").trim();
+
+  const lineas = [encabezado + "."];
+  if (reqs.length) lineas.push("Ideal con " + reqs.join(", ") + ".");
+  lineas.push("Si tenés algo que pueda encajar, pasame info, fotos y condiciones.");
+  return lineas.join("\n");
+}
+
 // ── Componente principal ──────────────────────────────────────
 
 export default function LeadCardPro({
@@ -283,6 +350,12 @@ export default function LeadCardPro({
   const [aiLoading,    setAiLoading]    = useState(null);
   const [aiResult,     setAiResult]     = useState(null);
   const [aiCopiado,    setAiCopiado]    = useState(false);
+  // pedido para colegas
+  const [pcText,       setPcText]       = useState(() => lead.pedido_colegas || buildPedidoBase(lead));
+  const [pcSaved,      setPcSaved]      = useState(false);
+  const [pcCopiado,    setPcCopiado]    = useState(false);
+  const [pcAiLoading,  setPcAiLoading]  = useState(false);
+  const [pcAiSuggest,  setPcAiSuggest]  = useState(null);
 
   const rec        = getRecommendedAction(lead);
   const todasNotas = parsearNotas(lead.nota);
@@ -425,6 +498,49 @@ Respondé con:
       setAiResult({ type, text: `Error: ${err.message}` });
     } finally {
       setAiLoading(null);
+    }
+  }
+
+  async function guardarPedidoColegas(anclado) {
+    await updateLead(lead.id, {
+      pedido_colegas:            pcText,
+      pedido_colegas_anclado:    anclado !== undefined ? anclado : (lead.pedido_colegas_anclado || false),
+      pedido_colegas_updated_at: new Date().toISOString(),
+    });
+    setPcSaved(true);
+    setTimeout(() => setPcSaved(false), 2000);
+  }
+
+  async function toggleAnclado() {
+    const nuevo = !lead.pedido_colegas_anclado;
+    await updateLead(lead.id, {
+      pedido_colegas:            pcText,
+      pedido_colegas_anclado:    nuevo,
+      pedido_colegas_updated_at: new Date().toISOString(),
+    });
+  }
+
+  async function callAIPedidoColegas() {
+    setPcAiLoading(true);
+    setPcAiSuggest(null);
+    try {
+      const interno = buildPedidoInterno(lead, todasNotas);
+      const prompt  = `Convertí este pedido inmobiliario en un mensaje breve para compartir con colegas martilleros por WhatsApp.
+Máximo 5 líneas. Tono profesional, directo, argentino.
+No inventes datos. No menciones el nombre del cliente. No uses expresiones informales.
+Terminá con: "Si tenés algo que pueda encajar, pasame info, fotos y condiciones."
+
+Datos del lead:
+${interno}
+
+Pedido actual:
+${pcText}`;
+      const text = await fetchAI(prompt);
+      setPcAiSuggest(text);
+    } catch (err) {
+      setPcAiSuggest(`Error: ${err.message}`);
+    } finally {
+      setPcAiLoading(false);
     }
   }
 
@@ -1105,7 +1221,135 @@ Respondé con:
               </div>
             )}
 
-            {/* ── ROW 5: Asistente IA ───────────────────────── */}
+            {/* ── ROW 5: Pedido para colegas ────────────────── */}
+            <div style={{ ...SB, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={SL}>Pedido para colegas</div>
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: mobile ? "1fr" : "1fr 1fr",
+                gap: 12, alignItems: "start",
+              }}>
+                {/* Izquierda: Pedido interno (solo lectura) */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#5a6f84",
+                    textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Pedido interno
+                  </div>
+                  <div style={{
+                    fontSize: 11, color: "#46596d", lineHeight: 1.6,
+                    background: "#f2f6fa", borderRadius: 8, padding: "9px 11px",
+                    border: "1px solid #c7d3df", whiteSpace: "pre-wrap",
+                    maxHeight: 210, overflowY: "auto",
+                  }}>
+                    {buildPedidoInterno(lead, todasNotas)}
+                  </div>
+                </div>
+
+                {/* Derecha: Pedido para colegas (editable) */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#5a6f84",
+                      textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      Para colegas
+                    </div>
+                    {lead.pedido_colegas_anclado && (
+                      <span style={{ fontSize: 9, fontWeight: 800, color: "#7c5cc4",
+                        background: "#e8e3f8", padding: "1px 7px",
+                        borderRadius: 20, letterSpacing: "0.06em" }}>
+                        ⚓ ANCLADO
+                      </span>
+                    )}
+                    {lead.pedido_colegas_updated_at && (
+                      <span style={{ fontSize: 9, color: "#94a3b8", marginLeft: "auto" }}>
+                        {formatFecha(lead.pedido_colegas_updated_at)}
+                      </span>
+                    )}
+                  </div>
+
+                  <textarea
+                    value={pcText}
+                    onChange={e => setPcText(e.target.value)}
+                    rows={6}
+                    style={{
+                      width: "100%", padding: "9px 11px", borderRadius: 8,
+                      border: "1px solid #c7d3df", background: "#f9fbfd",
+                      color: "#102033", fontSize: 11, outline: "none",
+                      resize: "vertical", fontFamily: "inherit", lineHeight: 1.6,
+                      boxSizing: "border-box",
+                    }}
+                  />
+
+                  {/* Acciones */}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <button onClick={callAIPedidoColegas} disabled={pcAiLoading}
+                      style={{ padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600,
+                        border: "1px solid #c7d3df", background: "#f2f6fa",
+                        color: pcAiLoading ? "#94a3b8" : "#3a8bc4",
+                        cursor: pcAiLoading ? "not-allowed" : "pointer" }}>
+                      {pcAiLoading ? "Consultando…" : "✨ Mejorar con IA"}
+                    </button>
+                    <button onClick={() => guardarPedidoColegas()}
+                      style={{ padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 700,
+                        border: "none",
+                        background: pcSaved ? "#16a34a" : "#3a8bc4",
+                        color: "#fff", cursor: "pointer", transition: "background 0.2s" }}>
+                      {pcSaved ? "✓ Guardado" : "Guardar"}
+                    </button>
+                    <button onClick={toggleAnclado}
+                      style={{ padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600,
+                        border: `1px solid ${lead.pedido_colegas_anclado ? "#7c5cc4" : "#c7d3df"}`,
+                        background: lead.pedido_colegas_anclado ? "#e8e3f8" : "#f2f6fa",
+                        color: lead.pedido_colegas_anclado ? "#7c5cc4" : "#46596d",
+                        cursor: "pointer" }}>
+                      {lead.pedido_colegas_anclado ? "⚓ Desanclar" : "Anclar"}
+                    </button>
+                    <button onClick={() => {
+                        navigator.clipboard.writeText(pcText);
+                        setPcCopiado(true);
+                        setTimeout(() => setPcCopiado(false), 1500);
+                      }}
+                      style={{ padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600,
+                        border: "1px solid #c7d3df", background: "#f2f6fa",
+                        color: pcCopiado ? "#16a34a" : "#46596d",
+                        cursor: "pointer" }}>
+                      {pcCopiado ? "✓ Copiado" : "Copiar"}
+                    </button>
+                  </div>
+
+                  {/* Sugerencia IA */}
+                  {pcAiSuggest && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6,
+                      background: "#f2f6fa", border: "1px solid #c7d3df",
+                      borderRadius: 8, padding: "9px 11px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: 10, fontWeight: 800, color: "#3a8bc4",
+                          textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                          Sugerencia IA
+                        </span>
+                        <button onClick={() => setPcAiSuggest(null)}
+                          style={{ background: "transparent", border: "none",
+                            color: "#94a3b8", cursor: "pointer", fontSize: 12, padding: "0 2px" }}>
+                          ✕
+                        </button>
+                      </div>
+                      <pre style={{ margin: 0, fontSize: 11, color: "#102033", lineHeight: 1.6,
+                        whiteSpace: "pre-wrap", fontFamily: "inherit" }}>
+                        {pcAiSuggest}
+                      </pre>
+                      <button
+                        onClick={() => { setPcText(pcAiSuggest); setPcAiSuggest(null); }}
+                        style={{ alignSelf: "flex-start", padding: "5px 12px", borderRadius: 7,
+                          fontSize: 11, fontWeight: 700, border: "none",
+                          background: "#3a8bc4", color: "#fff", cursor: "pointer" }}>
+                        Usar este texto
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ── ROW 6: Asistente IA ───────────────────────── */}
             <div style={{ ...SB, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={SL}>Asistente IA</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1161,7 +1405,7 @@ Respondé con:
               )}
             </div>
 
-            {/* ── ROW 6: Acciones peligrosas ─────────────────── */}
+            {/* ── ROW 7: Acciones peligrosas ─────────────────── */}
             <div style={{ ...SB, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <span style={{ fontSize: 10, fontWeight: 800, color: "#5a6f84",
                 textTransform: "uppercase", letterSpacing: "0.08em" }}>
