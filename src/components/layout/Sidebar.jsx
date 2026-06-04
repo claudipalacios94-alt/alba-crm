@@ -10,6 +10,7 @@ const NAV_DEFAULT = [
   { id: "",            label: "Inicio" },
   { id: "cuaderno",    label: "Cuaderno de campo" },
   { id: "crm",         label: "CRM Leads" },
+  { id: "oferta",      label: "Oferta", badge: "NEW" },
   { id: "propiedades", label: "Propiedades" },
   { id: "mapa",        label: "Mapa" },
   { id: "flyer",       label: "Generador Flyer" },

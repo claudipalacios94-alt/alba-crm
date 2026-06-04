@@ -14,6 +14,7 @@
     "pages/FlyerPage.jsx",
     "pages/KanbanPage.jsx",
     "pages/MapaPage.jsx",
+    "pages/OfertaPage.jsx",
     "pages/PropiedadesPage.jsx",
     "pages/Reportes.jsx"
   ],
@@ -213,6 +214,40 @@
     "store/useAIStore.js",
     "store/useLeadStore.js"
   ],
+  "components/oferta/OfertaCard.jsx": [
+    "data/constants.js",
+    "domain/oferta.js"
+  ],
+  "components/oferta/OfertaFilters.jsx": [
+    "data/constants.js"
+  ],
+  "components/oferta/OfertaKPIs.jsx": [
+    "data/constants.js"
+  ],
+  "components/oferta/OfertaMapPreview.jsx": [
+    "data/constants.js"
+  ],
+  "components/oferta/OfertaMatchesPanel.jsx": [
+    "data/constants.js",
+    "domain/oferta.js"
+  ],
+  "components/oferta/OfertaRecentList.jsx": [
+    "data/constants.js"
+  ],
+  "components/oferta/OfertaTabs.jsx": [
+    "data/constants.js"
+  ],
+  "components/oferta/index.jsx": [
+    "components/oferta/OfertaCard.jsx",
+    "components/oferta/OfertaFilters.jsx",
+    "components/oferta/OfertaKPIs.jsx",
+    "components/oferta/OfertaMapPreview.jsx",
+    "components/oferta/OfertaMatchesPanel.jsx",
+    "components/oferta/OfertaRecentList.jsx",
+    "components/oferta/OfertaTabs.jsx",
+    "data/constants.js",
+    "domain/oferta.js"
+  ],
   "components/propiedades/AlquileresView.jsx": [
     "data/constants.js",
     "domain/rental.js"
@@ -267,6 +302,9 @@
   ],
   "domain/matching.js": [],
   "domain/nota.js": [],
+  "domain/oferta.js": [
+    "domain/matching.js"
+  ],
   "domain/opportunity.js": [
     "domain/matching.js",
     "domain/nota.js"
@@ -371,6 +409,13 @@
   "pages/MapaPage.jsx": [
     "components/Mapa.jsx",
     "hooks/useSupabase.js",
+    "store/useLeadStore.js",
+    "store/usePropertyStore.js"
+  ],
+  "pages/OfertaPage.jsx": [
+    "components/oferta/index.jsx",
+    "domain/oferta.js",
+    "store/useCaptacionStore.js",
     "store/useLeadStore.js",
     "store/usePropertyStore.js"
   ],
