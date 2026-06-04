@@ -819,13 +819,16 @@ Respondé con:
                 <div style={SL}>Propiedades compatibles · {matches.length}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {matches.map(m => {
-                    const mKey    = `${lead.id}-${m.id}`;
-                    const visto   = mostrados.has(mKey);
-                    const esCap   = String(m.id).startsWith("cap-");
-                    const waUrl   = getWhatsappUrl(lead, m);
-                    const propUrl = getMatchUrl(m);
-                    const chips   = getPropertyHighlights(m);
-                    const dims    = [getAmbientesLabel(m), getM2Label(m)].filter(Boolean).join(" · ");
+                    const mKey        = `${lead.id}-${m.id}`;
+                    const visto       = mostrados.has(mKey);
+                    const esCap       = String(m.id).startsWith("cap-");
+                    const waUrl       = getWhatsappUrl(lead, m);
+                    const propUrl     = getMatchUrl(m);
+                    const chips       = getPropertyHighlights(m);
+                    const dims        = [getAmbientesLabel(m), getM2Label(m)].filter(Boolean).join(" · ");
+                    const diasCartera = esCap && m._createdAt
+                      ? Math.floor((Date.now() - new Date(m._createdAt).getTime()) / 86400000)
+                      : null;
                     return (
                       <div key={m.id} style={{
                         padding: "8px 10px", background: "#e4edf6",
@@ -846,6 +849,14 @@ Respondé con:
                               background: "#e8e3f8", padding: "1px 5px",
                               borderRadius: 4, flexShrink: 0 }}>
                               {m._tipoCap === "colega" ? "colega" : "captación"}
+                            </span>
+                          )}
+                          {diasCartera !== null && (
+                            <span style={{ fontSize: 9, fontWeight: 600,
+                              color: diasCartera > 14 ? "#e9823a" : "#46596d",
+                              background: diasCartera > 14 ? "rgba(233,130,58,0.1)" : "rgba(70,89,109,0.08)",
+                              padding: "1px 5px", borderRadius: 4, flexShrink: 0 }}>
+                              {diasCartera === 0 ? "hoy" : `${diasCartera}d en cartera`}
                             </span>
                           )}
                           <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>

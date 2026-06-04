@@ -71,7 +71,7 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
     const capsNorm = (captaciones || []).map(c => ({
       id: "cap-" + c.id, tipo: c.tipo, zona: c.zona, precio: c.precio,
       dir: c.direccion, caracts: c.caracts, activa: true,
-      _esCaptacion: true, _tipoCap: c.tipo_captacion, _url: c.url,
+      _esCaptacion: true, _tipoCap: c.tipo_captacion, _url: c.url, _createdAt: c.created_at,
     }));
     return [...(properties || []), ...capsNorm];
   }, [properties, captaciones]);
