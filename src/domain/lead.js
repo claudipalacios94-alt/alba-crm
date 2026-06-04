@@ -3,7 +3,7 @@
 // Lógica de negocio pura. Sin React, sin Supabase.
 // ══════════════════════════════════════════════════════════════
 
-import { B } from "../data/constants.js";
+import { B } from "../data/styles.js";
 import { parsearNotas, tipoNotaReciente } from "./nota.js";
 
 export { matchLeadProps } from "./matching.js";

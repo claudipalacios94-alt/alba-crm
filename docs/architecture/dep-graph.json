@@ -249,8 +249,10 @@
   ],
   "data/constants.js": [
     "config/agents.js",
+    "data/styles.js",
     "domain/lead.js"
   ],
+  "data/styles.js": [],
   "domain/__test__/lead.test.js": [
     "domain/lead.js"
   ],
@@ -259,7 +261,7 @@
   ],
   "domain/formatting.js": [],
   "domain/lead.js": [
-    "data/constants.js",
+    "data/styles.js",
     "domain/matching.js",
     "domain/nota.js"
   ],
