@@ -51,8 +51,8 @@ function Sparkline({ data, color, id }) {
         justifyContent: "space-between",
         paddingTop: 2, paddingBottom: 2,
       }}>
-        {[max, mid, 0].map(v => (
-          <span key={v} style={{
+        {[max, mid, 0].map((v, i) => (
+          <span key={i} style={{
             fontSize: 9, color: "#475569",
             textAlign: "right", display: "block", lineHeight: 1,
             fontFamily: "monospace",

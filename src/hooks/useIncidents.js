@@ -44,22 +44,16 @@ export function useIncidents(leads) {
   const lastHash = useRef(null);
 
   useEffect(function() {
-    console.log("useIncidents effect leads:", leads ? leads.length : 0);
     if (!leads || !leads.length) return;
 
     const hash = leads.map(function(l) { return l.id + ":" + l.last_contact_at + ":" + l.etapa; }).join("|");
     if (lastHash.current === hash) return;
     lastHash.current = hash;
 
-    console.log("useIncidents running with", leads.length, "leads");
-
     const hoy = new Date().toISOString().split("T")[0];
     const activos = leads
       .filter(function(l) { return l.etapa !== "Cerrado" && l.etapa !== "Perdido"; })
       .map(normalizarLead);
-
-    console.log("activos:", activos.length);
-    if (activos.length > 0) { const s = computeLeadState(activos[0]); console.log("sample lead:", activos[0].dias, activos[0].etapa, activos[0].nota, "incident:", s.incident); }
 
     activos.forEach(async function(lead) {
       const state = computeLeadState(lead);
@@ -70,7 +64,6 @@ export function useIncidents(leads) {
     });
 
     const top = pickTopIncidents(activos, 5);
-    console.log("top incidents:", top.length);
 
     top.forEach(async function(item) {
       const lead = item.lead;
