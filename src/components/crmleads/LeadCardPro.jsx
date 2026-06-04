@@ -539,6 +539,32 @@ Respondé con:
             </button>
           </div>
 
+          {/* ── SELECTOR DE ETAPA ────────────────────────────── */}
+          <div style={{
+            display: "flex", gap: 5, flexWrap: "wrap",
+            padding: "8px 16px",
+            background: "#eef4f8", borderBottom: "1px solid #c7d3df",
+          }}>
+            {ETAPAS.filter(e => e !== "Perdido").map(etapa => {
+              const activo = lead.etapa === etapa;
+              const col    = ECOL[etapa] || "#b0bec5";
+              return (
+                <button key={etapa}
+                  onClick={e => { e.stopPropagation(); setEtapa(lead.id, etapa); }}
+                  style={{
+                    padding: "3px 11px", borderRadius: 20, fontSize: 10, fontWeight: 700,
+                    border: `1px solid ${activo ? col : "#c7d3df"}`,
+                    background: activo ? col : "#f2f6fa",
+                    color: activo ? "#fff" : "#5a6f84",
+                    cursor: "pointer", transition: "all 0.12s",
+                    letterSpacing: "0.03em", whiteSpace: "nowrap",
+                  }}>
+                  {etapa}
+                </button>
+              );
+            })}
+          </div>
+
           {/* ── BODY SCROLLABLE ───────────────────────────────── */}
           <div style={{ maxHeight: "65vh", overflowY: "auto", overflowX: "hidden",
             padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
@@ -592,28 +618,17 @@ Respondé con:
 
                 <div style={SB}>
                   <div style={SL}>Gestión</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div>
-                      <label style={lbl}>Etapa</label>
-                      <select value={lead.etapa || ""}
-                        onChange={e => { e.stopPropagation(); setEtapa(lead.id, e.target.value); }}
-                        onClick={e => e.stopPropagation()}
-                        style={{ ...inp, cursor: "pointer", fontWeight: 600 }}>
-                        {ETAPAS.map(e => <option key={e} value={e}>{e}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={lbl}>Agente</label>
-                      <select value={lead.ag || ""}
-                        onChange={e => { e.stopPropagation(); setAgente(lead.id, e.target.value); }}
-                        onClick={e => e.stopPropagation()}
-                        style={{ ...inp, cursor: "pointer", fontWeight: 600 }}>
-                        <option value="">Sin asignar</option>
-                        {Object.entries(AG).map(([key, val]) => (
-                          <option key={key} value={key}>{val.n}</option>
-                        ))}
-                      </select>
-                    </div>
+                  <div>
+                    <label style={lbl}>Agente</label>
+                    <select value={lead.ag || ""}
+                      onChange={e => { e.stopPropagation(); setAgente(lead.id, e.target.value); }}
+                      onClick={e => e.stopPropagation()}
+                      style={{ ...inp, cursor: "pointer", fontWeight: 600 }}>
+                      <option value="">Sin asignar</option>
+                      {Object.entries(AG).map(([key, val]) => (
+                        <option key={key} value={key}>{val.n}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
