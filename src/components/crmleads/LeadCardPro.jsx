@@ -285,7 +285,9 @@ export default function LeadCardPro({
   const [aiCopiado,    setAiCopiado]    = useState(false);
   // pedido para colegas
   const [pcFormat,     setPcFormat]     = useState("formal");
+  const [pcText,       setPcText]       = useState(() => lead.pedido_colegas || generarPedido(lead, "formal"));
   const [pcSaved,      setPcSaved]      = useState(false);
+  const [pcCopiado,    setPcCopiado]    = useState(false);
 
   const rec        = getRecommendedAction(lead);
   const todasNotas = parsearNotas(lead.nota);
@@ -433,7 +435,7 @@ Respondé con:
 
   async function guardarPedido() {
     await updateLead(lead.id, {
-      pedido_colegas:            generarPedido(lead, pcFormat),
+      pedido_colegas:            pcText,
       pedido_colegas_updated_at: new Date().toISOString(),
     });
     setPcSaved(true);
@@ -744,12 +746,7 @@ Respondé con:
               {/* COL 3: Pedido para grupos */}
               <div style={{ ...SB, display: "flex", flexDirection: "column", gap: 10 }}>
                 <div style={SL}>Pedido para grupos</div>
-                <pre style={{ margin: 0, fontSize: 11, color: "#102033", lineHeight: 1.6,
-                  whiteSpace: "pre-wrap", background: "#f2f6fa", borderRadius: 8,
-                  padding: "8px 10px", border: "1px solid #c7d3df", fontFamily: "inherit",
-                  maxHeight: 130, overflowY: "auto" }}>
-                  {generarPedido(lead, pcFormat)}
-                </pre>
+                {/* Variantes — cargan el texto sin copiar */}
                 <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                   {[
                     { fmt: "formal",   label: "Pedido" },
@@ -757,24 +754,53 @@ Respondé con:
                     { fmt: "colegas",  label: "Colegas" },
                   ].map(({ fmt, label }) => (
                     <button key={fmt}
-                      onClick={e => { e.stopPropagation(); setPcFormat(fmt); copiar(fmt); }}
+                      onClick={e => {
+                        e.stopPropagation();
+                        setPcFormat(fmt);
+                        setPcText(generarPedido(lead, fmt));
+                      }}
                       style={{ padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600,
                         border: `1px solid ${pcFormat === fmt ? "#3a8bc4" : "#c7d3df"}`, flex: 1,
-                        background: copiadoTipo === fmt ? "#d4e5f7" : pcFormat === fmt ? "#e8f1fb" : "#f2f6fa",
-                        color: copiadoTipo === fmt ? "#1763d1" : pcFormat === fmt ? "#12355b" : "#46596d",
+                        background: pcFormat === fmt ? "#e8f1fb" : "#f2f6fa",
+                        color: pcFormat === fmt ? "#12355b" : "#46596d",
                         cursor: "pointer", whiteSpace: "nowrap" }}>
-                      {copiadoTipo === fmt ? "✓ Copiado" : label}
+                      {label}
                     </button>
                   ))}
                 </div>
-                <button onClick={e => { e.stopPropagation(); guardarPedido(); }}
-                  style={{ padding: "5px 0", borderRadius: 7, fontSize: 11, fontWeight: 700,
-                    border: "none",
-                    background: pcSaved ? "#16a34a" : "#3a8bc4",
-                    color: "#fff", cursor: "pointer",
-                    transition: "background 0.2s" }}>
-                  {pcSaved ? "✓ Guardado" : "Guardar pedido"}
-                </button>
+                {/* Textarea editable */}
+                <textarea
+                  value={pcText}
+                  onChange={e => setPcText(e.target.value)}
+                  rows={6}
+                  style={{
+                    width: "100%", padding: "8px 10px", borderRadius: 8,
+                    border: "1px solid #c7d3df", background: "#f9fbfd",
+                    color: "#102033", fontSize: 11, outline: "none",
+                    resize: "vertical", fontFamily: "inherit", lineHeight: 1.6,
+                    boxSizing: "border-box",
+                  }}
+                />
+                {/* Acciones */}
+                <div style={{ display: "flex", gap: 5 }}>
+                  <button onClick={e => { e.stopPropagation(); guardarPedido(); }}
+                    style={{ flex: 1, padding: "5px 0", borderRadius: 7, fontSize: 11, fontWeight: 700,
+                      border: "none", background: pcSaved ? "#16a34a" : "#3a8bc4",
+                      color: "#fff", cursor: "pointer", transition: "background 0.2s" }}>
+                    {pcSaved ? "✓ Guardado" : "Guardar"}
+                  </button>
+                  <button onClick={e => {
+                      e.stopPropagation();
+                      navigator.clipboard.writeText(pcText);
+                      setPcCopiado(true);
+                      setTimeout(() => setPcCopiado(false), 1500);
+                    }}
+                    style={{ flex: 1, padding: "5px 0", borderRadius: 7, fontSize: 11, fontWeight: 600,
+                      border: "1px solid #c7d3df", background: "#f2f6fa",
+                      color: pcCopiado ? "#16a34a" : "#46596d", cursor: "pointer" }}>
+                    {pcCopiado ? "✓ Copiado" : "Copiar"}
+                  </button>
+                </div>
               </div>
             </div>
 
