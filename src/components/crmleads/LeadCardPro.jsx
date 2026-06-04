@@ -1,11 +1,12 @@
 // ══════════════════════════════════════════════════════════════
-// ALBA CRM — LeadCardPro v3
-// Card cerrada + Ficha expandida única (sin LeadCard legacy)
+// ALBA CRM — LeadCardPro v4
+// Card cerrada + Ficha expandida (centro operativo)
 // ══════════════════════════════════════════════════════════════
 import React, { useMemo, useState } from "react";
-import { AG, ETAPAS, getRecommendedAction } from "../../data/constants.js";
+import { AG, ETAPAS, TIPOS_PROP_LEAD, getRecommendedAction } from "../../data/constants.js";
 import { computeRanking } from "../../domain/lead.js";
-import { parsearNotas, TIPO_NOTA } from "../../domain/nota.js";
+import { parsearNotas, serializarNotas, crearNota, TIPO_NOTA } from "../../domain/nota.js";
+import { supabase } from "../../hooks/supabaseClient.js";
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -96,7 +97,6 @@ function generarPedido(lead, formato) {
       "Colegas, si tienen algo compatible, coordinamos. Comparto honorarios.",
     ].filter(Boolean).join("\n");
   }
-  // formal (default)
   return [
     "BUSCO para cliente activo",
     linea1 || null,
@@ -109,14 +109,12 @@ function generarPedido(lead, formato) {
 
 function getMatchUrl(match) {
   const url = match._url || match.url
-    || (typeof match.info === 'object' && match.info !== null
+    || (typeof match.info === "object" && match.info !== null
         ? match.info.url || match.info.link
         : null)
     || null;
-  return typeof url === 'string' && url ? url : null;
+  return typeof url === "string" && url ? url : null;
 }
-
-// ── Helpers de dimensiones ────────────────────────────────────
 
 function _textoLibre(match) {
   return [
@@ -128,28 +126,23 @@ function _textoLibre(match) {
 }
 
 function getAmbientesLabel(match) {
-  // Campo estructurado primero
   if (match.ambientes) return `${match.ambientes} amb`;
-  // Regex en texto: "3 amb", "3amb", "3 ambientes"
   const m = _textoLibre(match).match(/(\d+)\s*amb(?:ientes?)?/i);
   return m ? `${m[1]} amb` : null;
 }
 
 function getM2Label(match) {
-  // Campos estructurados: preferir cubiertos
-  if (match.m2cub)              return `${match.m2cub} m² cub`;
-  if (match.m2tot)              return `${match.m2tot} m²`;
-  if (match.metros)             return `${match.metros} m²`;
+  if (match.m2cub)               return `${match.m2cub} m² cub`;
+  if (match.m2tot)               return `${match.m2tot} m²`;
+  if (match.metros)              return `${match.metros} m²`;
   if (match.superficie_cubierta) return `${match.superficie_cubierta} m² cub`;
-  if (match.superficie_total)   return `${match.superficie_total} m²`;
-  if (match.superficie)         return `${match.superficie} m²`;
-  // info como objeto
+  if (match.superficie_total)    return `${match.superficie_total} m²`;
+  if (match.superficie)          return `${match.superficie} m²`;
   if (typeof match.info === "object" && match.info !== null) {
     if (match.info.m2cub) return `${match.info.m2cub} m² cub`;
     if (match.info.m2tot) return `${match.info.m2tot} m²`;
     if (match.info.m2)    return `${match.info.m2} m²`;
   }
-  // Regex en texto libre — cubiertos primero
   const text = _textoLibre(match);
   const cubMatch = text.match(/(\d+)\s*m[²2]?t?s?\.?\s*(?:cub(?:iertos?)?)/i);
   if (cubMatch) return `${cubMatch[1]} m² cub`;
@@ -157,8 +150,6 @@ function getM2Label(match) {
   if (totMatch) return `${totMatch[1]} m²`;
   return null;
 }
-
-// ── Highlights públicos ───────────────────────────────────────
 
 const HIGHLIGHTS_PUBLICOS = [
   "Luminoso", "Buen estado", "Patio", "Balcón", "Cochera",
@@ -168,41 +159,30 @@ const HIGHLIGHTS_PUBLICOS = [
 
 function getPropertyHighlights(match) {
   const found = [];
-
-  // Campos booleanos estructurados
   if ((match.cochera === "si" || match.cochera === true) && !found.includes("Cochera")) found.push("Cochera");
   if ((match.balcon  === "si" || match.balcon  === true) && !found.includes("Balcón"))  found.push("Balcón");
   if ((match.patio   === "si" || match.patio   === true) && !found.includes("Patio"))   found.push("Patio");
-
   if (found.length >= 3) return found;
-
-  // Buscar términos públicos en texto libre (excluye datos internos por diseño del whitelist)
   const text = _textoLibre(match).toLowerCase();
   for (const h of HIGHLIGHTS_PUBLICOS) {
     if (found.length >= 3) break;
     if (!found.includes(h) && text.includes(h.toLowerCase())) found.push(h);
   }
-
   return found;
 }
 
 function generarWhatsappMatch(lead, match) {
   const lines = [];
-
   const encabezado = [match.tipo, match.zona].filter(Boolean).join(" · ");
   if (encabezado) lines.push(encabezado);
-  if (match.dir)   lines.push(match.dir);
+  if (match.dir)    lines.push(match.dir);
   if (match.precio) lines.push(`USD ${Number(match.precio).toLocaleString("es-AR")}`);
-
   const dims = [getAmbientesLabel(match), getM2Label(match)].filter(Boolean).join(" · ");
   if (dims) lines.push(dims);
-
   const highlights = getPropertyHighlights(match);
   if (highlights.length) lines.push(highlights.join(" · "));
-
   const url = getMatchUrl(match);
   if (url) lines.push(url);
-
   return lines.join("\n");
 }
 
@@ -226,7 +206,7 @@ function DataPill({ label, value }) {
   );
 }
 
-// Estilos compartidos para secciones de la ficha expandida
+// Estilos compartidos para secciones
 const SL = {
   fontSize: 10, fontWeight: 800, color: "#5a6f84",
   letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8,
@@ -235,6 +215,35 @@ const SB = {
   background: "#eef4f8", border: "1px solid #c7d3df",
   borderRadius: 12, padding: "12px 14px",
 };
+
+// Campos de calificación (definidos a nivel de módulo para evitar recreación)
+const CALIF_SENALES = [
+  { key: "q_visitas_previas",   icon: "🕐", label: "¿Cuánto lleva buscando?",  ph: "ej: 3 meses, desde enero..." },
+  { key: "q_freno",             icon: "🚧", label: "¿Qué le frenó antes?",     ph: "ej: precio, ubicación..." },
+  { key: "q_tiene_para_vender", icon: "🔄", label: "¿Tiene algo para vender?", ph: "ej: no / depto en Centro..." },
+  { key: "q_fecha_limite",      icon: "📅", label: "¿Hay fecha límite?",       ph: "ej: vence alquiler agosto..." },
+];
+
+// ── AI helper (módulo-level, sin estado React) ────────────────
+async function fetchAI(prompt) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || "";
+  const resp = await fetch("/api/claude", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 400,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  const data = await resp.json();
+  if (data.error) throw new Error(data.error);
+  return data.content?.[0]?.text || "Sin respuesta";
+}
 
 // ── Componente principal ──────────────────────────────────────
 
@@ -253,14 +262,170 @@ export default function LeadCardPro({
 
   const matchesConFoto = matches.filter(m => m.fotos?.[0]);
 
-  const [copiadoTipo, setCopiadoTipo] = useState(null);
-  const rec   = getRecommendedAction(lead);
-  const notas = parsearNotas(lead.nota).slice(-3).reverse();
+  // ── State ─────────────────────────────────────────────────
+  const [copiadoTipo,  setCopiadoTipo]  = useState(null);
+  // datos editables
+  const [editDatos,    setEditDatos]    = useState(false);
+  const [editBuf,      setEditBuf]      = useState({});
+  const [editSaving,   setEditSaving]   = useState(false);
+  // notas
+  const [notaTexto,    setNotaTexto]    = useState("");
+  const [notaTipo,     setNotaTipo]     = useState("seguimiento");
+  const [notasSaving,  setNotasSaving]  = useState(false);
+  // calificación
+  const [califEdit,    setCalifEdit]    = useState(null);
+  const [califVal,     setCalifVal]     = useState("");
+  const [califSaving,  setCalifSaving]  = useState(false);
+  // inversor
+  const [editInv,      setEditInv]      = useState(false);
+  const [invBuf,       setInvBuf]       = useState("");
+  // IA
+  const [aiLoading,    setAiLoading]    = useState(null);
+  const [aiResult,     setAiResult]     = useState(null);
+  const [aiCopiado,    setAiCopiado]    = useState(false);
 
+  const rec        = getRecommendedAction(lead);
+  const todasNotas = parsearNotas(lead.nota);
+
+  // ── Acciones ─────────────────────────────────────────────
   function copiar(formato) {
     navigator.clipboard.writeText(generarPedido(lead, formato));
     setCopiadoTipo(formato);
     setTimeout(() => setCopiadoTipo(null), 2000);
+  }
+
+  async function guardarNota() {
+    if (!notaTexto.trim()) return;
+    setNotasSaving(true);
+    const nuevas = [...todasNotas, crearNota(notaTexto, notaTipo)];
+    await updateLead(lead.id, { nota: serializarNotas(nuevas) });
+    setNotaTexto("");
+    setNotaTipo("seguimiento");
+    setNotasSaving(false);
+  }
+
+  async function borrarNota(notaId) {
+    const nuevas = todasNotas.filter(n => n.id !== notaId);
+    await updateLead(lead.id, { nota: serializarNotas(nuevas) });
+  }
+
+  function startEditDatos() {
+    setEditBuf({
+      nombre:           lead.nombre           || "",
+      tel:              lead.tel              || "",
+      zona:             lead.zona             || "",
+      presup:           lead.presup           || "",
+      tipo:             lead.tipo             || "",
+      ambientes:        lead.ambientes        || "",
+      m2min:            lead.m2min            || "",
+      cochera:          lead.cochera          || "",
+      balcon:           lead.balcon           || "",
+      patio:            lead.patio            || "",
+      proxaccion:       lead.proxaccion       || "",
+      proxaccion_tipo:  lead.proxaccion_tipo  || "",
+      proxaccion_fecha: lead.proxaccion_fecha ? lead.proxaccion_fecha.slice(0, 10) : "",
+      last_contact_at:  lead.last_contact_at  ? lead.last_contact_at.slice(0, 10)  : "",
+    });
+    setEditDatos(true);
+  }
+
+  async function saveEditDatos() {
+    setEditSaving(true);
+    const updates = { ...editBuf };
+    updates.presup    = updates.presup    ? Number(updates.presup)    : null;
+    updates.ambientes = updates.ambientes ? Number(updates.ambientes) : null;
+    updates.m2min     = updates.m2min     ? Number(updates.m2min)     : null;
+    updates.cochera   = updates.cochera   === "si" ? "si" : null;
+    updates.balcon    = updates.balcon    === "si" ? "si" : null;
+    updates.patio     = updates.patio     === "si" ? "si" : null;
+    if (!updates.proxaccion_fecha) updates.proxaccion_fecha = null;
+    updates.last_contact_at = updates.last_contact_at
+      ? new Date(updates.last_contact_at + "T12:00:00").toISOString()
+      : null;
+    await updateLead(lead.id, updates);
+    setEditDatos(false);
+    setEditSaving(false);
+  }
+
+  async function guardarCalif(key) {
+    setCalifSaving(true);
+    await updateLead(lead.id, { [key]: califVal.trim() || null });
+    setCalifEdit(null);
+    setCalifSaving(false);
+  }
+
+  async function borrarCalif(key) {
+    await updateLead(lead.id, { [key]: null });
+  }
+
+  async function guardarInversor() {
+    await updateLead(lead.id, { nota_inversor: invBuf.trim() || null });
+    setEditInv(false);
+  }
+
+  async function callAI(type) {
+    setAiLoading(type);
+    setAiResult(null);
+    try {
+      const notasRecientes = todasNotas.slice(-2).map(n => `[${n.tipo}] ${n.texto}`).join(" | ");
+      const reqs = [
+        lead.cochera  === "si" && "cochera",
+        lead.balcon   === "si" && "balcón",
+        lead.patio    === "si" && "patio",
+        lead.credito  === "si" && "crédito aprobado",
+        lead.m2min    && `min ${lead.m2min}m²`,
+      ].filter(Boolean).join(", ");
+      let prompt = "";
+
+      if (type === "pedido") {
+        prompt = `Sos asistente inmobiliario de Alba Inversiones en Mar del Plata.
+Mejorá este pedido para compartir en grupos de WhatsApp de colegas. Máximo 5 líneas. Profesional y claro.
+
+Lead: ${lead.nombre || "Sin nombre"}
+Tipo: ${lead.tipo || "—"} | Zona: ${lead.zona || "—"} | Presup: ${lead.presup ? `USD ${lead.presup}` : "—"}
+Ambientes: ${lead.ambientes || "—"} | Requisitos: ${reqs || "ninguno"}
+Notas: ${notasRecientes || "sin notas"}
+
+Respondé con:
+1. Pedido mejorado (texto listo para copiar)
+2. Datos faltantes útiles a completar`;
+
+      } else if (type === "whatsapp") {
+        const m = matches[0];
+        if (m) {
+          const dims = [getAmbientesLabel(m), getM2Label(m)].filter(Boolean).join(" · ");
+          const hl   = getPropertyHighlights(m).join(" · ");
+          prompt = `Generá un mensaje de WhatsApp para ${lead.nombre || "el cliente"} presentándole esta propiedad.
+Máximo 5 líneas. Español rioplatense, profesional y cordial. Terminá con pregunta abierta.
+
+Propiedad: ${[m.tipo, m.zona, m.dir, m.precio ? `USD ${Number(m.precio).toLocaleString("es-AR")}` : null].filter(Boolean).join(" · ")}
+Características: ${[dims, hl].filter(Boolean).join(" · ")}`;
+        } else {
+          prompt = `Generá un mensaje de WhatsApp de seguimiento para ${lead.nombre || "el cliente"} que busca ${lead.tipo || "una propiedad"} en ${lead.zona || "Mar del Plata"}.
+Máximo 4 líneas. Amigable y profesional, español rioplatense. Terminá con pregunta abierta.`;
+        }
+
+      } else {
+        prompt = `Sos asistente comercial inmobiliario. Determiná la próxima acción concreta para este lead.
+
+Lead: ${lead.nombre || "Sin nombre"} | Etapa: ${lead.etapa || "—"} | Contacto: ${lead.dias !== null ? `hace ${lead.dias} días` : "sin registro"}
+Notas: ${notasRecientes || "ninguna"} | Próx. acción: ${lead.proxaccion || "ninguna"}
+Calificación: visitas=${lead.q_visitas_previas || "—"} | freno=${lead.q_freno || "—"} | fecha límite=${lead.q_fecha_limite || "—"}
+
+Respondé con:
+1. Acción: (texto breve)
+2. Urgencia: alta/media/baja
+3. Motivo: (1 oración)
+4. Texto sugerido: (opcional, máx 2 líneas)`;
+      }
+
+      const text = await fetchAI(prompt);
+      setAiResult({ type, text });
+    } catch (err) {
+      setAiResult({ type, text: `Error: ${err.message}` });
+    } finally {
+      setAiLoading(null);
+    }
   }
 
   // ── FICHA EXPANDIDA ──────────────────────────────────────────
@@ -268,6 +433,24 @@ export default function LeadCardPro({
     const recUrgColor = rec.urgencia === "alta" ? "#dc5050"
                       : rec.urgencia === "media" ? "#e9823a"
                       : "#46596d";
+
+    const inp = {
+      width: "100%", padding: "5px 8px", borderRadius: 7,
+      border: "1px solid #c7d3df", background: "#f9fbfd",
+      color: "#102033", fontSize: 11, outline: "none", boxSizing: "border-box",
+    };
+    const lbl = {
+      fontSize: 10, color: "#5a6f84", fontWeight: 700,
+      textTransform: "uppercase", letterSpacing: "0.06em",
+      display: "block", marginBottom: 3,
+    };
+    const btnSm = {
+      fontSize: 10, padding: "2px 8px", borderRadius: 6,
+      border: "1px solid #c7d3df", background: "#f2f6fa",
+      color: "#46596d", cursor: "pointer",
+    };
+
+    const califRespondidas = CALIF_SENALES.filter(s => lead[s.key]).length;
 
     return (
       <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
@@ -282,12 +465,9 @@ export default function LeadCardPro({
 
           {/* ── HEADER OPERATIVO ──────────────────────────────── */}
           <div style={{
-            background: "#eef4f8",
-            borderBottom: "1px solid #c7d3df",
-            padding: "10px 16px",
-            display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+            background: "#eef4f8", borderBottom: "1px solid #c7d3df",
+            padding: "10px 16px", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
           }}>
-            {/* Identidad */}
             <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em",
               color: badge.color, background: badge.bg,
               padding: "2px 8px", borderRadius: 20, flexShrink: 0 }}>
@@ -308,7 +488,6 @@ export default function LeadCardPro({
                 </span>
               )}
             </div>
-            {/* Contacto */}
             {lead.tel && (
               <span style={{ fontSize: 11, color: "#46596d", flexShrink: 0, whiteSpace: "nowrap" }}>
                 📞 {lead.tel.slice(0, 13)}{lead.tel.length > 13 ? "…" : ""}
@@ -316,15 +495,13 @@ export default function LeadCardPro({
             )}
             {lead.tel && (
               <a href={`https://wa.me/${lead.tel.replace(/\D/g, "")}`}
-                target="_blank" rel="noreferrer"
-                onClick={e => e.stopPropagation()}
+                target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
                 style={{ padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700,
                   color: "#16a34a", background: "rgba(22,163,74,0.1)",
                   border: "1px solid rgba(22,163,74,0.25)", textDecoration: "none", flexShrink: 0 }}>
                 WA
               </a>
             )}
-            {/* Acciones rápidas */}
             <button
               onClick={e => { e.stopPropagation(); updateLead(lead.id, { last_contact_at: new Date().toISOString() }); }}
               style={{ padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700,
@@ -332,8 +509,7 @@ export default function LeadCardPro({
                 color: "#16a34a", cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}>
               ✓ Contacté hoy
             </button>
-            <button
-              onClick={e => { e.stopPropagation(); copiar("formal"); }}
+            <button onClick={e => { e.stopPropagation(); copiar("formal"); }}
               style={{ padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
                 border: "1px solid #c7d3df",
                 background: copiadoTipo === "formal" ? "#d4e5f7" : "#f2f6fa",
@@ -350,7 +526,7 @@ export default function LeadCardPro({
           </div>
 
           {/* ── BODY SCROLLABLE ───────────────────────────────── */}
-          <div style={{ maxHeight: "60vh", overflowY: "auto", overflowX: "hidden",
+          <div style={{ maxHeight: "65vh", overflowY: "auto", overflowX: "hidden",
             padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
 
             {/* ── ROW 1: Brief · Datos · Grupos ─────────────── */}
@@ -359,11 +535,8 @@ export default function LeadCardPro({
               gridTemplateColumns: mobile ? "1fr" : "1fr 1fr 1fr",
               gap: 12, alignItems: "start",
             }}>
-
-              {/* COL 1: Brief comercial + Gestión */}
+              {/* COL 1: Brief + Gestión */}
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-
-                {/* Brief comercial */}
                 <div style={{ ...SB, display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={SL}>Brief comercial</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
@@ -403,41 +576,24 @@ export default function LeadCardPro({
                   )}
                 </div>
 
-                {/* Gestión */}
                 <div style={SB}>
                   <div style={SL}>Gestión</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <div>
-                      <label style={{ fontSize: 10, color: "#5a6f84", fontWeight: 700,
-                        display: "block", marginBottom: 4,
-                        textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        Etapa
-                      </label>
-                      <select
-                        value={lead.etapa || ""}
+                      <label style={lbl}>Etapa</label>
+                      <select value={lead.etapa || ""}
                         onChange={e => { e.stopPropagation(); setEtapa(lead.id, e.target.value); }}
                         onClick={e => e.stopPropagation()}
-                        style={{ width: "100%", padding: "5px 8px", borderRadius: 7,
-                          border: "1px solid #c7d3df", background: "#f2f6fa",
-                          color: "#102033", fontSize: 12, fontWeight: 600,
-                          cursor: "pointer", outline: "none" }}>
+                        style={{ ...inp, cursor: "pointer", fontWeight: 600 }}>
                         {ETAPAS.map(e => <option key={e} value={e}>{e}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label style={{ fontSize: 10, color: "#5a6f84", fontWeight: 700,
-                        display: "block", marginBottom: 4,
-                        textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        Agente
-                      </label>
-                      <select
-                        value={lead.ag || ""}
+                      <label style={lbl}>Agente</label>
+                      <select value={lead.ag || ""}
                         onChange={e => { e.stopPropagation(); setAgente(lead.id, e.target.value); }}
                         onClick={e => e.stopPropagation()}
-                        style={{ width: "100%", padding: "5px 8px", borderRadius: 7,
-                          border: "1px solid #c7d3df", background: "#f2f6fa",
-                          color: "#102033", fontSize: 12, fontWeight: 600,
-                          cursor: "pointer", outline: "none" }}>
+                        style={{ ...inp, cursor: "pointer", fontWeight: 600 }}>
                         <option value="">Sin asignar</option>
                         {Object.entries(AG).map(([key, val]) => (
                           <option key={key} value={key}>{val.n}</option>
@@ -448,23 +604,129 @@ export default function LeadCardPro({
                 </div>
               </div>
 
-              {/* COL 2: Datos del pedido */}
-              <div style={SB}>
-                <div style={SL}>Datos del pedido</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 14px" }}>
-                  {precio                && <DataPill label="Presupuesto" value={precio} />}
-                  {lead.tipo             && <DataPill label="Tipo"        value={lead.tipo} />}
-                  {lead.op               && <DataPill label="Operación"   value={lead.op} />}
-                  {lead.ambientes        && <DataPill label="Ambientes"   value={`${lead.ambientes} amb`} />}
-                  {lead.zona             && <DataPill label="Zona"        value={lead.zona} />}
-                  {lead.m2min            && <DataPill label="M² mín."     value={`${lead.m2min} m²`} />}
-                  {lead.cochera === "si" && <DataPill label="Cochera"     value="✓ Sí" />}
-                  {lead.balcon  === "si" && <DataPill label="Balcón"      value="✓ Sí" />}
-                  {lead.patio   === "si" && <DataPill label="Patio"       value="✓ Sí" />}
-                  {lead.credito === "si" && <DataPill label="Crédito"     value="✓ Aprobado" />}
-                  {lead.etapa            && <DataPill label="Etapa"       value={lead.etapa} />}
-                  {ag                    && <DataPill label="Agente"      value={ag.n} />}
+              {/* COL 2: Datos del pedido (con modo edición) */}
+              <div style={{ ...SB, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 0 }}>
+                  <div style={{ ...SL, marginBottom: 0 }}>Datos del pedido</div>
+                  {!editDatos ? (
+                    <button onClick={startEditDatos}
+                      style={{ ...btnSm, color: "#3a8bc4", fontWeight: 600 }}>
+                      ✏️ Editar
+                    </button>
+                  ) : (
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button onClick={saveEditDatos} disabled={editSaving}
+                        style={{ fontSize: 10, padding: "2px 10px", borderRadius: 6,
+                          border: "none", background: "#3a8bc4",
+                          color: "#fff", cursor: "pointer", fontWeight: 700 }}>
+                        {editSaving ? "..." : "Guardar"}
+                      </button>
+                      <button onClick={() => setEditDatos(false)} style={btnSm}>
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
                 </div>
+
+                {editDatos ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 6 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+                      <div>
+                        <label style={lbl}>Nombre</label>
+                        <input style={inp} value={editBuf.nombre}
+                          onChange={e => setEditBuf(b => ({ ...b, nombre: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Teléfono</label>
+                        <input style={inp} value={editBuf.tel}
+                          onChange={e => setEditBuf(b => ({ ...b, tel: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+                      <div>
+                        <label style={lbl}>Zona</label>
+                        <input style={inp} value={editBuf.zona}
+                          onChange={e => setEditBuf(b => ({ ...b, zona: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Presupuesto (USD)</label>
+                        <input style={inp} type="number" value={editBuf.presup}
+                          onChange={e => setEditBuf(b => ({ ...b, presup: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+                      <div>
+                        <label style={lbl}>Tipo</label>
+                        <select style={{ ...inp, cursor: "pointer" }} value={editBuf.tipo}
+                          onChange={e => setEditBuf(b => ({ ...b, tipo: e.target.value }))}>
+                          <option value="">—</option>
+                          {TIPOS_PROP_LEAD.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Ambientes</label>
+                        <input style={inp} type="number" min="1" value={editBuf.ambientes}
+                          onChange={e => setEditBuf(b => ({ ...b, ambientes: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 5 }}>
+                      <div>
+                        <label style={lbl}>M² mín</label>
+                        <input style={inp} type="number" value={editBuf.m2min}
+                          onChange={e => setEditBuf(b => ({ ...b, m2min: e.target.value }))} />
+                      </div>
+                      {[{ k: "cochera", l: "Cochera" }, { k: "balcon", l: "Balcón" }, { k: "patio", l: "Patio" }].map(({ k, l }) => (
+                        <div key={k}>
+                          <label style={lbl}>{l}</label>
+                          <select style={{ ...inp, cursor: "pointer" }} value={editBuf[k]}
+                            onChange={e => setEditBuf(b => ({ ...b, [k]: e.target.value }))}>
+                            <option value="">No</option>
+                            <option value="si">Sí</option>
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <label style={lbl}>Último contacto</label>
+                      <input style={inp} type="date" value={editBuf.last_contact_at}
+                        onChange={e => setEditBuf(b => ({ ...b, last_contact_at: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Próxima acción</label>
+                      <input style={inp} value={editBuf.proxaccion}
+                        onChange={e => setEditBuf(b => ({ ...b, proxaccion: e.target.value }))}
+                        placeholder="ej: Llamar para confirmar visita" />
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+                      <div>
+                        <label style={lbl}>Tipo de acción</label>
+                        <input style={inp} value={editBuf.proxaccion_tipo}
+                          onChange={e => setEditBuf(b => ({ ...b, proxaccion_tipo: e.target.value }))}
+                          placeholder="ej: Llamada" />
+                      </div>
+                      <div>
+                        <label style={lbl}>Fecha acción</label>
+                        <input style={inp} type="date" value={editBuf.proxaccion_fecha}
+                          onChange={e => setEditBuf(b => ({ ...b, proxaccion_fecha: e.target.value }))} />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 14px", marginTop: 6 }}>
+                    {precio                && <DataPill label="Presupuesto" value={precio} />}
+                    {lead.tipo             && <DataPill label="Tipo"        value={lead.tipo} />}
+                    {lead.op               && <DataPill label="Operación"   value={lead.op} />}
+                    {lead.ambientes        && <DataPill label="Ambientes"   value={`${lead.ambientes} amb`} />}
+                    {lead.zona             && <DataPill label="Zona"        value={lead.zona} />}
+                    {lead.m2min            && <DataPill label="M² mín."     value={`${lead.m2min} m²`} />}
+                    {lead.cochera === "si" && <DataPill label="Cochera"     value="✓ Sí" />}
+                    {lead.balcon  === "si" && <DataPill label="Balcón"      value="✓ Sí" />}
+                    {lead.patio   === "si" && <DataPill label="Patio"       value="✓ Sí" />}
+                    {lead.credito === "si" && <DataPill label="Crédito"     value="✓ Aprobado" />}
+                    {lead.etapa            && <DataPill label="Etapa"       value={lead.etapa} />}
+                    {ag                    && <DataPill label="Agente"      value={ag.n} />}
+                  </div>
+                )}
               </div>
 
               {/* COL 3: Pedido para grupos */}
@@ -482,8 +744,7 @@ export default function LeadCardPro({
                     { fmt: "discreto", label: "Discreto" },
                     { fmt: "colegas",  label: "Colegas" },
                   ].map(({ fmt, label }) => (
-                    <button key={fmt}
-                      onClick={e => { e.stopPropagation(); copiar(fmt); }}
+                    <button key={fmt} onClick={e => { e.stopPropagation(); copiar(fmt); }}
                       style={{ padding: "5px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600,
                         border: "1px solid #c7d3df", flex: 1,
                         background: copiadoTipo === fmt ? "#d4e5f7" : "#f2f6fa",
@@ -508,13 +769,13 @@ export default function LeadCardPro({
                     const waUrl   = getWhatsappUrl(lead, m);
                     const propUrl = getMatchUrl(m);
                     const chips   = getPropertyHighlights(m);
+                    const dims    = [getAmbientesLabel(m), getM2Label(m)].filter(Boolean).join(" · ");
                     return (
                       <div key={m.id} style={{
                         padding: "8px 10px", background: "#e4edf6",
                         borderRadius: 8, border: "1px solid #c5d8eb",
                         display: "flex", flexDirection: "column", gap: 4,
                       }}>
-                        {/* Línea 1: Tipo · Zona · Precio + botones */}
                         <div style={{ display: "flex", alignItems: "center", gap: 6,
                           flexWrap: "wrap", minWidth: 0 }}>
                           <span style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 600,
@@ -554,8 +815,7 @@ export default function LeadCardPro({
                                 Ver
                               </a>
                             )}
-                            <button
-                              onClick={e => { e.stopPropagation(); toggleMostrado(lead.id, m.id); }}
+                            <button onClick={e => { e.stopPropagation(); toggleMostrado(lead.id, m.id); }}
                               style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6,
                                 border: `1px solid ${visto ? "#c7d3df" : "#3a8bc4"}`,
                                 background: visto ? "#f2f6fa" : "#d4e5f7",
@@ -565,15 +825,16 @@ export default function LeadCardPro({
                             </button>
                           </div>
                         </div>
-                        {/* Línea 2: Dirección */}
                         {m.dir && (
                           <div style={{ fontSize: 11, color: "#46596d" }}>
-                            {m.dir.slice(0, 50)}{m.dir.length > 50 ? "…" : ""}
+                            {m.dir.slice(0, 60)}{m.dir.length > 60 ? "…" : ""}
                           </div>
                         )}
-                        {/* Línea 3: chips de características */}
-                        {chips.length > 0 && (
-                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                        {(dims || chips.length > 0) && (
+                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+                            {dims && (
+                              <span style={{ fontSize: 10, color: "#3a8bc4", fontWeight: 600 }}>{dims}</span>
+                            )}
                             {chips.map((ch, i) => (
                               <span key={i} style={{ fontSize: 10, color: "#46596d",
                                 background: "#f2f6fa", border: "1px solid #c7d3df",
@@ -595,33 +856,70 @@ export default function LeadCardPro({
               </div>
             )}
 
-            {/* ── ROW 3: Notas + Calificación/Perfil ────────── */}
+            {/* ── ROW 3: Notas (editor) + Calificación ──────── */}
             <div style={{
               display: "grid",
               gridTemplateColumns: mobile ? "1fr" : "1fr 1fr",
               gap: 12,
             }}>
+              {/* Notas — editor completo */}
+              <div style={{ ...SB, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={SL}>Notas · {todasNotas.length}</div>
 
-              {/* Notas — últimas 3, solo lectura */}
-              <div style={SB}>
-                <div style={SL}>Notas recientes</div>
-                {notas.length === 0 ? (
+                {/* Input nueva nota */}
+                <div style={{ display: "flex", gap: 5 }}>
+                  <input
+                    value={notaTexto}
+                    onChange={e => setNotaTexto(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") guardarNota(); }}
+                    placeholder="Agregar nota..."
+                    style={{ flex: 1, padding: "6px 9px", borderRadius: 7,
+                      border: "1px solid #c7d3df", background: "#f9fbfd",
+                      color: "#102033", fontSize: 11, outline: "none" }}
+                  />
+                  <button onClick={guardarNota} disabled={notasSaving || !notaTexto.trim()}
+                    style={{ padding: "6px 12px", borderRadius: 7, cursor: "pointer",
+                      background: notaTexto.trim() ? "#3a8bc4" : "#c7d3df",
+                      border: "none", color: "#fff", fontSize: 12, fontWeight: 700 }}>
+                    {notasSaving ? "…" : "+"}
+                  </button>
+                </div>
+
+                {/* Selector de tipo */}
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {Object.entries(TIPO_NOTA).map(([key, cfg]) => (
+                    <button key={key} onClick={() => setNotaTipo(key)}
+                      style={{ padding: "2px 8px", borderRadius: 20, fontSize: 10, fontWeight: 700,
+                        border: `1px solid ${cfg.color}`,
+                        background: notaTipo === key ? cfg.color : "transparent",
+                        color: notaTipo === key ? "#fff" : cfg.color,
+                        cursor: "pointer" }}>
+                      {cfg.emoji} {cfg.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Historial */}
+                {todasNotas.length === 0 ? (
                   <div style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>
-                    Sin notas recientes
+                    Sin notas aún
                   </div>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {notas.map((n, i) => {
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5,
+                    maxHeight: 240, overflowY: "auto" }}>
+                    {[...todasNotas].reverse().map((n, i) => {
                       const cfg   = TIPO_NOTA[n.tipo] || TIPO_NOTA.seguimiento;
                       const fecha = n.createdAt
                         ? new Date(n.createdAt).toLocaleDateString("es-AR", { day: "numeric", month: "short" })
                         : "";
                       return (
-                        <div key={i} style={{
+                        <div key={n.id || i} style={{
                           display: "flex", gap: 8, alignItems: "flex-start",
                           padding: "7px 10px", background: "#f2f6fa", borderRadius: 8,
-                          borderTop: "1px solid #c7d3df", borderRight: "1px solid #c7d3df",
-                          borderBottom: "1px solid #c7d3df", borderLeft: `3px solid ${cfg.color}`,
+                          borderTop: "1px solid #c7d3df",
+                          borderRight: "1px solid #c7d3df",
+                          borderBottom: "1px solid #c7d3df",
+                          borderLeft: `3px solid ${cfg.color}`,
                         }}>
                           <span style={{ fontSize: 13, flexShrink: 0, lineHeight: 1.4 }}>{cfg.emoji}</span>
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -634,6 +932,14 @@ export default function LeadCardPro({
                             </div>
                             <div style={{ fontSize: 11, color: "#102033", lineHeight: 1.4 }}>{n.texto}</div>
                           </div>
+                          {n.id && n.id !== "legacy" && (
+                            <button onClick={() => borrarNota(n.id)}
+                              style={{ background: "transparent", border: "none",
+                                color: "#b0bec5", cursor: "pointer", fontSize: 12,
+                                padding: "0 2px", lineHeight: 1, flexShrink: 0 }}>
+                              ✕
+                            </button>
+                          )}
                         </div>
                       );
                     })}
@@ -641,11 +947,140 @@ export default function LeadCardPro({
                 )}
               </div>
 
-              {/* Calificación (comprador) o Perfil inversor */}
-              {lead.inversor ? (
-                <div style={SB}>
-                  <div style={SL}>Perfil inversor</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {/* Calificación — editable con paleta light */}
+              <div style={{ ...SB, display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+                  <div style={{ ...SL, marginBottom: 0 }}>Calificación</div>
+                  <span style={{ fontSize: 10, color: "#94a3b8" }}>
+                    {califRespondidas}/{CALIF_SENALES.length}
+                  </span>
+                </div>
+
+                {/* Barra progreso */}
+                <div style={{ height: 3, background: "#c7d3df", borderRadius: 2, overflow: "hidden", marginBottom: 2 }}>
+                  <div style={{
+                    height: "100%",
+                    width: `${(califRespondidas / CALIF_SENALES.length) * 100}%`,
+                    background: califRespondidas <= 1 ? "#dc5050"
+                              : califRespondidas <= 2 ? "#e9823a"
+                              : califRespondidas <= 3 ? "#3a8bc4"
+                              : "#16a34a",
+                    borderRadius: 2, transition: "width 0.3s",
+                  }} />
+                </div>
+
+                {CALIF_SENALES.map(s => {
+                  const enEdicion  = califEdit === s.key;
+                  const tieneValor = !!lead[s.key];
+                  return (
+                    <div key={s.key}>
+                      {enEdicion ? (
+                        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                          <input autoFocus value={califVal}
+                            onChange={e => setCalifVal(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === "Enter") guardarCalif(s.key);
+                              if (e.key === "Escape") setCalifEdit(null);
+                            }}
+                            placeholder={s.ph}
+                            style={{ flex: 1, padding: "4px 8px", borderRadius: 6,
+                              border: "1px solid #3a8bc4", background: "#f9fbfd",
+                              color: "#102033", fontSize: 11, outline: "none" }} />
+                          <button onClick={() => guardarCalif(s.key)} disabled={califSaving}
+                            style={{ padding: "4px 10px", borderRadius: 6, background: "#3a8bc4",
+                              border: "none", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                            {califSaving ? "…" : "OK"}
+                          </button>
+                          <button onClick={() => setCalifEdit(null)} style={btnSm}>✕</button>
+                        </div>
+                      ) : (
+                        <div onClick={() => { setCalifEdit(s.key); setCalifVal(lead[s.key] || ""); }}
+                          style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 8px",
+                            borderRadius: 6, cursor: "pointer",
+                            background: tieneValor ? "rgba(58,139,196,0.06)" : "rgba(148,163,184,0.06)",
+                            border: `1px solid ${tieneValor ? "#c5d8eb" : "#dde3ec"}` }}>
+                          <span style={{ fontSize: 12, flexShrink: 0 }}>{s.icon}</span>
+                          <span style={{ fontSize: 11, color: "#5a6f84", flex: 1, whiteSpace: "nowrap",
+                            overflow: "hidden", textOverflow: "ellipsis" }}>{s.label}</span>
+                          {tieneValor ? (
+                            <>
+                              <span style={{ fontSize: 11, color: "#102033", fontStyle: "italic",
+                                maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {lead[s.key]}
+                              </span>
+                              <button onClick={e => { e.stopPropagation(); borrarCalif(s.key); }}
+                                style={{ background: "transparent", border: "none",
+                                  color: "#b0bec5", cursor: "pointer", fontSize: 11,
+                                  padding: "0 2px", flexShrink: 0 }}>
+                                ✕
+                              </button>
+                            </>
+                          ) : (
+                            <span style={{ fontSize: 10, color: "#94a3b8", flexShrink: 0 }}>sin dato</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Prob + crédito */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginTop: 4 }}>
+                  <div>
+                    <label style={lbl}>Prob. cierre %</label>
+                    <input type="number" min="0" max="100"
+                      defaultValue={lead.prob || ""}
+                      onBlur={e => { const v = Number(e.target.value); updateLead(lead.id, { prob: v || null }); }}
+                      style={{ ...inp }} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Crédito</label>
+                    <select value={lead.credito || ""}
+                      onChange={e => updateLead(lead.id, { credito: e.target.value || null })}
+                      style={{ ...inp, cursor: "pointer" }}>
+                      <option value="">No</option>
+                      <option value="si">Sí</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── ROW 4: Perfil inversor (solo si lead.inversor) ─ */}
+            {lead.inversor && (
+              <div style={{ ...SB, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ ...SL, marginBottom: 0 }}>Perfil inversor</div>
+                  {!editInv ? (
+                    <button onClick={() => { setInvBuf(lead.nota_inversor || ""); setEditInv(true); }}
+                      style={{ ...btnSm, color: "#3a8bc4", fontWeight: 600 }}>
+                      ✏️ Editar
+                    </button>
+                  ) : (
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button onClick={guardarInversor}
+                        style={{ fontSize: 10, padding: "2px 10px", borderRadius: 6,
+                          border: "none", background: "#3a8bc4",
+                          color: "#fff", cursor: "pointer", fontWeight: 700 }}>
+                        Guardar
+                      </button>
+                      <button onClick={() => setEditInv(false)} style={btnSm}>Cancelar</button>
+                    </div>
+                  )}
+                </div>
+                {editInv ? (
+                  <textarea
+                    value={invBuf}
+                    onChange={e => setInvBuf(e.target.value)}
+                    rows={3}
+                    placeholder="ej: Busca renta 6%, 2 unidades, zona Güemes o Centro, plazo 6 meses..."
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 8,
+                      border: "1px solid #c7d3df", background: "#f9fbfd",
+                      color: "#102033", fontSize: 11, outline: "none",
+                      resize: "vertical", fontFamily: "inherit", lineHeight: 1.5, boxSizing: "border-box" }}
+                  />
+                ) : (
+                  <div>
                     {lead.nota_inversor ? (
                       <div style={{ fontSize: 12, color: "#102033", lineHeight: 1.5,
                         padding: "7px 10px", background: "#f2f6fa",
@@ -653,73 +1088,97 @@ export default function LeadCardPro({
                         {lead.nota_inversor}
                       </div>
                     ) : (
-                      <div style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>
-                        Sin perfil cargado
+                      <div onClick={() => { setInvBuf(""); setEditInv(true); }}
+                        style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic",
+                          cursor: "pointer", padding: "7px 10px" }}>
+                        + Agregar perfil de inversión
                       </div>
                     )}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", marginTop: 8 }}>
                       {precio    && <DataPill label="Presupuesto"  value={precio} />}
                       {lead.tipo && <DataPill label="Tipo buscado" value={lead.tipo} />}
                       {lead.zona && <DataPill label="Zona"         value={lead.zona} />}
                       {lead.op   && <DataPill label="Operación"    value={lead.op} />}
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div style={SB}>
-                  <div style={SL}>Calificación</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                    {[
-                      { key: "q_visitas_previas",   icon: "🕐", label: "¿Cuánto lleva buscando?" },
-                      { key: "q_freno",             icon: "🚧", label: "¿Qué le frenó antes?" },
-                      { key: "q_tiene_para_vender", icon: "🔄", label: "¿Tiene algo para vender?" },
-                      { key: "q_fecha_limite",      icon: "📅", label: "¿Hay fecha límite?" },
-                    ].map(s => (
-                      <div key={s.key} style={{ display: "flex", alignItems: "flex-start", gap: 6,
-                        padding: "5px 8px", borderRadius: 7,
-                        background: lead[s.key] ? "rgba(58,139,196,0.06)" : "rgba(148,163,184,0.07)",
-                        border: `1px solid ${lead[s.key] ? "#c5d8eb" : "#dde3ec"}` }}>
-                        <span style={{ fontSize: 11, flexShrink: 0, marginTop: 1 }}>{s.icon}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 10, color: "#5a6f84", fontWeight: 600 }}>{s.label}</div>
-                          {lead[s.key] ? (
-                            <div style={{ fontSize: 11, color: "#102033", marginTop: 1, lineHeight: 1.4 }}>
-                              {lead[s.key]}
-                            </div>
-                          ) : (
-                            <div style={{ fontSize: 10, color: "#94a3b8", fontStyle: "italic" }}>sin dato</div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                )}
+              </div>
+            )}
+
+            {/* ── ROW 5: Asistente IA ───────────────────────── */}
+            <div style={{ ...SB, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={SL}>Asistente IA</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {[
+                  { type: "pedido",   label: "✨ Mejorar pedido",  desc: "Pedido optimizado + datos faltantes" },
+                  { type: "whatsapp", label: "💬 Mensaje WA",       desc: matches.length > 0 ? "Con primer match" : "Seguimiento" },
+                  { type: "accion",   label: "🎯 Próxima acción",   desc: "Qué hacer ahora" },
+                ].map(({ type, label, desc }) => (
+                  <button key={type}
+                    onClick={e => { e.stopPropagation(); callAI(type); }}
+                    disabled={!!aiLoading}
+                    style={{ flex: 1, minWidth: 110, padding: "8px 10px", borderRadius: 9,
+                      border: `1px solid ${aiResult?.type === type ? "#3a8bc4" : "#c7d3df"}`,
+                      background: aiResult?.type === type ? "#d4e5f7" : "#f2f6fa",
+                      color: "#102033",
+                      cursor: aiLoading ? "not-allowed" : "pointer",
+                      display: "flex", flexDirection: "column", gap: 2,
+                      opacity: aiLoading && aiLoading !== type ? 0.5 : 1,
+                      transition: "opacity 0.15s, border-color 0.15s" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700 }}>
+                      {aiLoading === type ? "Consultando…" : label}
+                    </span>
+                    <span style={{ fontSize: 10, color: "#5a6f84" }}>{desc}</span>
+                  </button>
+                ))}
+              </div>
+
+              {aiResult && (
+                <div style={{ background: "#f2f6fa", border: "1px solid #c7d3df",
+                  borderRadius: 9, padding: "10px 12px",
+                  display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: "#3a8bc4",
+                      textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                      {{ pedido: "Pedido mejorado", whatsapp: "Mensaje WhatsApp", accion: "Próxima acción" }[aiResult.type]}
+                    </span>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button onClick={() => {
+                        navigator.clipboard.writeText(aiResult.text);
+                        setAiCopiado(true);
+                        setTimeout(() => setAiCopiado(false), 2000);
+                      }} style={{ ...btnSm, color: aiCopiado ? "#16a34a" : "#3a8bc4", fontWeight: 600 }}>
+                        {aiCopiado ? "✓ Copiado" : "Copiar"}
+                      </button>
+                      <button onClick={() => setAiResult(null)} style={btnSm}>✕</button>
+                    </div>
                   </div>
+                  <pre style={{ margin: 0, fontSize: 12, color: "#102033", lineHeight: 1.6,
+                    whiteSpace: "pre-wrap", fontFamily: "inherit" }}>
+                    {aiResult.text}
+                  </pre>
                 </div>
               )}
             </div>
 
-            {/* ── ROW 4: Más acciones ────────────────────────── */}
+            {/* ── ROW 6: Acciones peligrosas ─────────────────── */}
             <div style={{ ...SB, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <span style={{ fontSize: 10, fontWeight: 800, color: "#5a6f84",
                 textTransform: "uppercase", letterSpacing: "0.08em" }}>
                 Acciones
               </span>
-              <button
-                onClick={e => { e.stopPropagation(); setModalPerdido(lead); }}
+              <button onClick={e => { e.stopPropagation(); setModalPerdido(lead); }}
                 style={{ padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600,
                   border: "1px solid rgba(233,130,58,0.35)", background: "#fff7f0",
                   color: "#e9823a", cursor: "pointer" }}>
                 Marcar perdido
               </button>
-              <button
-                onClick={e => { e.stopPropagation(); setConfirmDelete(lead); }}
+              <button onClick={e => { e.stopPropagation(); setConfirmDelete(lead); }}
                 style={{ padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600,
                   border: "1px solid rgba(220,80,80,0.35)", background: "#fff5f5",
                   color: "#dc5050", cursor: "pointer" }}>
                 Eliminar lead
               </button>
-              <span style={{ fontSize: 10, color: "#b0bec5", marginLeft: "auto", fontStyle: "italic" }}>
-                Edición de notas · próxima versión
-              </span>
             </div>
 
           </div>
@@ -811,12 +1270,12 @@ export default function LeadCardPro({
 
       {/* Datos en grid 2 cols */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px 12px" }}>
-        {precio     && <DataPill label="Presupuesto" value={precio} />}
-        {lead.tipo  && <DataPill label="Tipo"        value={lead.tipo} />}
-        {lead.ambientes && <DataPill label="Ambientes" value={`${lead.ambientes} amb`} />}
-        {lead.cochera === "si" && <DataPill label="Cochera" value="✓ Sí" />}
-        {lead.credito === "si" && <DataPill label="Crédito" value="✓ Aprobado" />}
-        {lead.etapa  && <DataPill label="Etapa"      value={lead.etapa} />}
+        {precio              && <DataPill label="Presupuesto" value={precio} />}
+        {lead.tipo           && <DataPill label="Tipo"        value={lead.tipo} />}
+        {lead.ambientes      && <DataPill label="Ambientes"   value={`${lead.ambientes} amb`} />}
+        {lead.cochera === "si" && <DataPill label="Cochera"   value="✓ Sí" />}
+        {lead.credito === "si" && <DataPill label="Crédito"   value="✓ Aprobado" />}
+        {lead.etapa          && <DataPill label="Etapa"       value={lead.etapa} />}
       </div>
 
       {/* Matches strip */}
