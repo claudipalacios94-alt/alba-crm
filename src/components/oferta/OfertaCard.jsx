@@ -10,16 +10,37 @@ import {
 // Cache en módulo para no re-fetchear entre re-renders
 const ogCache = new Map();
 
+// Misma lista que api/og.js — evita requests que van a retornar 400
+const OG_ALLOWED_DOMAINS = [
+  "zonaprop.com.ar",
+  "argenprop.com",
+  "mercadolibre.com.ar",
+  "inmuebles24.com",
+  "properati.com.ar",
+  "navent.com",
+  "remax.com.ar",
+  "century21.com.ar",
+];
+
+function isOgAllowed(urlStr) {
+  try {
+    const host = new URL(urlStr).hostname.replace(/^www\./, "");
+    return OG_ALLOWED_DOMAINS.some(d => host === d || host.endsWith("." + d));
+  } catch {
+    return false;
+  }
+}
+
 function useOgImage(url) {
   const [image, setImage] = useState(() => ogCache.get(url) ?? null);
 
   useEffect(() => {
     if (!url) return;
+    if (!isOgAllowed(url)) return;           // dominio no permitido → no hacer request
     if (ogCache.has(url)) { setImage(ogCache.get(url)); return; }
 
     let cancelled = false;
-    const base = import.meta.env.DEV ? "http://localhost:5174" : "";
-    fetch(`${base}/api/og?url=${encodeURIComponent(url)}`)
+    fetch(`/api/og?url=${encodeURIComponent(url)}`)
       .then(r => r.ok ? r.json() : { image: null })
       .then(data => {
         if (cancelled) return;
