@@ -1,5 +1,5 @@
-ALBA CRM — MASTER CONTEXT v8
-Última actualización: 2026-06-01
+ALBA CRM — MASTER CONTEXT v10
+Última actualización: 2026-06-02
 Uso: Pegar completo al inicio de cada sesión de trabajo.
 
 1. NEGOCIO
@@ -47,7 +47,7 @@ Reglas: Pages delgadas → stores Zustand → props a componentes · constants.j
 Módulo | Ruta | Estado
 Inicio (HOME) | / | ✅ fusión Dashboard+Briefing · KPIs + alertas clickeables + EquilibrioBar + OportunidadesCaptacion + llamar hoy + tareas + zonas
 Briefing | /briefing | redirige a / con Navigate
-CRM Leads | /crm | ✅ tabs Compradores/Inversores + switch Lista/Kanban en header + Acción del día + matches + mail pedidos · LeadCard nueva arquitectura
+CRM Leads | /crm | ✅ REDISEÑADO v10 — ver sección 10
 Kanban | /kanban | ✅ 7 etapas · solo compradores · ruta preservada pero oculta del sidebar · integrado como vista en /crm
 Propiedades | /propiedades | ✅ categorías + retasadas
 Captaciones | /captaciones | ✅ IA extracción + mapa + expiración 21d
@@ -108,6 +108,7 @@ Tags automáticos: 🔥 Caliente · ⚡ Resoluble · 💰 Alta viabilidad · ⚠
 7. DOMAIN / NOTA (src/domain/nota.js)
 
 TIPO_NOTA: interes(✅) · objecion(🚧) · seguimiento(📞) · urgencia(🔥) · cierre(💰)
+Cada tipo tiene: emoji, label, color
 parsearNotas(nota) → array — compatible con string legacy (→ tipo "seguimiento")
 crearNota(texto, tipo) → {id, texto, tipo, createdAt}
 serializarNotas(notas) → JSON.stringify — guardar en campo nota
@@ -150,50 +151,145 @@ pg_cron habilitado en el proyecto
 
 ⚠️ Limitación activa: mayoría de leads tienen last_contact_at=NULL → dias=null → incidents no disparan en leads históricos. Se activa naturalmente cuando el equipo use "Contacté hoy".
 
-10. CRM LEADS — LeadCard (src/components/crmleads/LeadCard.jsx)
-Nueva arquitectura visual — dos velocidades: escaneo rápido / trabajo profundo.
-Estado cerrado (siempre visible):
-Header #07111f: ícono dominante único (⚡/📈/🏦/🔄/🏠/👀) + nombre + prioridad numérica + confianza + tags emoji (máx 2) + días
-dias === null → muestra "—" (sin registro)
-Zona · tipo · USD + etapa + temperatura
-Señales contextuales: sin matches / fecha límite / crédito
-Pedido resumido (ambientes, cochera, patio...)
-Nota clave (más reciente del historial)
-Mejor match resumido con contador
+10. CRM LEADS — v10 (2026-06-02)
 
-Acciones rápidas (siempre visibles): WA · Llamar · Contacté · Pedido WA · toggle ▼
-Estado abierto — secciones colapsables:
-Etapa y agente · Notas (defaultOpen) · Matches (defaultOpen si hay) · Calificación · Perfil inversor · Más acciones
+Archivos modificados en v10:
+  src/components/crmleads/index.jsx — filtros pills → selects, paleta mate
+  src/components/crmleads/LeadCardPro.jsx — ficha expandida única (REEMPLAZADA COMPLETA)
+  src/components/crmleads/CRMKpiCard.jsx — paleta mate aplicada
 
-Features visuales:
-Borde lateral: inset 3px 0 0 dinámico por temperatura (naranja/amarillo/azul/verde)
-3 profundidades: header #07111f / contexto #0A1628 / cuerpo #0C1B2E
-Focus mode: opacity 0.35 en cards no activas — props isBlurred + hasNewMatch
-Ritmo vertical: calientes padding 12px, fríos 7px + opacity header 0.65
-Microanimación contactFade (contactado hoy) + matchPulse (match nuevo) — keyframes inyectados una vez
+PALETA GRIS AZULADA MATE (aplicada en v10):
+  Fondo página: #dfe7ef
+  Cards / KPIs / toolbars: #f2f6fa
+  Hover / secciones internas: #eef4f8
+  Bordes: #c7d3df
+  Texto principal: #102033
+  Texto secundario: #46596d
+  Labels: #5a6f84
+  Azul ALBA activo: #12355b
+  Acento: #3a8bc4
+  Match strip: fondo #e4edf6 · borde #c5d8eb · texto #1763d1
+  Badges estado (apagados): urgente #dc5050 · alta #e9823a · visita/media #d99a22 · calificado #3a8bc4 · negociación #7c5cc4 · frío #64748b
 
-Pendiente: sección "Por qué está aquí" diseñada e implementada en código pero no aplicada al proyecto.
+Layout general:
+  Fondo #dfe7ef (light theme solo en /crm)
+  Wrapper con margin negativo para cubrir padding del Layout: lv=22/14px, lh=26/12px desktop/mobile
+  overflowX: hidden + boxSizing: border-box en wrapper raíz
+  ⚠️ Si Layout.jsx cambia su padding, actualizar lv/lh en index.jsx líneas ~215-216
 
-11. CRM LEADS — NOTAS TIPADAS
-NotaLead.jsx (src/components/crmleads/NotaLead.jsx):
-Selector de tipo (5 botones) + input + botón borrar en historial
-onGuardar(lead, notaSerializada) → guarda en campo nota
-Notas legacy (string) se muestran como "📞 Seguimiento" sin romper datos
+Header:
+  Título + subtítulo · Buscador (260px) · Archivados · Mail pedidos · Matches nuevos · Fecha
 
-LeadQualification.jsx (src/components/crmleads/LeadQualification.jsx):
-4 señales: q_visitas_previas · q_freno · q_tiene_para_vender · q_fecha_limite
-Sin Supabase directo — usa onUpdate(lead.id, {campo: valor}) del padre
-Barra de completitud + pts de confianza visibles
-Integrado en LeadCard debajo de NotaLead
+KPIs (5 cards):
+  Leads totales · Leads activos · Con matches · Sin contacto +3d (alert si >5) · Acciones hoy
+  CRMKpiCard.jsx: icon, value, label, sub, color, sparkline, alert
 
-BriefingLeadCard.jsx (src/components/briefing/BriefingLeadCard.jsx):
-Simplificado para HOME: cabecera operativa + barra calificación resumida + WA
-dias === null → muestra "Sin registro" en color B.muted
-Sin bloque de calificación profunda (ese vive solo en LeadCard de CRM)
+matchesByLeadId — CACHE CRÍTICO:
+  useMemo([leads, todasProps]) → Map<leadId, matches[]>
+  matchLeadProps corre UNA sola vez por lead por render (~94 llamadas total)
+  Usado en: filtBase sort · matchesNuevos · leadsConMatchNuevo · KPI con matches · LeadCardPro (recibe matches por prop)
+  ⚠️ NO agregar dependencias visuales (q, tab, mobile, width) — solo leads y todasProps
+
+Grilla de cards:
+  gridTemplateColumns: repeat(3, minmax(0,1fr)) ≥1100px / repeat(2,...) ≥640px / 1fr mobile
+  ⚠️ Usar minmax(0,1fr) siempre — 1fr solo puede desbordar con contenido ancho
+  alignItems: start
+
+Filtros (v10 — reemplazaron pills):
+  <label>Estado: <select> (Todos/Caliente/Tibio/Frío) — lógica fs intacta
+  <label>Agente: <select> (Todos/Claudi/Alejandra/Flor/Lucas/Luján/Sin asignar) — lógica fa intacta
+  Valores internos iguales a los anteriores — sin romper filtrado
+
+LeadCardPro (card cerrada):
+  padding 12/14px · gap 7 · borderRadius 14px · fondo #f2f6fa
+  borderLeft: 4px solid sideColor(badge) — línea lateral por estado
+  Badge etapa/prioridad (colores apagados) · Nombre · Tipo+zona · Tel+WA · DataPill grid 2 cols · Matches strip · Footer
+  isBlurred: opacity 0.38 cuando otra card está expandida
+  hasNewMatch: border #3b82f6 + badge "● MATCH NUEVO"
+  "Contacté hoy" → updateLead(id, {last_contact_at: new Date().toISOString()})
+
+11. CRM LEADS — FICHA EXPANDIDA ÚNICA (LeadCardPro isOpen — v10)
+
+La expansión ya NO usa LeadCard original. Es una ficha propia completa.
+LeadCard.jsx permanece en el proyecto pero NO se renderiza en /crm.
+
+gridColumn: "1 / -1" · maxHeight: 60vh · overflowY: auto · borderLeft: 4px solid sideColor
+
+HEADER OPERATIVO (fondo #eef4f8, borde #c7d3df):
+  badge · nombre · 🏠/💼 tipo · zona · tel · WA · Contacté hoy · Copiar pedido · Cerrar
+
+BODY (3 cols desktop / 1 col mobile, gap 12):
+
+COL 1 — Brief comercial:
+  getRecommendedAction(lead) → accion + urgencia + motivo
+  último contacto (diasColor/diasLabel)
+  proxaccion + proxaccion_tipo + proxaccion_fecha (formateado)
+  nota_imp si existe (rojo #dc5050)
+  + Gestión: select Etapa (ETAPAS completo) + select Agente (AG keys)
+
+COL 2 — Datos del pedido:
+  presup · tipo · op · ambientes · zona · m2min
+  cochera · balcon · patio · credito (solo si === "si")
+  etapa · agente — grid 2 cols, sin campos vacíos
+
+COL 3 — Pedido para grupos WA:
+  generarPedido(lead, formato) → texto listo para copiar
+  Formato "formal": BUSCO para cliente activo / tipo·amb / Zona / Presup / Requisitos
+  Formato "discreto": Estoy buscando para un cliente activo: ...
+  Formato "colegas": Tengo cliente activo buscando... + 📍💰✅ + "Comparto honorarios"
+  Botones: Pedido · Discreto · Colegas — navigator.clipboard.writeText · feedback "✓ Copiado" 2s
+  ⚠️ Solo copia al portapapeles, no envía
+
+ROW 2 — Matches (max 4):
+  usa prop matches ya calculada (NO llama matchLeadProps)
+  tipo · zona · precio · dirección · badge "captación"/"colega" si esCap
+  botón Marcar/✓ Visto → toggleMostrado(lead.id, m.id)
+  "+N más compatibles" si hay más de 4
+
+ROW 3 — Notas + Calificación (2 cols / 1 col mobile):
+  Notas: parsearNotas(lead.nota).slice(-3).reverse() — solo lectura
+    cada nota: borderLeft 3px solid TIPO_NOTA[tipo].color · emoji · label · fecha · texto
+  Comprador: Calificación solo lectura (q_visitas_previas, q_freno, q_tiene_para_vender, q_fecha_limite)
+  Inversor: Perfil inversor (nota_inversor + presup/tipo/zona/op)
+
+ROW 4 — Más acciones (fondo #eef4f8):
+  [Marcar perdido → setModalPerdido(lead)] [Eliminar → setConfirmDelete(lead)]
+  "Edición de notas · próxima versión" (texto informativo)
+
+PENDIENTE en ficha expandida:
+  Editor notas tipadas inline (no duplicar NotaLead)
+  Editor calificación inline (no duplicar LeadQualification)
+  Editor datos del lead (no duplicar LeadForm — updateLead disponible cuando se retome)
+  Perfil inversor editable (no duplicar InversorNota)
+  Timeline de actividad (requiere más datos)
+
+12. CRM LEADS — COMPONENTES DE SOPORTE (SIN CAMBIOS EN v10)
+
+LeadCard.jsx — componente legacy. Existe en el proyecto, NO se renderiza en /crm.
+  Contiene: etapa/agente · notas tipadas · matches · calificación · perfil inversor · más acciones
+  Preservado para referencia y posible reintegración parcial.
+
+NotaLead.jsx — selector de tipo (5) + input + historial + borrar
+  onGuardar(lead, notaSerializada) → guarda en campo nota
+  ⚠️ No duplicar en ficha expandida — usarlo cuando se integre edición de notas
+
+LeadQualification.jsx — 4 señales con onUpdate(lead.id, {campo}) del padre
+  ⚠️ No duplicar en ficha expandida — usarlo cuando se integre calificación editable
+
+LeadForm.jsx — formulario inline: nombre/tel/zona/presup/tipo/op/cochera/balcon/patio/credito/ambientes/m2min/proxaccion/nota
+  onGuardar(lead.id, data) — compatible con updateLead directamente
+  ⚠️ No duplicar en ficha expandida — integrar cuando se retome edición de datos
+
+InversorNota.jsx — edición inline de nota_inversor
+  onGuardar(lead, val) — guarda nota_inversor
+  ⚠️ No duplicar en ficha expandida — integrar cuando se retome perfil inversor editable
+
+BriefingLeadCard.jsx — simplificado para HOME: cabecera + barra calificación + WA
+  dias === null → "Sin registro" en color B.muted
 
 api/analyze.js — recibe {notas:[{texto,tipo}], leadInfo}, devuelve {status, nextAction, reason, source}
 
-12. LÓGICA DE MATCHING
+13. LÓGICA DE MATCHING
 Función | Archivo | Tolerancia
 matchLeadProps | domain/matching.js | 20% sobre presupuesto
 matchPropLeads | domain/matching.js | 20%
@@ -202,7 +298,7 @@ matchLeadsParaProp | Mapa.jsx inline | 20%
 normZona(): quita artículos + tildes. Captaciones normalizadas como {id:"cap-"+c.id, ..., _esCaptacion:true}.
 opportunity.js usa igualdad exacta (===) sobre normZona() — más estricto que matching de leads.
 
-13. HOME (src/components/briefing/index.jsx) — v8 REDISEÑO COMPLETO
+14. HOME (src/components/briefing/index.jsx) — v8 REDISEÑO COMPLETO
 Ruta /. /briefing redirige acá. maxWidth 1480, paddingTop 16, todo visible sin scroll de página.
 Estructura:
   Header: "RESUMEN DEL NEGOCIO" uppercase + "Actualizado ahora" + punto verde
@@ -226,7 +322,7 @@ ETAPA_RANK para LLAMA HOY (sin scoring opaco):
 
 Sidebar: "Inicio" apunta a / · localStorage alba_nav reseteable con localStorage.removeItem("alba_nav")
 
-14. ASISTENTE ALBA
+15. ASISTENTE ALBA
 Instancia | Componente | Modelo | Persiste
 HOME/Briefing | briefing/index.jsx | Sonnet | briefing_chat
 Chat flotante | AIFloatingChat.jsx | Haiku ⚠️hardcodeado | briefing_chat
@@ -235,7 +331,7 @@ Reportes | Reportes.jsx | Haiku ⚠️hardcodeado | No
 
 Micrófono: Web Speech API es-AR. Sin memoria entre sesiones.
 
-15. ISSUES ACTIVOS
+16. ISSUES ACTIVOS
 # | Issue | Urgencia
 1 | Modelo hardcodeado AIFloatingChat + Reportes | Baja
 2 | Tokens falsos AIFloatingChat | Baja
@@ -247,22 +343,29 @@ Micrófono: Web Speech API es-AR. Sin memoria entre sesiones.
 8 | Sección "Por qué está aquí" en LeadCard — implementada en código, no aplicada | Baja
 9 | BriefingMercado + BriefingCanales pendiente mover a Reportes | Baja
 10 | captaciones sin zona no cuentan en computeSupply — TODO loguear para debug | Baja
+11 | proxaccion_fecha en ficha expandida muestra ISO raw si no es fecha DD/MMM — formatFecha() ya aplicado, verificar formatos | Baja
 
 Huérfanos para borrar (quedan): useLeads.js, useProperties.js, useRentals.js, Asistente.jsx
 ⚠️ useLeads/useProperties/useRentals referenciados en useSupabase.js — no borrar sin auditar primero
 
 Eliminados en v7: Dashboard.jsx · DashboardAIResumen.jsx · DashboardPage.jsx
+Desacoplados en v10: LeadCard.jsx (sigue en proyecto, no se renderiza en /crm)
 
-16. PRÓXIMOS PASOS ACORDADOS
+17. PRÓXIMOS PASOS ACORDADOS
 # | Qué | Por qué
 1 | Reportes para inversores | Bloquea conversaciones comerciales — máxima prioridad
-2 | Agent login UI | Cuando Flor o Lucas vuelvan activos
-3 | Aplicar sección "Por qué está aquí" en LeadCard | Ya implementada, faltó copiar el archivo
-4 | BriefingMercado + BriefingCanales → Reportes | Analítica semanal, no diaria
-5 | Módulo Oferta (Propiedades + Captaciones + Zonas unificados) | Diferido ~1 mes — necesita más datos y uso real primero
-6 | ~~Kanban como view toggle dentro de CRM Leads~~ | ✅ HECHO — switch Lista/Kanban en header de /crm, sidebar limpio
+2 | Edición de notas inline en ficha expandida | NotaLead ya existe, integrar sin duplicar
+3 | Edición de calificación inline | LeadQualification ya existe, integrar sin duplicar
+4 | Edición de datos del lead inline | LeadForm ya existe, updateLead disponible — pendiente integración
+5 | Agent login UI | Cuando Flor o Lucas vuelvan activos
+6 | BriefingMercado + BriefingCanales → Reportes | Analítica semanal, no diaria
+7 | Módulo Oferta (Propiedades + Captaciones + Zonas unificados) | Diferido ~1 mes — necesita más datos y uso real primero
+8 | ~~Kanban como view toggle dentro de CRM Leads~~ | ✅ HECHO — switch Lista/Kanban en header de /crm, sidebar limpio
+9 | ~~CRM Leads rediseño visual~~ | ✅ HECHO v9 — LeadCardPro, KPIs, grilla 3 cols, matchesByLeadId cache
+10 | ~~CRM acabado visual gris azulado mate~~ | ✅ HECHO v10 — paleta #dfe7ef/#f2f6fa, línea lateral, selects filtro
+11 | ~~Ficha expandida única sin LeadCard~~ | ✅ HECHO v10 — brief+datos+grupos WA+matches+notas+calificación+acciones
 
-17. MERCADO MDP
+18. MERCADO MDP
 Zona | USD/m²
 Playa Grande | 2.200–3.200
 Güemes / Los Troncos | 1.900–2.800
@@ -275,24 +378,29 @@ Captar: precio ±10% + leads activos en zona + propietario flexible.
 No captar: 20%+ sobre mercado / sin leads / múltiples inmobiliarias.
 Descuento real: 8–15%.
 
-18. COMUNICACIÓN
+19. COMUNICACIÓN
 WA match: [tipo] en [zona]\n[dir]\n[precio]-[m2]\n[caracts]\n[url]
 Lead frío: Hola [nombre], ¿cómo andás? Te escribo porque [novedad]. ¿Seguís buscando en [zona]?
 Captación: Hola, vi tu propiedad en [portal]. Tenemos compradores en [zona] con USD [rango]. ¿Tenés unos minutos?
 Reglas: máx 5 líneas · una prop por mensaje · siempre terminar con pregunta · portales <2hs
 
-19. RUTINA COMERCIAL
+Pedido para grupos (generado por LeadCardPro — 3 formatos):
+  Formal: "BUSCO para cliente activo / [tipo]·[amb] / Zona: [zona] / Presupuesto: hasta USD [presup] / Requisitos: [reqs]"
+  Discreto: "Estoy buscando para un cliente activo: [tipo], [amb], zona [zona], hasta USD [presup]. Ideal con [reqs]."
+  Colegas: "Tengo cliente activo buscando [tipo]·[amb] / 📍[zona] / 💰[presup] / ✅[reqs] / Comparto honorarios."
+
+20. RUTINA COMERCIAL
 Prioridades: 1.Negociación activa · 2.Visita sin cierre +48hs · 3.Match nuevo · 4.Lead caliente +3d · 5.Lead nuevo sin calificar
 30 min diarios: HOME → Alertas → WA con prop · Lead nuevo → calificar <2hs · Post-visita → seguimiento <48hs
 
-20. PWA — FIX SERVICE WORKER
+21. PWA — FIX SERVICE WORKER
 vite-plugin-pwa genera sw.js que cachea assets con hash. Cuando se deploya versión nueva el SW viejo puede interceptar requests y devolver HTML (error MIME type).
 Fixes aplicados (permanentes):
   vite.config.js: workbox.skipWaiting=true + workbox.clientsClaim=true → nuevo SW toma control inmediato
   main.jsx: navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister())) → limpia SWs viejos en cada carga
 Si vuelve a pasar: F12 → Application → Service Workers → Unregister → F5
 
-21. DEPLOY — REGLAS CRÍTICAS
+22. DEPLOY — REGLAS CRÍTICAS
 ⚠️ Verificar línea 1 en VS Code antes de push — Claude puede agregar texto que rompe el build
 Editar desde terminal: python3 con heredoc — nunca sed en zsh
 Correr git status antes de asumir que el cambio está en disco
@@ -301,7 +409,7 @@ Error Unexpected "." = .order().then() duplicado
 Token GitHub expira — regenerar en https://github.com/settings/tokens/new (sin expiración, scope: repo)
 Import duplicado → "symbol already declared" en build — verificar con grep antes de push
 
-22. DECISIONES TÉCNICAS
+23. DECISIONES TÉCNICAS
 Decisión | Motivo
 Zustand sobre Context | Context re-renderizaba con 91+ leads
 Domain layer separado | Lógica testeable sin Supabase ni React
@@ -320,8 +428,15 @@ tipo=null protege tareas manuales | Auto-cierre no toca tareas manuales
 computeRanking multidimensional | Estrellas/prob no reflejaban operatividad real · 4 dimensiones + confianza separada
 matchCount como parámetro externo | domain/lead.js puro — no importa properties, recibe matchCount del componente
 LeadQualification sin Supabase directo | onUpdate del padre — componente desacoplado
-Fondo CRM #111827 | Más contraste con cards #0C1B2E
-Focus mode en LeadCard | opacity 0.35 en cards no activas — concentración operativa
+Fondo CRM #dfe7ef (gris azulado mate) | antes #f4f7fb celeste claro — más integrado con sidebar azul ALBA
+Paleta mate en /crm (#f2f6fa cards, #c7d3df bordes) | menos brillo, más descanso visual, coherente con #12355b azul ALBA
+Línea lateral 4px en LeadCardPro | señal visual rápida de estado al ver "Todos" sin leer el badge
+Filtros pills → selects | 11 pills en 2 filas → 2 selects compactos, misma lógica fs/fa
+Ficha expandida única sin LeadCard | LeadCard demasiado oscuro, duplicaba información, no integraba con paleta mate
+generarPedido(lead, formato) en LeadCardPro | texto listo para grupos WA generado desde datos reales del lead — 3 formatos
+Calificación solo lectura en ficha expandida | LeadQualification pendiente integración — evitar duplicación hasta tener diseño definitivo
+Acciones peligrosas abajo en ficha | Perdido/Eliminar en row final, no en header — evitar clics accidentales
+Focus mode en LeadCardPro | opacity 0.38 en cards no activas — concentración operativa
 HOME = Briefing fusionado | Dashboard duplicaba métricas y alertas — una sola pantalla de entrada
 Home V8 sin scroll de página | maxHeight por sección + scroll interno — todo visible en viewport
 vsAnterior retorna "—" si cur=0 | evita -100% engañoso cuando no hay actividad este mes
@@ -334,3 +449,5 @@ Igualdad exacta en computeSupply | includes() generaba falsos positivos entre ba
 last_contact_at null → dias null | dato faltante ≠ dato malo — no penalizar ni inflar leads históricos
 "Negociacion" → "Negociación" corregido | bug histórico: detectIncident y getRecommendedAction nunca matcheaban etapa real
 Módulo Oferta diferido | necesita más datos reales y validación de Oportunidades primero
+matchesByLeadId memoizado | matchLeadProps era ~1080 calls/render → ahora ~94 (1 por lead) — Map reutilizado en sort, KPIs, leadsConMatchNuevo, LeadCardPro
+minmax(0,1fr) en grid CRM | 1fr equivale a minmax(auto,1fr) y puede desbordar — 0 como mínimo previene overflow
