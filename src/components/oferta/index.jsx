@@ -160,6 +160,20 @@ export default function OfertaModule({
     () => items.filter(i => i.source === "captacion" && i.estado !== "Convertida" && i.estado !== "Inactiva"),
     [items]
   );
+  // Colegas/Honorarios separados del resto de captaciones
+  const colegaItems = useMemo(
+    () => captacionItems.filter(i => i.origen === "Colega" || i.origen === "Honorarios"),
+    [captacionItems]
+  );
+  const captacionPropios = useMemo(
+    () => captacionItems.filter(i => i.origen !== "Colega" && i.origen !== "Honorarios"),
+    [captacionItems]
+  );
+  // Sin match: toda la oferta CRM activa sin matches
+  const sinMatchCount = useMemo(
+    () => [...albaPropItems, ...captacionItems].filter(i => i.matches === 0).length,
+    [albaPropItems, captacionItems]
+  );
 
   const showSidePanel = !mobile && tab !== "mapa" && tab !== "zonas";
   const isSpecialTab  = tab === "mapa" || tab === "zonas";
@@ -179,28 +193,11 @@ export default function OfertaModule({
             color: B.text, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.1,
           }}>Oferta</h1>
           <p style={{ margin: "3px 0 0", fontSize: 12, color: B.muted }}>
-            Propiedades, captaciones y oportunidades para trabajar hoy.
+            ¿Qué tengo disponible para ofrecer hoy?
           </p>
         </div>
 
         <div style={{ display: "flex", gap: 7, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
-          {/* Comisión mock — placeholder visual */}
-          <div style={{
-            background: `${B.ok}14`, border: `1px solid ${B.ok}44`,
-            borderRadius: 7, padding: "5px 12px",
-            display: "flex", alignItems: "center", gap: 8,
-          }}>
-            <div>
-              <div style={{ fontSize: 8, color: B.ok, fontWeight: 700, letterSpacing: "0.8px" }}>CIERRES MES</div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: B.ok, lineHeight: 1 }}>USD 6.300</div>
-            </div>
-            <div style={{ width: 1, height: 28, background: `${B.ok}33` }} />
-            <div>
-              <div style={{ fontSize: 8, color: B.dim, fontWeight: 600, letterSpacing: "0.5px" }}>COMISIÓN EST.</div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: B.muted, lineHeight: 1 }}>USD —</div>
-            </div>
-          </div>
-
           <button style={actionBtn("primary")}>⚡ Captación rápida</button>
           <button style={actionBtn()}>🏠 Propiedad</button>
           {!mobile && <button style={actionBtn()}>🎨 Flyer</button>}
@@ -208,7 +205,13 @@ export default function OfertaModule({
       </div>
 
       {/* ── KPIs ────────────────────────────────────────────── */}
-      <OfertaKPIs mobile={mobile} kpis={kpis} />
+      <OfertaKPIs
+        mobile={mobile}
+        albaProp={albaPropItems.length}
+        captaciones={captacionPropios.length}
+        colegas={colegaItems.length}
+        sinMatch={sinMatchCount}
+      />
 
       {/* ── TABS ────────────────────────────────────────────── */}
       <OfertaTabs activeTab={tab} onTab={setTab} mobile={mobile} counts={tabCounts} />
@@ -303,10 +306,18 @@ export default function OfertaModule({
               />
               <InventarioBlock
                 titulo="🔍 Captaciones activas"
-                items={captacionItems}
+                items={captacionPropios}
                 loading={loading}
                 onVerMatches={setPanelItem}
                 onVerTodas={() => setTab("captaciones")}
+                mobile={mobile}
+              />
+              <InventarioBlock
+                titulo="🤝 Colegas / Honorarios disponibles"
+                items={colegaItems}
+                loading={loading}
+                onVerMatches={setPanelItem}
+                onVerTodas={() => setTab("colegas")}
                 mobile={mobile}
               />
               <InventarioBlock

@@ -1,52 +1,43 @@
 import React from "react";
 import { B } from "../../data/constants.js";
 
-export default function OfertaKPIs({ mobile, kpis = {} }) {
+export default function OfertaKPIs({ mobile, albaProp = 0, captaciones = 0, colegas = 0, sinMatch = 0 }) {
   const KPI_DATA = [
     {
-      label: "Oferta activa",
-      value: kpis.activas      ?? "—",
-      icon: "📦", color: B.accentL,
-      sub: "props + captaciones",
-    },
-    {
-      label: "Con match",
-      value: kpis.conMatch     ?? "—",
-      icon: "🎯", color: B.ok,
-      sub: "listas para mandar",
-    },
-    {
-      label: "Sin match",
-      value: kpis.sinMatch     ?? "—",
-      icon: "⚠️", color: "#E07B2A",
-      sub: "revisar hoy",
-      alert: (kpis.sinMatch || 0) > 3,
+      label: "Propiedades Alba",
+      value: albaProp,
+      icon:  "🏠",
+      color: B.accentL,
+      sub:   "disponibles",
     },
     {
       label: "Captaciones",
-      value: kpis.captaciones  ?? "—",
-      icon: "⚡", color: "#A78BFA",
-      sub: "en inventario",
+      value: captaciones,
+      icon:  "🔍",
+      color: "#A78BFA",
+      sub:   "activas",
     },
     {
-      label: "Vencen pronto",
-      value: kpis.vencenProto  ?? "—",
-      icon: "⏰", color: B.hot,
-      sub: "en 3 días",
-      alert: (kpis.vencenProto || 0) > 0,
+      label: "Colegas",
+      value: colegas,
+      icon:  "🤝",
+      color: "#FBBF24",
+      sub:   "disponibles",
     },
     {
-      label: "Zonas calientes",
-      value: kpis.zonasCalientes ?? "—",
-      icon: "🔥", color: "#FB923C",
-      sub: "demanda sin oferta",
+      label: "Sin match",
+      value: sinMatch,
+      icon:  "⚠️",
+      color: "#E07B2A",
+      sub:   "revisar hoy",
+      alert: sinMatch > 3,
     },
   ];
 
   return (
     <div style={{
       display: "grid",
-      gridTemplateColumns: mobile ? "repeat(3, 1fr)" : "repeat(6, 1fr)",
+      gridTemplateColumns: mobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
       gap: mobile ? 6 : 8,
       marginBottom: 10,
     }}>
@@ -67,11 +58,8 @@ export default function OfertaKPIs({ mobile, kpis = {} }) {
             )}
           </div>
           <div style={{
-            fontSize: mobile ? 20 : 26,
-            fontWeight: 800,
-            color: kpi.color,
-            lineHeight: 1,
-            fontFamily: "'DM Sans', sans-serif",
+            fontSize: mobile ? 20 : 26, fontWeight: 800, color: kpi.color,
+            lineHeight: 1, fontFamily: "'DM Sans', sans-serif",
           }}>{kpi.value}</div>
           <div style={{ fontSize: 10, fontWeight: 600, color: B.text, lineHeight: 1.2 }}>
             {kpi.label}

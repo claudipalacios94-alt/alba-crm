@@ -188,7 +188,7 @@ export default function OfertaCard({ item, onVerMatches, onAnadir }) {
     }}>
       {/* FOTO */}
       <div style={{
-        height: 72,
+        height: 110,
         background: TYPE_BG[item.tipo] || "linear-gradient(135deg, #0d1e3a 0%, #1a3a6a 100%)",
         position: "relative", display: "flex",
         alignItems: "center", justifyContent: "center", flexShrink: 0,
@@ -248,11 +248,26 @@ export default function OfertaCard({ item, onVerMatches, onAnadir }) {
           <div style={{ fontSize: 10, color: B.dim, lineHeight: 1.2 }}>{item.direccion}</div>
         )}
 
-        <div style={{
-          fontSize: item.precio ? 15 : 12,
-          fontWeight: item.precio ? 800 : 500,
-          color: item.precio ? B.accentL : B.dim, lineHeight: 1,
-        }}>{formatPrecio(item.precio)}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{
+            fontSize: item.precio ? 17 : 12,
+            fontWeight: item.precio ? 800 : 500,
+            color: item.precio ? B.accentL : B.dim, lineHeight: 1,
+          }}>{formatPrecio(item.precio)}</div>
+          {item.raw?.precio_original && item.precio &&
+           Number(item.raw.precio_original) > Number(item.precio) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 9, color: B.dim, textDecoration: "line-through" }}>
+                USD {Number(item.raw.precio_original).toLocaleString("es-AR")}
+              </span>
+              <span style={{
+                fontSize: 8, fontWeight: 700, padding: "1px 5px", borderRadius: 3,
+                background: "rgba(255,107,53,0.2)", color: "#FF6B35",
+                border: "1px solid rgba(255,107,53,0.4)",
+              }}>↓ RETASADO</span>
+            </div>
+          )}
+        </div>
 
         {chars && (
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
