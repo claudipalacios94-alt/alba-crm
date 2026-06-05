@@ -244,6 +244,125 @@ export function getRecommendedAction(lead) {
   return           { accion:"Baja prioridad",         urgencia:"baja",  motivo:"Sin actividad reciente" };
 }
 
+// ── Temperatura, prioridad y razón ───────────────────────────
+// Tres conceptos separados para ordenar visualmente el CRM.
+
+const _ETAPA_RANK = {
+  "Negociación":    1000,
+  "Visita":          900,
+  "Calificado":      800,
+  "Contacto":        700,
+  "Nuevo Contacto":  600,
+};
+
+// Cuenta cuántos de los 3 campos clave faltan (zona, presupuesto, tipo).
+function _missingKeyFields(lead) {
+  return [!lead.zona, !lead.presup, !lead.tipo].filter(Boolean).length;
+}
+
+// Clasifica un lead en "caliente" / "tibio" / "frio".
+// Recibe matchCount y hasNewMatch como opciones externas (no importa properties).
+//
+// Regla crítica: Negociación y Visita son siempre CALIENTE, sin excepción.
+// Una operación avanzada parada no es fría — es urgente.
+export function getLeadTemperature(lead, { matchCount = 0, hasNewMatch = false } = {}) {
+  const notas = parsearNotas(lead.nota);
+  const tipo  = tipoNotaReciente(notas);
+  const dias  = typeof lead.dias === "number" ? lead.dias : null;
+
+  // ── CALIENTE ──────────────────────────────────────────────
+  // Etapas avanzadas: siempre caliente, independientemente de días sin contacto.
+  if (lead.etapa === "Negociación" || lead.etapa === "Visita") return "caliente";
+  if (tipo === "urgencia" || tipo === "cierre")                 return "caliente";
+  if (Number(lead.prob) >= 75)                                  return "caliente";
+  if (hasNewMatch && lead.zona && lead.presup && lead.tipo)     return "caliente";
+
+  // ── FRÍO ──────────────────────────────────────────────────
+  if (tipo === "objecion")               return "frio";
+  if (dias !== null && dias > 14)        return "frio";
+  // Faltan 2 o más datos clave → sin información suficiente para trabajar
+  if (_missingKeyFields(lead) >= 2)      return "frio";
+
+  // ── TIBIO (default para leads activos con algún dato) ────
+  return "tibio";
+}
+
+// Puntaje numérico (mayor = más arriba) para ordenar dentro de cada grupo.
+// Transparente: etapa > nota > match nuevo > prob > días sin contacto.
+export function getLeadPriority(lead, { matchCount = 0, hasNewMatch = false } = {}) {
+  let score = _ETAPA_RANK[lead.etapa] ?? 500;
+
+  const notas = parsearNotas(lead.nota);
+  const tipo  = tipoNotaReciente(notas);
+  if (tipo === "urgencia" || tipo === "cierre") score += 100;
+  else if (tipo === "interes")                  score += 50;
+
+  if (hasNewMatch) score += 80;
+  score += Math.round((Number(lead.prob) || 0) * 0.5);
+
+  const dias = typeof lead.dias === "number" ? lead.dias : null;
+  if (dias !== null && dias > 3) {
+    if (lead.etapa === "Negociación" || lead.etapa === "Visita") {
+      // Operación avanzada parada: sube fuerte, no tope en 14d
+      score += Math.min(dias * 4, 80);
+    } else if (dias <= 14) {
+      // Resto: empuje leve solo si no está ya en frío
+      score += Math.min(dias * 2, 20);
+    }
+  }
+
+  return score;
+}
+
+// Razón legible para mostrar en la card.
+// Debe ser coherente con la temperatura: los calientes muestran urgencia o avance,
+// nunca señales frías; los fríos explican por qué están parados.
+export function getLeadReason(lead, { matchCount = 0, hasNewMatch = false } = {}) {
+  const notas = parsearNotas(lead.nota);
+  const tipo  = tipoNotaReciente(notas);
+  const dias  = typeof lead.dias === "number" ? lead.dias : null;
+  const missing = _missingKeyFields(lead);
+
+  // Etapas avanzadas — riesgo explícito si lleva días sin contacto
+  if (lead.etapa === "Negociación") {
+    if (dias !== null && dias > 7)  return `Negociación en riesgo · ${dias}d sin contacto`;
+    if (dias !== null && dias >= 2) return "Negociación activa · hacer seguimiento";
+    return "Negociación activa";
+  }
+  if (lead.etapa === "Visita") {
+    if (dias !== null && dias > 7)  return `Visita parada · ${dias}d sin contacto`;
+    if (dias !== null && dias >= 2) return "Visita sin seguimiento";
+    return "En visita";
+  }
+
+  // Señales de nota
+  if (tipo === "urgencia") return "Urgencia en nota";
+  if (tipo === "cierre")   return "Lista para cerrar";
+  if (tipo === "objecion") return "Tiene objeción";
+
+  // Match nuevo en lead calificado
+  if (hasNewMatch) return "Match nuevo";
+  if (matchCount > 0) return `${matchCount} match${matchCount > 1 ? "es" : ""}`;
+
+  if (tipo === "interes")     return "Interés reciente";
+  if (tipo === "seguimiento") return "En seguimiento";
+
+  // Datos faltantes — específico si falta 1, genérico si faltan 2+
+  if (missing >= 2) {
+    const campos = [!lead.zona && "zona", !lead.presup && "presup", !lead.tipo && "tipo"].filter(Boolean);
+    return `Faltan datos: ${campos.join(", ")}`;
+  }
+  if (!lead.zona)   return "Falta zona";
+  if (!lead.presup) return "Falta presupuesto";
+  if (!lead.tipo)   return "Falta tipo";
+
+  // Días sin contacto
+  if (dias !== null && dias > 7) return `${dias}d sin contacto`;
+  if (dias !== null && dias > 3) return `${dias} días sin contacto`;
+
+  return "En pipeline";
+}
+
 export function computeLeadState(lead) {
   const notas    = parsearNotas(lead.nota);
   const tipoNota = tipoNotaReciente(notas);

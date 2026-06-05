@@ -3,8 +3,8 @@
 // Filtros, tabs, grupos por temperatura, mail de pedidos
 // ══════════════════════════════════════════════════════════════
 import React, { useState, useMemo, useEffect } from "react";
-import { AG, scoreLead, matchLeadProps, getRecommendedAction } from "../../data/constants.js";
-import { computeRanking } from "../../domain/lead.js";
+import { AG, matchLeadProps, getRecommendedAction } from "../../data/constants.js";
+import { computeRanking, getLeadTemperature, getLeadPriority } from "../../domain/lead.js";
 import LeadCardPro from "./LeadCardPro.jsx";
 import CRMKpiCard  from "./CRMKpiCard.jsx";
 import { useIncidents } from "../../hooks/useIncidents.js";
@@ -26,6 +26,12 @@ function gridCols(w) {
   if (w >= 640)  return "repeat(2, minmax(0, 1fr))";
   return "minmax(0, 1fr)";
 }
+
+const TEMP_SECTION = {
+  caliente: { icon: "🔥", title: "Calientes", color: "#dc5050", desc: "Negociación, visita o urgencia activa" },
+  tibio:    { icon: "🌤",  title: "Tibios",    color: "#d97706", desc: "Interés claro, en seguimiento"         },
+  frio:     { icon: "❄️", title: "Fríos",     color: "#64748b", desc: "Sin datos, sin contacto o con objeción" },
+};
 
 export default function CRMLeads({ leads, updateLead, deleteLead, properties, captaciones, supabase }) {
   const ww     = useWindowWidth();
@@ -87,21 +93,13 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
 
   const filtBase = useMemo(() => leads.filter(l => {
     if (!mostrarPerdidos && (l.etapa === "Perdido" || l.etapa === "Cerrado")) return false;
-    const s = scoreLead(l).label;
-    if (fs === "Caliente" && !s.includes("Caliente")) return false;
-    if (fs === "Tibio"    && !s.includes("Tibio"))    return false;
-    if (fs === "Frío"     && !s.includes("Frío"))     return false;
     if (fa === "Sin asignar" && l.ag) return false;
     if (fa !== "Todos" && fa !== "Sin asignar" && l.ag !== fa) return false;
     if (q && !l.nombre?.toLowerCase().includes(q.toLowerCase())
           && !(l.zona || "").toLowerCase().includes(q.toLowerCase())
           && !(l.tel || "").includes(q)) return false;
     return true;
-  }).sort((a, b) => {
-    const mA = (matchesByLeadId.get(a.id) || []).length;
-    const mB = (matchesByLeadId.get(b.id) || []).length;
-    return computeRanking(b, mB).prioridad - computeRanking(a, mA).prioridad;
-  }), [leads, fs, fa, q, mostrarPerdidos, matchesByLeadId]);
+  }), [leads, fa, q, mostrarPerdidos]);
 
   const filt           = useMemo(() => filtBase.filter(l => !l.inversor), [filtBase]);
   const filtInversores = useMemo(() => filtBase.filter(l => !!l.inversor), [filtBase]);
@@ -133,6 +131,42 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
     setMatchesVistos(nuevos);
     localStorage.setItem("alba_matches_vistos", JSON.stringify([...nuevos]));
   }
+
+  const leadsActivos = pagina === "compradores" ? filt : filtInversores;
+
+  const grouped = useMemo(() => {
+    const sortFn = (a, b) => {
+      const mA = (matchesByLeadId.get(a.id) || []).length;
+      const mB = (matchesByLeadId.get(b.id) || []).length;
+      const hnA = leadsConMatchNuevo.has(a.id);
+      const hnB = leadsConMatchNuevo.has(b.id);
+      return getLeadPriority(b, { matchCount: mB, hasNewMatch: hnB })
+           - getLeadPriority(a, { matchCount: mA, hasNewMatch: hnA });
+    };
+
+    const calientes = [], tibios = [], frios = [];
+    for (const l of leadsActivos) {
+      const matchCount = (matchesByLeadId.get(l.id) || []).length;
+      const hasNewMatch = leadsConMatchNuevo.has(l.id);
+      const temp = getLeadTemperature(l, { matchCount, hasNewMatch });
+      if (temp === "caliente") calientes.push(l);
+      else if (temp === "tibio") tibios.push(l);
+      else frios.push(l);
+    }
+
+    const targetMap = { "Caliente": "caliente", "Tibio": "tibio", "Frío": "frio" };
+    const targetTemp = targetMap[fs];
+
+    const sections = [
+      { key: "caliente", leads: calientes.sort(sortFn) },
+      { key: "tibio",    leads: tibios.sort(sortFn) },
+      { key: "frio",     leads: frios.sort(sortFn) },
+    ];
+
+    return targetTemp
+      ? sections.filter(s => s.key === targetTemp && s.leads.length > 0)
+      : sections.filter(s => s.leads.length > 0);
+  }, [leadsActivos, matchesByLeadId, leadsConMatchNuevo, fs]);
 
   const perdidosCount = leads.filter(l => l.etapa === "Perdido" || l.etapa === "Cerrado").length;
 
@@ -179,8 +213,6 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
     setMailCopiado(true);
     setTimeout(() => setMailCopiado(false), 2000);
   }
-
-  const leadsActivos = pagina === "compradores" ? filt : filtInversores;
 
   const leadTop = useMemo(() => {
     const act = leadsActivos.filter(l => l.etapa !== "Cerrado" && l.etapa !== "Perdido");
@@ -463,7 +495,10 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
         </label>
 
         <div style={{ marginLeft: "auto", fontSize: 12, color: "#5a6f84", fontWeight: 500 }}>
-          {leadsActivos.length} {leadsActivos.length === 1 ? "lead" : "leads"} · ordenado por prioridad
+          {leadsActivos.length} {leadsActivos.length === 1 ? "lead" : "leads"}
+          {fs === "Todos" && grouped.length > 0 && (
+            <span> · {grouped.map(g => `${TEMP_SECTION[g.key].icon} ${g.leads.length}`).join("  ")}</span>
+          )}
         </div>
       </div>
 
@@ -475,28 +510,66 @@ export default function CRMLeads({ leads, updateLead, deleteLead, properties, ca
         />
       )}
 
-      {/* ── VISTA CARDS (GRILLA) ───────────────────────────── */}
+      {/* ── VISTA CARDS (SECCIONES POR TEMPERATURA) ──────── */}
       {vista === "lista" && (
         <>
           {leadsActivos.length === 0 ? (
             <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8", fontSize: 14 }}>
               Sin resultados para los filtros aplicados
             </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: gridCols(ww), gap: 12, alignItems: "start" }}>
-              {leadsActivos.map(lead => (
-                <LeadCardPro
-                  key={lead.id}
-                  lead={lead}
-                  matches={matchesByLeadId.get(lead.id) || []}
-                  isOpen={exp === lead.id}
-                  onToggle={() => setExp(exp === lead.id ? null : lead.id)}
-                  isBlurred={exp !== null && exp !== lead.id}
-                  hasNewMatch={leadsConMatchNuevo.has(lead.id)}
-                  {...cardSharedProps}
-                />
-              ))}
+          ) : grouped.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8", fontSize: 14 }}>
+              Ningún lead en este grupo
             </div>
+          ) : (
+            grouped.map(({ key, leads: groupLeads }, sectionIdx) => {
+              const cfg = TEMP_SECTION[key];
+              return (
+                <div key={key} style={{ marginBottom: sectionIdx < grouped.length - 1 ? 28 : 0 }}>
+                  {/* Cabecera de sección */}
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "6px 0 8px",
+                    borderBottom: `2px solid ${cfg.color}40`,
+                    marginBottom: 12,
+                  }}>
+                    <span style={{ fontSize: 15 }}>{cfg.icon}</span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: cfg.color,
+                      letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                      {cfg.title}
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color,
+                      background: `${cfg.color}15`, padding: "1px 8px",
+                      borderRadius: 20, border: `1px solid ${cfg.color}30` }}>
+                      {groupLeads.length}
+                    </span>
+                    {!mobile && (
+                      <span style={{ fontSize: 11, color: "#64748b", fontStyle: "italic",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {cfg.desc}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Grid de cards */}
+                  <div style={{ display: "grid", gridTemplateColumns: gridCols(ww),
+                    gap: 12, alignItems: "start" }}>
+                    {groupLeads.map(lead => (
+                      <LeadCardPro
+                        key={lead.id}
+                        lead={lead}
+                        matches={matchesByLeadId.get(lead.id) || []}
+                        isOpen={exp === lead.id}
+                        onToggle={() => setExp(exp === lead.id ? null : lead.id)}
+                        isBlurred={exp !== null && exp !== lead.id}
+                        hasNewMatch={leadsConMatchNuevo.has(lead.id)}
+                        {...cardSharedProps}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })
           )}
         </>
       )}

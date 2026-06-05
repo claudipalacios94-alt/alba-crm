@@ -4,7 +4,7 @@
 // ══════════════════════════════════════════════════════════════
 import React, { useMemo, useState } from "react";
 import { AG, ETAPAS, ECOL, TIPOS_PROP_LEAD, getRecommendedAction } from "../../data/constants.js";
-import { computeRanking } from "../../domain/lead.js";
+import { computeRanking, getLeadReason } from "../../domain/lead.js";
 import { parsearNotas, serializarNotas, crearNota, TIPO_NOTA } from "../../domain/nota.js";
 import { supabase } from "../../hooks/supabaseClient.js";
 
@@ -259,6 +259,7 @@ export default function LeadCardPro({
   const sc      = sideColor(badge);
   const ag      = AG[lead.ag];
   const precio  = precioLabel(lead.presup);
+  const reason  = getLeadReason(lead, { matchCount: matches.length, hasNewMatch });
 
   const matchesConFoto = matches.filter(m => m.fotos?.[0]);
 
@@ -1330,6 +1331,16 @@ Respondé con:
           <span style={{ fontSize: 18, color: "#cbd5e1", lineHeight: 1 }}
             onClick={e => e.stopPropagation()}>⋮</span>
         </div>
+      </div>
+
+      {/* Razón */}
+      <div style={{
+        fontSize: 10, fontWeight: 700, color: sc,
+        background: `${sc}18`, border: `1px solid ${sc}30`,
+        padding: "2px 8px", borderRadius: 6, alignSelf: "flex-start",
+        letterSpacing: "0.03em",
+      }}>
+        {reason}
       </div>
 
       {/* Nombre + subtítulo */}

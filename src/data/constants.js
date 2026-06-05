@@ -3,7 +3,8 @@
 // Agentes y pipeline → src/config/agents.js
 
 export { AG, ETAPAS, ECOL } from "../config/agents.js";
-export { scoreLead, matchLeadProps, genMsgWhatsApp, genMsgBusqueda, getPriorityScore, getRecommendedAction } from "../domain/lead.js";
+export { scoreLead, matchLeadProps, genMsgWhatsApp, genMsgBusqueda, getPriorityScore, getRecommendedAction,
+  getLeadTemperature, getLeadPriority, getLeadReason } from "../domain/lead.js";
 
 export { B } from "./styles.js";
 
