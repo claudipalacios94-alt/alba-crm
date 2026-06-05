@@ -104,53 +104,23 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
                 width: mobile ? "100%" : 180, flex: mobile ? 1 : "none", order: mobile ? 1 : 0 }} />
           )}
           {/* Botón MDL — dry-run primero, confirmar para escribir */}
-          {!dryResult ? (
-            <button
-              onClick={() => callSync(true)}
-              disabled={syncing}
-              title="Vista previa: ver qué importaría Mar del Inmueble (sin escribir)"
-              style={{
-                padding: mobile ? "8px 12px" : "7px 11px", borderRadius:8,
-                cursor: syncing ? "wait" : "pointer",
-                border:"1px solid "+B.border, background: B.card,
-                color: syncing ? B.dim : B.muted,
-                fontSize: mobile ? 12 : 11, fontWeight:600, whiteSpace:"nowrap", flexShrink:0,
-              }}>
-              {syncing ? "⏳..." : "🔄 MDL"}
-            </button>
-          ) : (
-            <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-              <span style={{ fontSize:10, color: B.muted }}>
-                Vista previa: {dryResult.would_create} nuevas · {dryResult.would_update} a actualizar
-              </span>
-              <button
-                onClick={() => callSync(false)}
-                disabled={syncing}
-                style={{
-                  padding:"5px 10px", borderRadius:6, cursor:"pointer",
-                  border:"1px solid "+B.ok+"60", background: B.ok+"18",
-                  color: B.ok, fontSize:11, fontWeight:700,
-                }}>
-                {syncing ? "⏳..." : "✓ Confirmar"}
-              </button>
-              <button
-                onClick={() => setDryResult(null)}
-                disabled={syncing}
-                style={{
-                  padding:"5px 8px", borderRadius:6, cursor:"pointer",
-                  border:"1px solid "+B.border, background:"transparent",
-                  color: B.muted, fontSize:11,
-                }}>
-                ✕
-              </button>
-            </div>
-          )}
+          <button
+            onClick={() => callSync(true)}
+            disabled={syncing}
+            title="Vista previa de lo que importaría Mar del Inmueble (sin escribir)"
+            style={{
+              padding: mobile ? "8px 12px" : "7px 11px", borderRadius:8,
+              cursor: syncing ? "wait" : "pointer",
+              border:"1px solid "+B.border, background: B.card,
+              color: syncing ? B.dim : B.muted,
+              fontSize: mobile ? 12 : 11, fontWeight:600, whiteSpace:"nowrap", flexShrink:0,
+            }}>
+            {syncing ? "⏳..." : "🔄 MDL"}
+          </button>
           {syncMsg && (
-            <span style={{
-              fontSize: mobile ? 12 : 11,
-              color: syncMsg.ok ? B.ok : B.hot,
-              whiteSpace: mobile ? "normal" : "nowrap",
-            }}>{syncMsg.text}</span>
+            <span style={{ fontSize: mobile ? 12 : 11, color: syncMsg.ok ? B.ok : B.hot }}>
+              {syncMsg.text}
+            </span>
           )}
           <div style={{ display:"flex", background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:3, flexShrink:0 }}>
             {[
@@ -168,6 +138,85 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
           </div>
         </div>
       </div>
+
+      {/* Panel dry-run MDL */}
+      {dryResult && (
+        <div style={{
+          marginBottom: mobile ? 16 : 20,
+          background: B.card, border:"1px solid "+B.accentL+"50",
+          borderRadius:10, padding: mobile ? 14 : 16,
+        }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12, flexWrap:"wrap", gap:8 }}>
+            <div>
+              <span style={{ fontSize: mobile ? 13 : 12, fontWeight:700, color:B.accentL }}>
+                Vista previa MDL — sin cambios en DB
+              </span>
+              <span style={{ fontSize:10, color:B.muted, marginLeft:8 }}>
+                {dryResult.total} detectadas · {dryResult.would_create} nuevas · {dryResult.would_update} a actualizar
+              </span>
+            </div>
+            <div style={{ display:"flex", gap:6 }}>
+              <button onClick={() => callSync(false)} disabled={syncing} style={{
+                padding:"5px 12px", borderRadius:6, cursor:"pointer",
+                border:"1px solid "+B.ok+"60", background:B.ok+"18",
+                color:B.ok, fontSize:11, fontWeight:700,
+              }}>{syncing ? "⏳..." : "✓ Confirmar importación"}</button>
+              <button onClick={() => setDryResult(null)} style={{
+                padding:"5px 8px", borderRadius:6, cursor:"pointer",
+                border:"1px solid "+B.border, background:"transparent",
+                color:B.muted, fontSize:11,
+              }}>✕ Cancelar</button>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div style={{ display:"flex", gap: mobile ? 10 : 16, flexWrap:"wrap", marginBottom:12 }}>
+            {[
+              { label:"Ventas",     val: dryResult.ventas,     c:"#3a8bc4" },
+              { label:"Alquileres", val: dryResult.alquileres, c:"#9B6DC8" },
+              { label:"Con foto",   val: dryResult.con_foto,   c: B.ok },
+              { label:"Sin foto",   val: dryResult.sin_foto,   c: B.muted },
+            ].map(s => (
+              <div key={s.label} style={{ textAlign:"center", minWidth:60 }}>
+                <div style={{ fontSize: mobile ? 18 : 16, fontWeight:800, color:s.c }}>{s.val}</div>
+                <div style={{ fontSize:9, color:B.dim, textTransform:"uppercase", letterSpacing:"0.5px" }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Muestra primeras 10 */}
+          <div style={{ overflowX:"auto" }}>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize: mobile ? 11 : 10 }}>
+              <thead>
+                <tr>
+                  {["ID","Op","Tipo","Zona","Dir","Precio","Foto"].map(h => (
+                    <th key={h} style={{ textAlign:"left", padding:"4px 8px", color:B.dim,
+                      borderBottom:"1px solid "+B.border, fontWeight:600, whiteSpace:"nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(dryResult.muestra || []).map((p, i) => (
+                  <tr key={p.external_id} style={{ background: i%2===0 ? "transparent" : B.surface+"44" }}>
+                    <td style={{ padding:"4px 8px", color:B.dim }}>{p.external_id}</td>
+                    <td style={{ padding:"4px 8px", color: p.operacion==="venta" ? "#3a8bc4" : "#9B6DC8", fontWeight:600, textTransform:"capitalize" }}>{p.operacion}</td>
+                    <td style={{ padding:"4px 8px", color:B.text }}>{p.tipo}</td>
+                    <td style={{ padding:"4px 8px", color:B.muted }}>{p.zona}</td>
+                    <td style={{ padding:"4px 8px", color:B.muted }}>{p.dir}</td>
+                    <td style={{ padding:"4px 8px", color:B.accentL, fontWeight:600, whiteSpace:"nowrap" }}>{p.precio}</td>
+                    <td style={{ padding:"4px 8px", color: p.foto==="✓" ? B.ok : B.hot }}>{p.foto}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {dryResult.total > 10 && (
+              <div style={{ fontSize:10, color:B.dim, marginTop:6, textAlign:"right" }}>
+                + {dryResult.total - 10} más no mostradas
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Filtros tipo */}
       {tab === "venta" && (

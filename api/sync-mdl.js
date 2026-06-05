@@ -184,9 +184,11 @@ export default async function handler(req, res) {
           external_id: mapped.external_id,
           titulo:      (p.titulo || "").trim().slice(0, 60),
           tipo:        mapped.tipo,
+          op_venta:    (p.tipo_operacion || "").toLowerCase().includes("alquiler") ? "alquiler" : "venta",
           zona:        mapped.zona,
           dir:         mapped.dir,
           precio:      mapped.precio,
+          tiene_foto:  !!mapped.fotos,
           web_url:     mapped.web_url,
         });
         existing ? updated++ : created++;
@@ -254,14 +256,33 @@ export default async function handler(req, res) {
   }
 
   if (dryRun) {
+    const ventas     = preview.filter(p => p.op_venta === "venta").length;
+    const alquileres = preview.filter(p => p.op_venta === "alquiler").length;
+    const con_foto   = preview.filter(p => p.tiene_foto).length;
+    const sin_foto   = preview.filter(p => !p.tiene_foto).length;
+
     return res.status(200).json({
-      ok:       true,
-      dry_run:  true,
-      total:    inmuebles.length,
+      ok:           true,
+      dry_run:      true,
+      total:        inmuebles.length,
       would_create: created,
       would_update: updated,
-      message:  `DRY RUN — ${created} para insertar, ${updated} para actualizar. Sin cambios en DB.`,
-      preview:  preview.slice(0, 20),
+      ventas,
+      alquileres,
+      con_foto,
+      sin_foto,
+      message: `DRY RUN — ${created} para insertar, ${updated} para actualizar. Sin cambios en DB.`,
+      muestra: preview.slice(0, 10).map(p => ({
+        external_id: p.external_id,
+        op:          p.op,
+        tipo:        p.tipo,
+        zona:        p.zona,
+        dir:         p.dir,
+        precio:      p.precio ? `USD ${Number(p.precio).toLocaleString("es-AR")}` : "A consultar",
+        operacion:   p.op_venta,
+        foto:        p.tiene_foto ? "✓" : "✗",
+        titulo:      p.titulo,
+      })),
     });
   }
 
