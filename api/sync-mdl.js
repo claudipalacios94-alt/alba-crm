@@ -148,11 +148,13 @@ export default async function handler(req, res) {
 
   // ── 2. Mapear y hacer upsert seguro ───────────────────────
   let created = 0, updated = 0, errors = 0;
+  const errorLog = [];
 
   for (const p of inmuebles) {
     if (!p.publicado) continue;
 
     const mapped = mapInmueble(p);
+    let op = "find";
 
     try {
       // Buscar si ya existe por external_id
@@ -165,30 +167,31 @@ export default async function handler(req, res) {
       if (findErr) throw findErr;
 
       if (existing) {
-        // UPDATE — no sobreescribir ag, categoria, precio_original (ediciones manuales)
+        op = "update";
+        const updatePayload = {
+          web_url:     mapped.web_url,
+          fotos:       mapped.fotos,
+          descripcion: mapped.descripcion,
+          info:        mapped.info,
+          tipo:        mapped.tipo,
+          zona:        mapped.zona,
+          dir:         mapped.dir,
+          precio:      mapped.precio,
+          m2cub:       mapped.m2cub,
+          m2tot:       mapped.m2tot,
+          lat:         mapped.lat,
+          lng:         mapped.lng,
+          caracts:     mapped.caracts,
+          activa:      mapped.activa,
+        };
         const { error: updErr } = await supabase
           .from("properties")
-          .update({
-            web_url:     mapped.web_url,
-            fotos:       mapped.fotos,
-            descripcion: mapped.descripcion,
-            info:        mapped.info,
-            tipo:        mapped.tipo,
-            zona:        mapped.zona,
-            dir:         mapped.dir,
-            precio:      mapped.precio,
-            m2cub:       mapped.m2cub,
-            m2tot:       mapped.m2tot,
-            lat:         mapped.lat,
-            lng:         mapped.lng,
-            caracts:     mapped.caracts,
-            activa:      mapped.activa,
-          })
+          .update(updatePayload)
           .eq("id", existing.id);
         if (updErr) throw updErr;
         updated++;
       } else {
-        // INSERT
+        op = "insert";
         const { error: insErr } = await supabase
           .from("properties")
           .insert(mapped);
@@ -196,17 +199,40 @@ export default async function handler(req, res) {
         created++;
       }
     } catch (err) {
-      console.error(`sync-mdl upsert error for id ${p.id}:`, err.message);
+      console.error(`sync-mdl ${op} error for id ${p.id}:`, err);
       errors++;
+      errorLog.push({
+        external_id: mapped.external_id,
+        titulo:      (p.titulo || "").trim().slice(0, 60),
+        op,
+        error_message: err.message  || null,
+        error_code:    err.code     || null,
+        error_details: err.details  || null,
+        error_hint:    err.hint     || null,
+        payload_keys:  Object.keys(mapped),
+        payload_sample: {
+          external_id: mapped.external_id,
+          tipo:        mapped.tipo,
+          precio:      mapped.precio,
+          m2cub:       mapped.m2cub,
+          m2tot:       mapped.m2tot,
+          lat:         mapped.lat,
+          lng:         mapped.lng,
+          activa:      mapped.activa,
+          sc:          mapped.sc,
+          dias:        mapped.dias,
+        },
+      });
     }
   }
 
   return res.status(200).json({
-    ok:      true,
+    ok:      errors === 0,
     total:   inmuebles.length,
     created,
     updated,
     errors,
     message: `Sync completado: ${created} nuevas, ${updated} actualizadas, ${errors} errores.`,
+    error_detail: errorLog.length > 0 ? errorLog : undefined,
   });
 }
