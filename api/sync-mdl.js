@@ -83,24 +83,26 @@ function mapInmueble(p) {
   const m2tot  = m2cub && m2desc   ? Math.round(m2cub + m2desc) : (m2cub || null);
 
   return {
-    external_id: String(p.id),
-    web_url:     `${WEB_BASE}/${p.id}`,
-    info:        (p.titulo || "").trim(),
-    descripcion: stripHtml(p.descripcion),
-    tipo:        TIPO_MAP[p.tipo_inmueble] || p.tipo_inmueble || "",
+    external_id:  String(p.id),
+    web_url:      `${WEB_BASE}/${p.id}`,
+    info:         (p.titulo || "").trim(),
+    descripcion:  stripHtml(p.descripcion),
+    tipo:         TIPO_MAP[p.tipo_inmueble] || p.tipo_inmueble || "",
     zona,
     dir,
-    precio:      p.precio ? Number(p.precio) : null,
+    precio:       p.precio ? Number(p.precio) : null,
     m2cub,
     m2tot,
-    lat:         p.latitud  || null,
-    lng:         p.longitud || null,
+    lat:          p.latitud  || null,
+    lng:          p.longitud || null,
     caracts,
     fotos,
-    activa:      true,
-    estado:      "Buen Estado",
-    sc:          "🟢 OK",
-    dias:        0,
+    activa:       p.estado_aviso === "Disponible",
+    estado:       "Buen Estado",
+    sc:           "🟢 OK",
+    dias:         0,
+    // Solo para dry-run — no se guarda en la tabla
+    _estado_aviso: p.estado_aviso || null,
   };
 }
 
@@ -174,25 +176,33 @@ export default async function handler(req, res) {
     const items = publicadas.map(p => {
       const mapped = mapInmueble(p);
       return {
-        external_id: mapped.external_id,
-        op:          enDb.has(mapped.external_id) ? "update" : "insert",
-        operacion:   (p.tipo_operacion || "").toLowerCase().includes("alquiler") ? "alquiler" : "venta",
-        tipo:        mapped.tipo,
-        zona:        mapped.zona,
-        dir:         mapped.dir,
-        precio:      mapped.precio,
-        tiene_foto:  !!mapped.fotos,
-        web_url:     mapped.web_url,
-        titulo:      (p.titulo || "").trim().slice(0, 70),
+        external_id:  mapped.external_id,
+        op:           enDb.has(mapped.external_id) ? "update" : "insert",
+        estado_aviso: p.estado_aviso || "Sin estado",
+        operacion:    (p.tipo_operacion || "").toLowerCase().includes("alquiler") ? "alquiler" : "venta",
+        tipo:         mapped.tipo,
+        zona:         mapped.zona,
+        dir:          mapped.dir,
+        precio:       mapped.precio,
+        tiene_foto:   !!mapped.fotos,
+        web_url:      mapped.web_url,
+        titulo:       (p.titulo || "").trim().slice(0, 70),
       };
     });
 
+    // Resumen por estado
+    const byEstado = {};
+    for (const it of items) {
+      byEstado[it.estado_aviso] = (byEstado[it.estado_aviso] || 0) + 1;
+    }
+
     return res.status(200).json({
-      ok:      true,
-      dry_run: true,
-      total:   publicadas.length,
+      ok:        true,
+      dry_run:   true,
+      total:     publicadas.length,
+      by_estado: byEstado,
       items,
-      message: `${publicadas.length} propiedades disponibles. Seleccioná cuáles importar.`,
+      message:   `${byEstado["Disponible"] || 0} disponibles de ${publicadas.length} totales.`,
     });
   }
 
@@ -211,7 +221,7 @@ export default async function handler(req, res) {
   const errorLog = [];
 
   for (const p of lote) {
-    const mapped = mapInmueble(p);
+    const { _estado_aviso, ...mapped } = mapInmueble(p);
     let op = "find";
 
     try {

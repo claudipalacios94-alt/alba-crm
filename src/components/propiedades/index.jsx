@@ -28,7 +28,7 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
   const [syncing,   setSyncing]   = useState(false);
   const [syncMsg,   setSyncMsg]   = useState(null);
   const [dryItems,  setDryItems]  = useState(null);  // array de items del dry-run
-  const [mdlFilts,  setMdlFilts]  = useState({ op: "", tipo: "", precioMin: "", precioMax: "", zona: "", soloFoto: false });
+  const [mdlFilts,  setMdlFilts]  = useState({ op: "", tipo: "", precioMin: "", precioMax: "", zona: "", soloFoto: false, soloDisponible: true });
   const [selected,  setSelected]  = useState(new Set());
 
   const { supabase: sbClient } = useAppContext();
@@ -84,6 +84,7 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
   const mdlFiltrados = React.useMemo(() => {
     if (!dryItems) return [];
     return dryItems.filter(p => {
+      if (mdlFilts.soloDisponible && p.estado_aviso !== "Disponible") return false;
       if (mdlFilts.op     && p.operacion !== mdlFilts.op)   return false;
       if (mdlFilts.tipo   && p.tipo      !== mdlFilts.tipo)  return false;
       if (mdlFilts.soloFoto && !p.tiene_foto)                return false;
@@ -210,8 +211,36 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
             </button>
           </div>
 
+          {/* Resumen de estados */}
+          {dryItems && (() => {
+            const byE = {};
+            dryItems.forEach(p => { byE[p.estado_aviso] = (byE[p.estado_aviso]||0)+1; });
+            const ESTADO_C = { Disponible:"#2E9E6A", Vendido:"#8AAECC", Reservado:"#E8A830", Alquilado:"#9B6DC8" };
+            return (
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:10 }}>
+                {Object.entries(byE).sort((a,b)=>b[1]-a[1]).map(([k,v]) => (
+                  <div key={k} style={{ display:"flex", alignItems:"center", gap:5, padding:"3px 10px", borderRadius:20,
+                    background:(ESTADO_C[k]||B.dim)+"18", border:"1px solid "+(ESTADO_C[k]||B.dim)+"44" }}>
+                    <span style={{ width:7, height:7, borderRadius:"50%", background:ESTADO_C[k]||B.dim, flexShrink:0 }} />
+                    <span style={{ fontSize:11, color:ESTADO_C[k]||B.dim, fontWeight:700 }}>{k}</span>
+                    <span style={{ fontSize:11, color:B.muted }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
           {/* Filtros */}
           <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10, alignItems:"center" }}>
+            <label style={{ display:"flex", alignItems:"center", gap:4, fontSize:11, fontWeight:700,
+              color:B.ok, cursor:"pointer", padding:"4px 8px", borderRadius:6,
+              background: mdlFilts.soloDisponible ? B.ok+"18" : "transparent",
+              border:"1px solid "+(mdlFilts.soloDisponible ? B.ok+"60" : B.border) }}>
+              <input type="checkbox" checked={mdlFilts.soloDisponible}
+                onChange={e => setMdlFilts(f=>({...f, soloDisponible: e.target.checked}))} />
+              Solo disponibles
+            </label>
+
             <select value={mdlFilts.op} onChange={e => setMdlFilts(f=>({...f, op: e.target.value}))}
               style={{ padding:"4px 8px", borderRadius:6, border:"1px solid "+B.border, background:B.bg, color:B.text, fontSize:11 }}>
               <option value="">Operación: Todas</option>
@@ -244,9 +273,9 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
             </label>
 
             {(mdlFilts.op||mdlFilts.tipo||mdlFilts.zona||mdlFilts.precioMin||mdlFilts.precioMax||mdlFilts.soloFoto) && (
-              <button onClick={() => setMdlFilts({ op:"", tipo:"", precioMin:"", precioMax:"", zona:"", soloFoto:false })}
+              <button onClick={() => setMdlFilts(f=>({ ...f, op:"", tipo:"", precioMin:"", precioMax:"", zona:"", soloFoto:false }))}
                 style={{ padding:"3px 8px", borderRadius:5, border:"1px solid "+B.border, background:"transparent", color:B.dim, fontSize:10, cursor:"pointer" }}>
-                ✕ Limpiar
+                ✕ Limpiar filtros
               </button>
             )}
           </div>
@@ -260,7 +289,7 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
                     <input type="checkbox" checked={allFilSelected} onChange={toggleAll}
                       title="Seleccionar/deseleccionar todas las filtradas" />
                   </th>
-                  {["Op","Tipo","Zona","Dirección","Precio","Foto","ID"].map(h => (
+                  {["Estado","Op","Tipo","Zona","Dirección","Precio","Foto","ID"].map(h => (
                     <th key={h} style={{ textAlign:"left", padding:"5px 8px", color:B.dim,
                       borderBottom:"1px solid "+B.border, fontWeight:600, whiteSpace:"nowrap" }}>{h}</th>
                   ))}
@@ -275,6 +304,13 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
                       style={{ cursor:"pointer", background: isSel ? B.accentL+"12" : i%2===0 ? "transparent" : B.surface+"33" }}>
                       <td style={{ padding:"4px 8px" }} onClick={e => e.stopPropagation()}>
                         <input type="checkbox" checked={isSel} onChange={() => toggleOne(p.external_id)} />
+                      </td>
+                      <td style={{ padding:"4px 8px", whiteSpace:"nowrap" }}>
+                        {(() => {
+                          const ESTADO_C = { Disponible:"#2E9E6A", Vendido:"#8AAECC", Reservado:"#E8A830", Alquilado:"#9B6DC8" };
+                          const c = ESTADO_C[p.estado_aviso] || B.dim;
+                          return <span style={{ color:c, fontWeight:600, fontSize:10 }}>{p.estado_aviso || "—"}</span>;
+                        })()}
                       </td>
                       <td style={{ padding:"4px 8px", color: p.operacion==="venta" ? "#3a8bc4" : "#9B6DC8", fontWeight:600, textTransform:"capitalize", whiteSpace:"nowrap" }}>{p.operacion}</td>
                       <td style={{ padding:"4px 8px", color:B.text, whiteSpace:"nowrap" }}>{p.tipo}</td>
