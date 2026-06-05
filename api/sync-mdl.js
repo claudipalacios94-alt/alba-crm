@@ -155,14 +155,17 @@ export default async function handler(req, res) {
 
   // ── dry_run: no escribe, solo muestra qué haría ───────────
   const dryRun = req.body?.dry_run === true;
+  const limit  = req.body?.limit ? Number(req.body.limit) : null; // null = sin límite
 
   // ── 2. Mapear y hacer upsert seguro ───────────────────────
   let created = 0, updated = 0, errors = 0;
   const errorLog = [];
   const preview  = [];
 
-  for (const p of inmuebles) {
-    if (!p.publicado) continue;
+  const publicadas = inmuebles.filter(p => p.publicado);
+  const lote       = limit ? publicadas.slice(0, limit) : publicadas;
+
+  for (const p of lote) {
 
     const mapped = mapInmueble(p);
     let op = "find";
@@ -265,13 +268,15 @@ export default async function handler(req, res) {
       ok:           true,
       dry_run:      true,
       total:        inmuebles.length,
+      total_publicas: publicadas.length,
+      procesando:   lote.length,
       would_create: created,
       would_update: updated,
       ventas,
       alquileres,
       con_foto,
       sin_foto,
-      message: `DRY RUN — ${created} para insertar, ${updated} para actualizar. Sin cambios en DB.`,
+      message: `DRY RUN — ${created} para insertar, ${updated} para actualizar (de ${lote.length} procesadas). Sin cambios en DB.`,
       muestra: preview.slice(0, 10).map(p => ({
         external_id: p.external_id,
         op:          p.op,
@@ -292,7 +297,7 @@ export default async function handler(req, res) {
     created,
     updated,
     errors,
-    message: `Sync completado: ${created} nuevas, ${updated} actualizadas, ${errors} errores.`,
+    message: `Sync completado: ${created} nuevas, ${updated} actualizadas, ${errors} errores (de ${lote.length} procesadas).`,
     error_detail: errorLog.length > 0 ? errorLog : undefined,
   });
 }

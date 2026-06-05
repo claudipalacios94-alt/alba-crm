@@ -32,12 +32,15 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
   const { supabase: sbClient } = useAppContext();
   const loadProperties         = usePropertyStore(s => s.loadProperties);
 
-  async function callSync(dryRun) {
+  async function callSync(dryRun, limit = null) {
     setSyncing(true);
     setSyncMsg(null);
     try {
       const { data: { session } } = await sbClient.auth.getSession();
       if (!session) throw new Error("Sin sesión activa");
+
+      const body = { dry_run: dryRun };
+      if (limit) body.limit = limit;
 
       const res  = await fetch("/api/sync-mdl", {
         method:  "POST",
@@ -45,7 +48,7 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
           Authorization:  `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ dry_run: dryRun }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error del servidor");
@@ -155,17 +158,22 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
                 {dryResult.total} detectadas · {dryResult.would_create} nuevas · {dryResult.would_update} a actualizar
               </span>
             </div>
-            <div style={{ display:"flex", gap:6 }}>
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+              <button onClick={() => callSync(false, 10)} disabled={syncing} style={{
+                padding:"5px 12px", borderRadius:6, cursor:"pointer",
+                border:"1px solid "+B.accentL+"60", background:B.accentL+"18",
+                color:B.accentL, fontSize:11, fontWeight:700, whiteSpace:"nowrap",
+              }}>{syncing ? "⏳..." : "🧪 Importar 10 de prueba"}</button>
               <button onClick={() => callSync(false)} disabled={syncing} style={{
                 padding:"5px 12px", borderRadius:6, cursor:"pointer",
                 border:"1px solid "+B.ok+"60", background:B.ok+"18",
-                color:B.ok, fontSize:11, fontWeight:700,
-              }}>{syncing ? "⏳..." : "✓ Confirmar importación"}</button>
-              <button onClick={() => setDryResult(null)} style={{
+                color:B.ok, fontSize:11, fontWeight:700, whiteSpace:"nowrap",
+              }}>{syncing ? "⏳..." : "✓ Importar todas ("+dryResult.total_publicas+")"}</button>
+              <button onClick={() => setDryResult(null)} disabled={syncing} style={{
                 padding:"5px 8px", borderRadius:6, cursor:"pointer",
                 border:"1px solid "+B.border, background:"transparent",
                 color:B.muted, fontSize:11,
-              }}>✕ Cancelar</button>
+              }}>✕</button>
             </div>
           </div>
 
