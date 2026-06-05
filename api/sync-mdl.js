@@ -165,13 +165,15 @@ export default async function handler(req, res) {
 
   // ── DRY-RUN: revisar todas contra DB, devolver lista completa ──
   if (dryRun) {
-    // Obtener external_ids ya en la DB para marcar duplicados
+    // Obtener props ya en la DB con external_id para duplicados + coherencia
     const { data: existentes } = await supabase
       .from("properties")
-      .select("external_id")
+      .select("external_id, activa, dir, zona, tipo, web_url")
       .not("external_id", "is", null);
 
-    const enDb = new Set((existentes || []).map(r => String(r.external_id)));
+    const crmByExtId = {};
+    for (const r of (existentes || [])) crmByExtId[String(r.external_id)] = r;
+    const enDb = new Set(Object.keys(crmByExtId));
 
     const items = publicadas.map(p => {
       const mapped = mapInmueble(p);
@@ -196,13 +198,63 @@ export default async function handler(req, res) {
       byEstado[it.estado_aviso] = (byEstado[it.estado_aviso] || 0) + 1;
     }
 
+    // Stats foto
+    const conFoto = items.filter(p => p.tiene_foto).length;
+    const sinFoto = items.length - conFoto;
+
+    // Coherencia: comparar props ya importadas contra estado en MDL
+    const NON_DISPONIBLE = new Set(["Vendido", "Reservado", "Alquilado"]);
+    const coherencias = [];
+    for (const item of items) {
+      const crm = crmByExtId[item.external_id];
+      if (!crm) continue;
+      const mdlActiva  = item.estado_aviso === "Disponible";
+      const crmActiva  = crm.activa === true;
+      let   estado     = "ok";
+      let   recomendacion = null;
+      if (mdlActiva && !crmActiva) {
+        estado        = "diff";
+        recomendacion = "Actualizar en Mar del Inmueble";
+      } else if (NON_DISPONIBLE.has(item.estado_aviso) && crmActiva) {
+        estado        = "diff";
+        recomendacion = "Actualizar en CRM";
+      }
+      coherencias.push({
+        external_id:  item.external_id,
+        dir:          crm.dir  || item.dir,
+        zona:         crm.zona || item.zona,
+        tipo:         crm.tipo || item.tipo,
+        mdl_estado:   item.estado_aviso,
+        crm_activa:   crmActiva,
+        web_url:      crm.web_url || item.web_url,
+        estado,
+        recomendacion,
+      });
+    }
+
+    // Props en CRM sin external_id (no vinculadas a MDL)
+    const { count: sinExternalId } = await supabase
+      .from("properties")
+      .select("id", { count: "exact", head: true })
+      .is("external_id", null);
+
+    // Disponibles en MDL que aún no están importadas
+    const disponiblesNoImportadas = items.filter(
+      p => p.estado_aviso === "Disponible" && !crmByExtId[p.external_id]
+    ).length;
+
     return res.status(200).json({
-      ok:        true,
-      dry_run:   true,
-      total:     publicadas.length,
-      by_estado: byEstado,
+      ok:                        true,
+      dry_run:                   true,
+      total:                     publicadas.length,
+      con_foto:                  conFoto,
+      sin_foto:                  sinFoto,
+      by_estado:                 byEstado,
+      coherencias,
+      sin_external_id:           sinExternalId || 0,
+      disponibles_no_importadas: disponiblesNoImportadas,
       items,
-      message:   `${byEstado["Disponible"] || 0} disponibles de ${publicadas.length} totales.`,
+      message:                   `${byEstado["Disponible"] || 0} disponibles de ${publicadas.length} totales.`,
     });
   }
 

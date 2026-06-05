@@ -28,8 +28,10 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
   const [syncing,   setSyncing]   = useState(false);
   const [syncMsg,   setSyncMsg]   = useState(null);
   const [dryItems,  setDryItems]  = useState(null);  // array de items del dry-run
-  const [mdlFilts,  setMdlFilts]  = useState({ op: "", tipo: "", precioMin: "", precioMax: "", zona: "", soloFoto: false, soloDisponible: true });
+  const [mdlFilts,  setMdlFilts]  = useState({ op: "venta", tipo: "", precioMin: "", precioMax: "", zona: "", soloFoto: false, soloDisponible: true });
   const [selected,  setSelected]  = useState(new Set());
+  const [dryCoherencia, setDryCoherencia] = useState(null);
+  const [dryStats,      setDryStats]      = useState(null);
 
   const { supabase: sbClient } = useAppContext();
   const loadProperties         = usePropertyStore(s => s.loadProperties);
@@ -48,8 +50,15 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error del servidor");
       setDryItems(json.items || []);
+      setDryCoherencia(json.coherencias || []);
+      setDryStats({
+        con_foto:                  json.con_foto                  || 0,
+        sin_foto:                  json.sin_foto                  || 0,
+        sin_external_id:           json.sin_external_id           || 0,
+        disponibles_no_importadas: json.disponibles_no_importadas || 0,
+      });
       setSelected(new Set());
-      setMdlFilts({ op: "", tipo: "", precioMin: "", precioMax: "", zona: "", soloFoto: false });
+      setMdlFilts({ op: "venta", tipo: "", precioMin: "", precioMax: "", zona: "", soloFoto: false, soloDisponible: true });
     } catch (err) {
       setSyncMsg({ ok: false, text: err.message });
       setTimeout(() => setSyncMsg(null), 8000);
@@ -70,7 +79,7 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error del servidor");
-      setDryItems(null); setSelected(new Set());
+      setDryItems(null); setDryCoherencia(null); setDryStats(null); setSelected(new Set());
       await loadProperties();
       setSyncMsg({ ok: json.ok, text: json.message });
       setTimeout(() => setSyncMsg(null), 8000);
@@ -150,7 +159,7 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
           )}
           {/* Botón MDL — dry-run primero, confirmar para escribir */}
           <button
-            onClick={dryItems ? () => { setDryItems(null); setSelected(new Set()); } : handleDryRun}
+            onClick={dryItems ? () => { setDryItems(null); setDryCoherencia(null); setDryStats(null); setSelected(new Set()); } : handleDryRun}
             disabled={syncing}
             title={dryItems ? "Cerrar panel MDL" : "Ver propiedades disponibles en Mar del Inmueble"}
             style={{
@@ -195,7 +204,7 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
           {/* Header */}
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10, flexWrap:"wrap", gap:8 }}>
             <span style={{ fontSize: mobile ? 13 : 12, fontWeight:700, color:B.accentL }}>
-              Mar del Inmueble — {dryItems.length} disponibles · {mdlFiltrados.length} filtradas · <span style={{ color:B.ok }}>{selected.size} seleccionadas</span>
+              Mar del Inmueble — {dryItems.filter(p => p.estado_aviso === "Disponible").length} disponibles de {dryItems.length} · {mdlFiltrados.length} filtradas · <span style={{ color:B.ok }}>{selected.size} seleccionadas</span>
             </span>
             <button
               onClick={handleImport}
@@ -332,6 +341,85 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
               </div>
             )}
           </div>
+
+          {/* Coherencia MDL ↔ CRM */}
+          {dryCoherencia !== null && (
+            <div style={{ marginTop:14, borderTop:"1px solid "+B.border, paddingTop:12 }}>
+              <div style={{ fontSize: mobile ? 12 : 11, fontWeight:700, color:B.text, marginBottom:8 }}>
+                Coherencia MDL ↔ CRM
+              </div>
+              {/* Chips resumen */}
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom: dryCoherencia.some(c => c.estado === "diff") ? 10 : 0 }}>
+                {(() => {
+                  const ok   = dryCoherencia.filter(c => c.estado === "ok").length;
+                  const diff = dryCoherencia.filter(c => c.estado === "diff").length;
+                  const chips = [
+                    { label:`✓ ${ok} OK`,                                                           c:"#2E9E6A", show: ok   > 0 },
+                    { label:`⚠ ${diff} con diferencia`,                                             c:"#E05050", show: diff > 0 },
+                    { label:`📷 ${dryStats?.con_foto||0} con foto · ${dryStats?.sin_foto||0} sin foto`, c:B.muted,   show: true },
+                    { label:`Sin ID externo: ${dryStats?.sin_external_id||0}`,                      c:B.dim,     show:(dryStats?.sin_external_id||0) > 0 },
+                    { label:`↓ ${dryStats?.disponibles_no_importadas||0} disponibles sin importar`, c:"#3a8bc4", show:(dryStats?.disponibles_no_importadas||0) > 0 },
+                  ];
+                  return chips.filter(ch => ch.show).map((ch, i) => (
+                    <span key={i} style={{
+                      padding:"2px 8px", borderRadius:12, fontSize:10, fontWeight:600,
+                      background:ch.c+"18", border:"1px solid "+ch.c+"44", color:ch.c,
+                    }}>{ch.label}</span>
+                  ));
+                })()}
+              </div>
+              {/* Tabla de diferencias */}
+              {dryCoherencia.some(c => c.estado === "diff") ? (
+                <div style={{ overflowX:"auto", maxHeight:200, overflowY:"auto" }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse", fontSize: mobile ? 11 : 10 }}>
+                    <thead style={{ position:"sticky", top:0, background:B.card, zIndex:1 }}>
+                      <tr>
+                        {["Dirección","Zona","Tipo","Estado MDL","Estado CRM","Recomendación",""].map(h => (
+                          <th key={h} style={{ textAlign:"left", padding:"4px 8px", color:B.dim,
+                            borderBottom:"1px solid "+B.border, fontWeight:600, whiteSpace:"nowrap" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dryCoherencia.filter(c => c.estado === "diff").map((c, i) => {
+                        const ESTADO_C = { Disponible:"#2E9E6A", Vendido:"#8AAECC", Reservado:"#E8A830", Alquilado:"#9B6DC8" };
+                        return (
+                          <tr key={c.external_id} style={{ background: i%2===0 ? "transparent" : B.surface+"33" }}>
+                            <td style={{ padding:"4px 8px", color:B.text,  whiteSpace:"nowrap" }}>{c.dir  || "—"}</td>
+                            <td style={{ padding:"4px 8px", color:B.muted, whiteSpace:"nowrap" }}>{c.zona || "—"}</td>
+                            <td style={{ padding:"4px 8px", color:B.text,  whiteSpace:"nowrap" }}>{c.tipo || "—"}</td>
+                            <td style={{ padding:"4px 8px", whiteSpace:"nowrap" }}>
+                              <span style={{ color:ESTADO_C[c.mdl_estado]||B.dim, fontWeight:600 }}>{c.mdl_estado}</span>
+                            </td>
+                            <td style={{ padding:"4px 8px", whiteSpace:"nowrap" }}>
+                              <span style={{ color: c.crm_activa ? "#2E9E6A" : "#8AAECC", fontWeight:600 }}>
+                                {c.crm_activa ? "Activa" : "Inactiva"}
+                              </span>
+                            </td>
+                            <td style={{ padding:"4px 8px", color:"#E8A830", fontWeight:600, whiteSpace:"nowrap" }}>{c.recomendacion}</td>
+                            <td style={{ padding:"4px 8px" }}>
+                              {c.web_url && (
+                                <a href={c.web_url} target="_blank" rel="noopener noreferrer"
+                                  style={{ color:"#3a8bc4", fontSize:10, textDecoration:"none" }}>Ver ↗</a>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : dryCoherencia.length > 0 ? (
+                <div style={{ fontSize:11, color:"#2E9E6A" }}>
+                  ✓ Todo coherente entre CRM y MDL para las propiedades importadas.
+                </div>
+              ) : (
+                <div style={{ fontSize:11, color:B.dim }}>
+                  Sin propiedades con ID externo para comparar. Importá al menos una primero.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
