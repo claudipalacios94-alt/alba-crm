@@ -153,25 +153,68 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: "No se pudo conectar con Mar del Inmueble", detail: err.message });
   }
 
-  // ── dry_run: no escribe, solo muestra qué haría ───────────
-  const dryRun = req.body?.dry_run === true;
-  const limit  = req.body?.limit ? Number(req.body.limit) : null; // null = sin límite
-
-  // ── 2. Mapear y hacer upsert seguro ───────────────────────
-  let created = 0, updated = 0, errors = 0;
-  const errorLog = [];
-  const preview  = [];
+  // ── Modo: dry_run o importación de selected_ids ───────────
+  const dryRun     = req.body?.dry_run     === true;
+  const selectedIds = Array.isArray(req.body?.selected_ids)
+    ? req.body.selected_ids.map(String)
+    : null;
 
   const publicadas = inmuebles.filter(p => p.publicado);
-  const lote       = limit ? publicadas.slice(0, limit) : publicadas;
+
+  // ── DRY-RUN: revisar todas contra DB, devolver lista completa ──
+  if (dryRun) {
+    // Obtener external_ids ya en la DB para marcar duplicados
+    const { data: existentes } = await supabase
+      .from("properties")
+      .select("external_id")
+      .not("external_id", "is", null);
+
+    const enDb = new Set((existentes || []).map(r => String(r.external_id)));
+
+    const items = publicadas.map(p => {
+      const mapped = mapInmueble(p);
+      return {
+        external_id: mapped.external_id,
+        op:          enDb.has(mapped.external_id) ? "update" : "insert",
+        operacion:   (p.tipo_operacion || "").toLowerCase().includes("alquiler") ? "alquiler" : "venta",
+        tipo:        mapped.tipo,
+        zona:        mapped.zona,
+        dir:         mapped.dir,
+        precio:      mapped.precio,
+        tiene_foto:  !!mapped.fotos,
+        web_url:     mapped.web_url,
+        titulo:      (p.titulo || "").trim().slice(0, 70),
+      };
+    });
+
+    return res.status(200).json({
+      ok:      true,
+      dry_run: true,
+      total:   publicadas.length,
+      items,
+      message: `${publicadas.length} propiedades disponibles. Seleccioná cuáles importar.`,
+    });
+  }
+
+  // ── IMPORTACIÓN: solo los selected_ids elegidos ────────────
+  if (!selectedIds || selectedIds.length === 0) {
+    return res.status(400).json({ error: "selected_ids requerido para importar. Usá dry_run primero." });
+  }
+
+  const lote = publicadas.filter(p => selectedIds.includes(String(p.id)));
+
+  if (lote.length === 0) {
+    return res.status(400).json({ error: "Ninguna propiedad seleccionada coincide con publicadas." });
+  }
+
+  let created = 0, updated = 0, errors = 0;
+  const errorLog = [];
 
   for (const p of lote) {
-
     const mapped = mapInmueble(p);
     let op = "find";
 
     try {
-      // Buscar si ya existe por external_id
       const { data: existing, error: findErr } = await supabase
         .from("properties")
         .select("id")
@@ -180,53 +223,24 @@ export default async function handler(req, res) {
 
       if (findErr) throw findErr;
 
-      // Dry-run: registrar y seguir sin escribir
-      if (dryRun) {
-        preview.push({
-          op:          existing ? "update" : "insert",
-          external_id: mapped.external_id,
-          titulo:      (p.titulo || "").trim().slice(0, 60),
-          tipo:        mapped.tipo,
-          op_venta:    (p.tipo_operacion || "").toLowerCase().includes("alquiler") ? "alquiler" : "venta",
-          zona:        mapped.zona,
-          dir:         mapped.dir,
-          precio:      mapped.precio,
-          tiene_foto:  !!mapped.fotos,
-          web_url:     mapped.web_url,
-        });
-        existing ? updated++ : created++;
-        continue;
-      }
-
       if (existing) {
         op = "update";
-        const updatePayload = {
-          web_url:     mapped.web_url,
-          fotos:       mapped.fotos,
-          descripcion: mapped.descripcion,
-          info:        mapped.info,
-          tipo:        mapped.tipo,
-          zona:        mapped.zona,
-          dir:         mapped.dir,
-          precio:      mapped.precio,
-          m2cub:       mapped.m2cub,
-          m2tot:       mapped.m2tot,
-          lat:         mapped.lat,
-          lng:         mapped.lng,
-          caracts:     mapped.caracts,
-          activa:      mapped.activa,
-        };
         const { error: updErr } = await supabase
           .from("properties")
-          .update(updatePayload)
+          .update({
+            web_url: mapped.web_url, fotos: mapped.fotos,
+            descripcion: mapped.descripcion, info: mapped.info,
+            tipo: mapped.tipo, zona: mapped.zona, dir: mapped.dir,
+            precio: mapped.precio, m2cub: mapped.m2cub, m2tot: mapped.m2tot,
+            lat: mapped.lat, lng: mapped.lng, caracts: mapped.caracts,
+            activa: mapped.activa,
+          })
           .eq("id", existing.id);
         if (updErr) throw updErr;
         updated++;
       } else {
         op = "insert";
-        const { error: insErr } = await supabase
-          .from("properties")
-          .insert(mapped);
+        const { error: insErr } = await supabase.from("properties").insert(mapped);
         if (insErr) throw insErr;
         created++;
       }
@@ -234,70 +248,22 @@ export default async function handler(req, res) {
       console.error(`sync-mdl ${op} error for id ${p.id}:`, err);
       errors++;
       errorLog.push({
-        external_id: mapped.external_id,
-        titulo:      (p.titulo || "").trim().slice(0, 60),
+        external_id:   mapped.external_id,
         op,
-        error_message: err.message  || null,
-        error_code:    err.code     || null,
-        error_details: err.details  || null,
-        error_hint:    err.hint     || null,
-        payload_keys:  Object.keys(mapped),
-        payload_sample: {
-          external_id: mapped.external_id,
-          tipo:        mapped.tipo,
-          precio:      mapped.precio,
-          m2cub:       mapped.m2cub,
-          m2tot:       mapped.m2tot,
-          lat:         mapped.lat,
-          lng:         mapped.lng,
-          activa:      mapped.activa,
-          sc:          mapped.sc,
-          dias:        mapped.dias,
-        },
+        error_message: err.message || null,
+        error_code:    err.code    || null,
+        error_hint:    err.hint    || null,
       });
     }
   }
 
-  if (dryRun) {
-    const ventas     = preview.filter(p => p.op_venta === "venta").length;
-    const alquileres = preview.filter(p => p.op_venta === "alquiler").length;
-    const con_foto   = preview.filter(p => p.tiene_foto).length;
-    const sin_foto   = preview.filter(p => !p.tiene_foto).length;
-
-    return res.status(200).json({
-      ok:           true,
-      dry_run:      true,
-      total:        inmuebles.length,
-      total_publicas: publicadas.length,
-      procesando:   lote.length,
-      would_create: created,
-      would_update: updated,
-      ventas,
-      alquileres,
-      con_foto,
-      sin_foto,
-      message: `DRY RUN — ${created} para insertar, ${updated} para actualizar (de ${lote.length} procesadas). Sin cambios en DB.`,
-      muestra: preview.slice(0, 10).map(p => ({
-        external_id: p.external_id,
-        op:          p.op,
-        tipo:        p.tipo,
-        zona:        p.zona,
-        dir:         p.dir,
-        precio:      p.precio ? `USD ${Number(p.precio).toLocaleString("es-AR")}` : "A consultar",
-        operacion:   p.op_venta,
-        foto:        p.tiene_foto ? "✓" : "✗",
-        titulo:      p.titulo,
-      })),
-    });
-  }
-
   return res.status(200).json({
     ok:      errors === 0,
-    total:   inmuebles.length,
+    total:   lote.length,
     created,
     updated,
     errors,
-    message: `Sync completado: ${created} nuevas, ${updated} actualizadas, ${errors} errores (de ${lote.length} procesadas).`,
+    message: `Importadas: ${created} nuevas, ${updated} actualizadas, ${errors} errores.`,
     error_detail: errorLog.length > 0 ? errorLog : undefined,
   });
 }

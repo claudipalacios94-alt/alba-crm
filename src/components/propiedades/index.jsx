@@ -27,46 +27,87 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
   const [q,        setQ]        = useState("");
   const [syncing,   setSyncing]   = useState(false);
   const [syncMsg,   setSyncMsg]   = useState(null);
-  const [dryResult, setDryResult] = useState(null); // preview pendiente de confirmar
+  const [dryItems,  setDryItems]  = useState(null);  // array de items del dry-run
+  const [mdlFilts,  setMdlFilts]  = useState({ op: "", tipo: "", precioMin: "", precioMax: "", zona: "", soloFoto: false });
+  const [selected,  setSelected]  = useState(new Set());
 
   const { supabase: sbClient } = useAppContext();
   const loadProperties         = usePropertyStore(s => s.loadProperties);
 
-  async function callSync(dryRun, limit = null) {
-    setSyncing(true);
-    setSyncMsg(null);
+  // ── Dry-run ────────────────────────────────────────────────
+  async function handleDryRun() {
+    setSyncing(true); setSyncMsg(null);
     try {
       const { data: { session } } = await sbClient.auth.getSession();
       if (!session) throw new Error("Sin sesión activa");
-
-      const body = { dry_run: dryRun };
-      if (limit) body.limit = limit;
-
       const res  = await fetch("/api/sync-mdl", {
-        method:  "POST",
-        headers: {
-          Authorization:  `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ dry_run: true }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error del servidor");
-
-      if (dryRun) {
-        setDryResult(json);
-      } else {
-        setDryResult(null);
-        await loadProperties();
-        setSyncMsg({ ok: json.ok, text: json.message });
-        setTimeout(() => setSyncMsg(null), 8000);
-      }
+      setDryItems(json.items || []);
+      setSelected(new Set());
+      setMdlFilts({ op: "", tipo: "", precioMin: "", precioMax: "", zona: "", soloFoto: false });
     } catch (err) {
       setSyncMsg({ ok: false, text: err.message });
       setTimeout(() => setSyncMsg(null), 8000);
-    } finally {
-      setSyncing(false);
-    }
+    } finally { setSyncing(false); }
+  }
+
+  // ── Importar seleccionadas ─────────────────────────────────
+  async function handleImport() {
+    if (selected.size === 0) return;
+    setSyncing(true); setSyncMsg(null);
+    try {
+      const { data: { session } } = await sbClient.auth.getSession();
+      if (!session) throw new Error("Sin sesión activa");
+      const res  = await fetch("/api/sync-mdl", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ selected_ids: Array.from(selected) }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Error del servidor");
+      setDryItems(null); setSelected(new Set());
+      await loadProperties();
+      setSyncMsg({ ok: json.ok, text: json.message });
+      setTimeout(() => setSyncMsg(null), 8000);
+    } catch (err) {
+      setSyncMsg({ ok: false, text: err.message });
+      setTimeout(() => setSyncMsg(null), 8000);
+    } finally { setSyncing(false); }
+  }
+
+  // ── Items filtrados ────────────────────────────────────────
+  const mdlFiltrados = React.useMemo(() => {
+    if (!dryItems) return [];
+    return dryItems.filter(p => {
+      if (mdlFilts.op     && p.operacion !== mdlFilts.op)   return false;
+      if (mdlFilts.tipo   && p.tipo      !== mdlFilts.tipo)  return false;
+      if (mdlFilts.soloFoto && !p.tiene_foto)                return false;
+      if (mdlFilts.zona   && !p.zona?.toLowerCase().includes(mdlFilts.zona.toLowerCase())) return false;
+      if (mdlFilts.precioMin && p.precio < Number(mdlFilts.precioMin)) return false;
+      if (mdlFilts.precioMax && p.precio > Number(mdlFilts.precioMax)) return false;
+      return true;
+    });
+  }, [dryItems, mdlFilts]);
+
+  const tiposMDL   = React.useMemo(() => dryItems ? [...new Set(dryItems.map(p => p.tipo).filter(Boolean))].sort() : [], [dryItems]);
+  const allFilSelected = mdlFiltrados.length > 0 && mdlFiltrados.every(p => selected.has(p.external_id));
+
+  function toggleAll() {
+    const next = new Set(selected);
+    if (allFilSelected) mdlFiltrados.forEach(p => next.delete(p.external_id));
+    else mdlFiltrados.forEach(p => next.add(p.external_id));
+    setSelected(next);
+  }
+
+  function toggleOne(id) {
+    const next = new Set(selected);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setSelected(next);
   }
 
   const tipos    = getTiposUnicos(properties);
@@ -108,17 +149,18 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
           )}
           {/* Botón MDL — dry-run primero, confirmar para escribir */}
           <button
-            onClick={() => callSync(true)}
+            onClick={dryItems ? () => { setDryItems(null); setSelected(new Set()); } : handleDryRun}
             disabled={syncing}
-            title="Vista previa de lo que importaría Mar del Inmueble (sin escribir)"
+            title={dryItems ? "Cerrar panel MDL" : "Ver propiedades disponibles en Mar del Inmueble"}
             style={{
               padding: mobile ? "8px 12px" : "7px 11px", borderRadius:8,
               cursor: syncing ? "wait" : "pointer",
-              border:"1px solid "+B.border, background: B.card,
-              color: syncing ? B.dim : B.muted,
+              border:"1px solid "+(dryItems ? B.accentL+"60" : B.border),
+              background: dryItems ? B.accentL+"18" : B.card,
+              color: syncing ? B.dim : dryItems ? B.accentL : B.muted,
               fontSize: mobile ? 12 : 11, fontWeight:600, whiteSpace:"nowrap", flexShrink:0,
             }}>
-            {syncing ? "⏳..." : "🔄 MDL"}
+            {syncing ? "⏳..." : dryItems ? "✕ MDL" : "🔄 MDL"}
           </button>
           {syncMsg && (
             <span style={{ fontSize: mobile ? 12 : 11, color: syncMsg.ok ? B.ok : B.hot }}>
@@ -142,84 +184,115 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
         </div>
       </div>
 
-      {/* Panel dry-run MDL */}
-      {dryResult && (
+      {/* Panel MDL — selección controlada */}
+      {dryItems && (
         <div style={{
           marginBottom: mobile ? 16 : 20,
-          background: B.card, border:"1px solid "+B.accentL+"50",
-          borderRadius:10, padding: mobile ? 14 : 16,
+          background: B.card, border:"1px solid "+B.accentL+"40",
+          borderRadius:10, padding: mobile ? 12 : 14,
         }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12, flexWrap:"wrap", gap:8 }}>
-            <div>
-              <span style={{ fontSize: mobile ? 13 : 12, fontWeight:700, color:B.accentL }}>
-                Vista previa MDL — sin cambios en DB
-              </span>
-              <span style={{ fontSize:10, color:B.muted, marginLeft:8 }}>
-                {dryResult.total} detectadas · {dryResult.would_create} nuevas · {dryResult.would_update} a actualizar
-              </span>
-            </div>
-            <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-              <button onClick={() => callSync(false, 10)} disabled={syncing} style={{
-                padding:"5px 12px", borderRadius:6, cursor:"pointer",
-                border:"1px solid "+B.accentL+"60", background:B.accentL+"18",
-                color:B.accentL, fontSize:11, fontWeight:700, whiteSpace:"nowrap",
-              }}>{syncing ? "⏳..." : "🧪 Importar 10 de prueba"}</button>
-              <button onClick={() => callSync(false)} disabled={syncing} style={{
-                padding:"5px 12px", borderRadius:6, cursor:"pointer",
-                border:"1px solid "+B.ok+"60", background:B.ok+"18",
-                color:B.ok, fontSize:11, fontWeight:700, whiteSpace:"nowrap",
-              }}>{syncing ? "⏳..." : "✓ Importar todas ("+dryResult.total_publicas+")"}</button>
-              <button onClick={() => setDryResult(null)} disabled={syncing} style={{
-                padding:"5px 8px", borderRadius:6, cursor:"pointer",
-                border:"1px solid "+B.border, background:"transparent",
-                color:B.muted, fontSize:11,
-              }}>✕</button>
-            </div>
+          {/* Header */}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10, flexWrap:"wrap", gap:8 }}>
+            <span style={{ fontSize: mobile ? 13 : 12, fontWeight:700, color:B.accentL }}>
+              Mar del Inmueble — {dryItems.length} disponibles · {mdlFiltrados.length} filtradas · <span style={{ color:B.ok }}>{selected.size} seleccionadas</span>
+            </span>
+            <button
+              onClick={handleImport}
+              disabled={syncing || selected.size === 0}
+              style={{
+                padding:"6px 14px", borderRadius:7, cursor: selected.size===0 ? "default" : "pointer",
+                border:"1px solid "+(selected.size===0 ? B.border : B.ok+"60"),
+                background: selected.size===0 ? "transparent" : B.ok+"18",
+                color: selected.size===0 ? B.dim : B.ok,
+                fontSize:11, fontWeight:700, whiteSpace:"nowrap",
+              }}>
+              {syncing ? "⏳..." : `✓ Importar ${selected.size} seleccionadas`}
+            </button>
           </div>
 
-          {/* Stats */}
-          <div style={{ display:"flex", gap: mobile ? 10 : 16, flexWrap:"wrap", marginBottom:12 }}>
-            {[
-              { label:"Ventas",     val: dryResult.ventas,     c:"#3a8bc4" },
-              { label:"Alquileres", val: dryResult.alquileres, c:"#9B6DC8" },
-              { label:"Con foto",   val: dryResult.con_foto,   c: B.ok },
-              { label:"Sin foto",   val: dryResult.sin_foto,   c: B.muted },
-            ].map(s => (
-              <div key={s.label} style={{ textAlign:"center", minWidth:60 }}>
-                <div style={{ fontSize: mobile ? 18 : 16, fontWeight:800, color:s.c }}>{s.val}</div>
-                <div style={{ fontSize:9, color:B.dim, textTransform:"uppercase", letterSpacing:"0.5px" }}>{s.label}</div>
-              </div>
-            ))}
+          {/* Filtros */}
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10, alignItems:"center" }}>
+            <select value={mdlFilts.op} onChange={e => setMdlFilts(f=>({...f, op: e.target.value}))}
+              style={{ padding:"4px 8px", borderRadius:6, border:"1px solid "+B.border, background:B.bg, color:B.text, fontSize:11 }}>
+              <option value="">Operación: Todas</option>
+              <option value="venta">Venta</option>
+              <option value="alquiler">Alquiler</option>
+            </select>
+
+            <select value={mdlFilts.tipo} onChange={e => setMdlFilts(f=>({...f, tipo: e.target.value}))}
+              style={{ padding:"4px 8px", borderRadius:6, border:"1px solid "+B.border, background:B.bg, color:B.text, fontSize:11 }}>
+              <option value="">Tipo: Todos</option>
+              {tiposMDL.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+
+            <input placeholder="Zona..." value={mdlFilts.zona}
+              onChange={e => setMdlFilts(f=>({...f, zona: e.target.value}))}
+              style={{ padding:"4px 8px", borderRadius:6, border:"1px solid "+B.border, background:B.bg, color:B.text, fontSize:11, width:100 }} />
+
+            <input type="number" placeholder="USD min" value={mdlFilts.precioMin}
+              onChange={e => setMdlFilts(f=>({...f, precioMin: e.target.value}))}
+              style={{ padding:"4px 8px", borderRadius:6, border:"1px solid "+B.border, background:B.bg, color:B.text, fontSize:11, width:80 }} />
+
+            <input type="number" placeholder="USD max" value={mdlFilts.precioMax}
+              onChange={e => setMdlFilts(f=>({...f, precioMax: e.target.value}))}
+              style={{ padding:"4px 8px", borderRadius:6, border:"1px solid "+B.border, background:B.bg, color:B.text, fontSize:11, width:80 }} />
+
+            <label style={{ display:"flex", alignItems:"center", gap:4, fontSize:11, color:B.muted, cursor:"pointer" }}>
+              <input type="checkbox" checked={mdlFilts.soloFoto}
+                onChange={e => setMdlFilts(f=>({...f, soloFoto: e.target.checked}))} />
+              Solo con foto
+            </label>
+
+            {(mdlFilts.op||mdlFilts.tipo||mdlFilts.zona||mdlFilts.precioMin||mdlFilts.precioMax||mdlFilts.soloFoto) && (
+              <button onClick={() => setMdlFilts({ op:"", tipo:"", precioMin:"", precioMax:"", zona:"", soloFoto:false })}
+                style={{ padding:"3px 8px", borderRadius:5, border:"1px solid "+B.border, background:"transparent", color:B.dim, fontSize:10, cursor:"pointer" }}>
+                ✕ Limpiar
+              </button>
+            )}
           </div>
 
-          {/* Muestra primeras 10 */}
-          <div style={{ overflowX:"auto" }}>
+          {/* Tabla */}
+          <div style={{ overflowX:"auto", maxHeight: mobile ? 320 : 400, overflowY:"auto" }}>
             <table style={{ width:"100%", borderCollapse:"collapse", fontSize: mobile ? 11 : 10 }}>
-              <thead>
+              <thead style={{ position:"sticky", top:0, background:B.card, zIndex:1 }}>
                 <tr>
-                  {["ID","Op","Tipo","Zona","Dir","Precio","Foto"].map(h => (
-                    <th key={h} style={{ textAlign:"left", padding:"4px 8px", color:B.dim,
+                  <th style={{ padding:"5px 8px", borderBottom:"1px solid "+B.border }}>
+                    <input type="checkbox" checked={allFilSelected} onChange={toggleAll}
+                      title="Seleccionar/deseleccionar todas las filtradas" />
+                  </th>
+                  {["Op","Tipo","Zona","Dirección","Precio","Foto","ID"].map(h => (
+                    <th key={h} style={{ textAlign:"left", padding:"5px 8px", color:B.dim,
                       borderBottom:"1px solid "+B.border, fontWeight:600, whiteSpace:"nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {(dryResult.muestra || []).map((p, i) => (
-                  <tr key={p.external_id} style={{ background: i%2===0 ? "transparent" : B.surface+"44" }}>
-                    <td style={{ padding:"4px 8px", color:B.dim }}>{p.external_id}</td>
-                    <td style={{ padding:"4px 8px", color: p.operacion==="venta" ? "#3a8bc4" : "#9B6DC8", fontWeight:600, textTransform:"capitalize" }}>{p.operacion}</td>
-                    <td style={{ padding:"4px 8px", color:B.text }}>{p.tipo}</td>
-                    <td style={{ padding:"4px 8px", color:B.muted }}>{p.zona}</td>
-                    <td style={{ padding:"4px 8px", color:B.muted }}>{p.dir}</td>
-                    <td style={{ padding:"4px 8px", color:B.accentL, fontWeight:600, whiteSpace:"nowrap" }}>{p.precio}</td>
-                    <td style={{ padding:"4px 8px", color: p.foto==="✓" ? B.ok : B.hot }}>{p.foto}</td>
-                  </tr>
-                ))}
+                {mdlFiltrados.map((p, i) => {
+                  const isSel = selected.has(p.external_id);
+                  return (
+                    <tr key={p.external_id}
+                      onClick={() => toggleOne(p.external_id)}
+                      style={{ cursor:"pointer", background: isSel ? B.accentL+"12" : i%2===0 ? "transparent" : B.surface+"33" }}>
+                      <td style={{ padding:"4px 8px" }} onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" checked={isSel} onChange={() => toggleOne(p.external_id)} />
+                      </td>
+                      <td style={{ padding:"4px 8px", color: p.operacion==="venta" ? "#3a8bc4" : "#9B6DC8", fontWeight:600, textTransform:"capitalize", whiteSpace:"nowrap" }}>{p.operacion}</td>
+                      <td style={{ padding:"4px 8px", color:B.text, whiteSpace:"nowrap" }}>{p.tipo}</td>
+                      <td style={{ padding:"4px 8px", color:B.muted, whiteSpace:"nowrap" }}>{p.zona}</td>
+                      <td style={{ padding:"4px 8px", color:B.dim, whiteSpace:"nowrap" }}>{p.dir}</td>
+                      <td style={{ padding:"4px 8px", color:B.accentL, fontWeight:600, whiteSpace:"nowrap" }}>
+                        {p.precio ? "USD "+Number(p.precio).toLocaleString("es-AR") : "—"}
+                      </td>
+                      <td style={{ padding:"4px 8px", color: p.tiene_foto ? B.ok : B.hot, textAlign:"center" }}>{p.tiene_foto ? "✓" : "✗"}</td>
+                      <td style={{ padding:"4px 8px", color:B.dim, fontSize:9 }}>{p.external_id}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-            {dryResult.total > 10 && (
-              <div style={{ fontSize:10, color:B.dim, marginTop:6, textAlign:"right" }}>
-                + {dryResult.total - 10} más no mostradas
+            {mdlFiltrados.length === 0 && (
+              <div style={{ padding:"16px", textAlign:"center", color:B.dim, fontSize:11 }}>
+                Sin resultados con los filtros actuales
               </div>
             )}
           </div>
