@@ -221,8 +221,14 @@ export default function PropCard({ p, leads, supabase, updateProperty, deletePro
             </div>
           )}
 
-          {/* Links mapa */}
+          {/* Links mapa + web */}
           <div style={{ display:"flex", gap: mobile ? 8 : 6, flexWrap:"wrap" }}>
+            {p.web_url && (
+              <a href={p.web_url} target="_blank" rel="noreferrer"
+                style={{ fontSize: mobile ? 12 : 11, padding: mobile ? "6px 12px" : "4px 10px", borderRadius:6,
+                  textDecoration:"none", background:"rgba(58,139,196,0.15)",
+                  border:"1px solid rgba(58,139,196,0.4)", color:B.accentL, fontWeight:600 }}>🌐 Ver en web</a>
+            )}
             <a href={"https://www.openstreetmap.org/search?query="+encodeURIComponent((p.dir||"")+", Mar del Plata, Argentina")}
               target="_blank" rel="noreferrer"
               style={{ fontSize: mobile ? 12 : 11, padding: mobile ? "6px 12px" : "4px 10px", borderRadius:6,

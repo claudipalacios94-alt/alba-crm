@@ -40,6 +40,9 @@ export function buildOfertaItems(properties = [], captaciones = [], leads = []) 
   // — Properties ------------------------------------------------
   for (const p of properties) {
     const matches = safeMatchPropLeads(p, leads);
+    const foto = p.fotos
+      ? (p.fotos.split("\n").filter(Boolean)[0] || null)
+      : null;
     items.push({
       id:         `prop-${p.id}`,
       source:     "property",
@@ -57,6 +60,8 @@ export function buildOfertaItems(properties = [], captaciones = [], leads = []) 
       lng:        p.lng,
       created_at: p.created_at,
       matches,
+      foto,
+      web_url:    p.web_url || null,
       contacto:   null,
       raw:        p,
     });

@@ -7,6 +7,8 @@ import { B } from "../../data/constants.js";
 import { agruparPropiedadesPorCategoria, filtrarPropiedades, getTiposUnicos } from "../../domain/property.js";
 import PropSeccion    from "./PropSeccion.jsx";
 import AlquileresView from "./AlquileresView.jsx";
+import { useAppContext }    from "../../context/SupabaseContext.jsx";
+import { usePropertyStore } from "../../store/usePropertyStore.js";
 
 function useIsMobile(breakpoint = 768) {
   const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
@@ -20,9 +22,39 @@ function useIsMobile(breakpoint = 768) {
 
 export default function Propiedades({ properties, rentals = [], leads = [], supabase, updateProperty, deleteProperty }) {
   const mobile = useIsMobile(768);
-  const [tab, setTab] = useState("venta");
-  const [ft,  setFt]  = useState("Todos");
-  const [q,   setQ]   = useState("");
+  const [tab,      setTab]      = useState("venta");
+  const [ft,       setFt]       = useState("Todos");
+  const [q,        setQ]        = useState("");
+  const [syncing,  setSyncing]  = useState(false);
+  const [syncMsg,  setSyncMsg]  = useState(null);
+
+  const { supabase: sbClient }  = useAppContext();
+  const loadProperties          = usePropertyStore(s => s.loadProperties);
+
+  async function handleSync() {
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const { data: { session } } = await sbClient.auth.getSession();
+      if (!session) throw new Error("Sin sesión activa");
+
+      const base = import.meta.env.DEV ? "" : "";
+      const res  = await fetch(`${base}/api/sync-mdl`, {
+        method:  "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Error del servidor");
+
+      await loadProperties();
+      setSyncMsg({ ok: true, text: json.message });
+    } catch (err) {
+      setSyncMsg({ ok: false, text: err.message });
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncMsg(null), 6000);
+    }
+  }
 
   const tipos    = getTiposUnicos(properties);
   const filtered = filtrarPropiedades(properties, { tipo: ft, q });
@@ -60,6 +92,27 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
                 border:"1px solid "+B.border, background:B.card, color:B.text,
                 fontSize: mobile ? 13 : 12, outline:"none",
                 width: mobile ? "100%" : 180, flex: mobile ? 1 : "none", order: mobile ? 1 : 0 }} />
+          )}
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            title="Importar propiedades publicadas desde albapropiedades.com"
+            style={{
+              padding: mobile ? "8px 12px" : "7px 11px", borderRadius:8, cursor: syncing ? "wait" : "pointer",
+              border:"1px solid "+(syncMsg?.ok === false ? B.hot+"60" : B.border),
+              background: syncing ? B.surface : B.card,
+              color: syncing ? B.dim : B.muted,
+              fontSize: mobile ? 12 : 11, fontWeight:600, whiteSpace:"nowrap", flexShrink:0,
+            }}>
+            {syncing ? "⏳ Sincronizando..." : "🔄 MDL"}
+          </button>
+          {syncMsg && (
+            <span style={{
+              fontSize: mobile ? 12 : 11,
+              color: syncMsg.ok ? B.ok : B.hot,
+              whiteSpace: mobile ? "normal" : "nowrap",
+              maxWidth: mobile ? "100%" : 260,
+            }}>{syncMsg.text}</span>
           )}
           <div style={{ display:"flex", background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:3, flexShrink:0 }}>
             {[

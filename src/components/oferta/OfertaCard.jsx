@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { B } from "../../data/constants.js";
 import {
@@ -6,6 +6,34 @@ import {
   generarMensajeContacto,
   formatTelefonoWA,
 } from "../../domain/oferta.js";
+
+// Cache en módulo para no re-fetchear entre re-renders
+const ogCache = new Map();
+
+function useOgImage(url) {
+  const [image, setImage] = useState(() => ogCache.get(url) ?? null);
+
+  useEffect(() => {
+    if (!url) return;
+    if (ogCache.has(url)) { setImage(ogCache.get(url)); return; }
+
+    let cancelled = false;
+    const base = import.meta.env.DEV ? "http://localhost:5174" : "";
+    fetch(`${base}/api/og?url=${encodeURIComponent(url)}`)
+      .then(r => r.ok ? r.json() : { image: null })
+      .then(data => {
+        if (cancelled) return;
+        const img = data.image || null;
+        ogCache.set(url, img);
+        setImage(img);
+      })
+      .catch(() => { if (!cancelled) setImage(null); });
+
+    return () => { cancelled = true; };
+  }, [url]);
+
+  return image;
+}
 
 const SOURCE_STYLE = {
   "Propia":     { bg: "#0d2a1a", text: "#4ade80", border: "#166534" },
@@ -55,6 +83,13 @@ export default function OfertaCard({ item, onVerMatches }) {
   const navigate = useNavigate();
   const [copied, setCopied]           = useState(false);
   const [copiedContact, setCopiedContact] = useState(false);
+
+  // OG image solo para captaciones con URL de portal
+  const portalUrl = item.source === "captacion" ? (item.raw?.url || null) : null;
+  const ogImage   = useOgImage(portalUrl);
+
+  // Thumbnail final: foto de property > og:image de portal > null (emoji)
+  const thumbnail = item.foto || ogImage;
 
   const src         = SOURCE_STYLE[item.origen] || SOURCE_STYLE["Captación"];
   const estadoBadge = ESTADO_BADGE[item.estado];
@@ -134,10 +169,20 @@ export default function OfertaCard({ item, onVerMatches }) {
         background: TYPE_BG[item.tipo] || "linear-gradient(135deg, #0d1e3a 0%, #1a3a6a 100%)",
         position: "relative", display: "flex",
         alignItems: "center", justifyContent: "center", flexShrink: 0,
+        overflow: "hidden",
       }}>
-        <span style={{ fontSize: 28, opacity: 0.55 }}>
-          {TYPE_ICON[item.tipo] || "🏠"}
-        </span>
+        {thumbnail ? (
+          <img
+            src={thumbnail}
+            alt={item.direccion || item.tipo}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            onError={e => { e.target.style.display = "none"; }}
+          />
+        ) : (
+          <span style={{ fontSize: 28, opacity: 0.55 }}>
+            {TYPE_ICON[item.tipo] || "🏠"}
+          </span>
+        )}
 
         <div style={{
           position: "absolute", top: 6, left: 6,
@@ -258,6 +303,16 @@ export default function OfertaCard({ item, onVerMatches }) {
                 border: `1px solid ${copiedContact ? "#166634" : "#5b21b655"}`,
               }}>
               {copiedContact ? "✓" : "📞"}
+            </button>
+          )}
+
+          {/* Ver en web / portal */}
+          {(item.web_url || item.raw?.url) && (
+            <button
+              onClick={() => window.open(item.web_url || item.raw.url, "_blank")}
+              title={item.web_url ? "Ver en albapropiedades.com" : "Ver publicación en portal"}
+              style={{ ...btnBase, color: B.accentL, border: `1px solid ${B.accentL}44` }}>
+              {item.web_url ? "🌐 Web" : "🔗 Portal"}
             </button>
           )}
         </div>

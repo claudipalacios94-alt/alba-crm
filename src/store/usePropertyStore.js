@@ -63,19 +63,24 @@ export const usePropertyStore = create((set, get) => ({
       lng = coords.lng
     }
     const { data, error } = await supabase.from('properties').insert([{
-      tipo:    prop.tipo    || '',
-      zona:    prop.zona    || '',
-      dir:     prop.dir     || '',
-      precio:  prop.precio  ? Number(prop.precio) : null,
-      m2tot:   prop.m2tot   ? Number(prop.m2tot)  : null,
-      m2cub:   prop.m2cub   ? Number(prop.m2cub)  : null,
-      estado:  prop.estado  || 'Buen Estado',
-      caracts: prop.caracts || '',
-      dias:    0,
-      sc:      '🟢 OK',
-      info:    prop.info    || '',
+      tipo:        prop.tipo        || '',
+      zona:        prop.zona        || '',
+      dir:         prop.dir         || '',
+      precio:      prop.precio      ? Number(prop.precio) : null,
+      m2tot:       prop.m2tot       ? Number(prop.m2tot)  : null,
+      m2cub:       prop.m2cub       ? Number(prop.m2cub)  : null,
+      estado:      prop.estado      || 'Buen Estado',
+      caracts:     prop.caracts     || '',
+      dias:        0,
+      sc:          '🟢 OK',
+      info:        prop.info        || '',
+      descripcion: prop.descripcion || null,
+      fotos:       prop.fotos       || null,
+      activa:      prop.activa      !== undefined ? prop.activa : true,
+      web_url:     prop.web_url     || null,
+      external_id: prop.external_id || null,
       lat, lng,
-      ag:      prop.ag      || '',
+      ag:          prop.ag          || '',
     }]).select().single()
     if (error) { console.error('addProperty error:', error); throw error }
     set((s) => ({ properties: [data, ...s.properties] }))
