@@ -58,6 +58,7 @@ function useOgImage(url) {
 
 const SOURCE_STYLE = {
   "Propia":     { bg: "#0d2a1a", text: "#4ade80", border: "#166534" },
+  "MDL":        { bg: "#0d1535", text: "#60a5fa", border: "#1e3a6a" },
   "Colega":     { bg: "#1e1040", text: "#a78bfa", border: "#5b21b6" },
   "Captación":  { bg: "#2a1800", text: "#fb923c", border: "#92400e" },
   "Honorarios": { bg: "#2a2000", text: "#fbbf24", border: "#92400e" },
@@ -100,7 +101,7 @@ const btnBase = {
 
 const MAX_CARACTS = 3;
 
-export default function OfertaCard({ item, onVerMatches }) {
+export default function OfertaCard({ item, onVerMatches, onAnadir }) {
   const navigate = useNavigate();
   const [copied, setCopied]           = useState(false);
   const [copiedContact, setCopiedContact] = useState(false);
@@ -112,6 +113,7 @@ export default function OfertaCard({ item, onVerMatches }) {
   // Thumbnail final: foto de property > og:image de portal > null (emoji)
   const thumbnail = item.foto || ogImage;
 
+  const esMDL       = item.source === "mdl";
   const src         = SOURCE_STYLE[item.origen] || SOURCE_STYLE["Captación"];
   const estadoBadge = ESTADO_BADGE[item.estado];
   const esConvertible = item.source === "captacion" && !item.raw?.convertida;
@@ -279,62 +281,90 @@ export default function OfertaCard({ item, onVerMatches }) {
           display: "flex", gap: 4, marginTop: 2,
           paddingTop: 7, borderTop: `1px solid ${B.border}`, flexWrap: "wrap",
         }}>
-          {/* 1. WhatsApp / Copiar */}
-          <button onClick={accionWA} style={{
-            ...btnBase,
-            background: copied ? "#0d2a1a" : B.surface,
-            color: copied ? "#4ade80" : B.ok,
-            border: `1px solid ${copied ? "#166534" : B.ok + "55"}`,
-          }}>{labelWA}</button>
-
-          {/* 2. Ver matches */}
-          <button
-            onClick={() => onVerMatches && onVerMatches(item)}
-            disabled={item.matches === 0}
-            style={{
-              ...btnBase,
-              color: item.matches > 0 ? B.accentL : B.dim,
-              border: `1px solid ${item.matches > 0 ? B.accentL + "44" : B.border}`,
-              cursor: item.matches > 0 ? "pointer" : "default",
-              opacity: item.matches > 0 ? 1 : 0.45,
-            }}>🎯 {item.matches}</button>
-
-          {/* 4. Mapa */}
-          <button onClick={accionMapa} title="Ver en Google Maps" style={btnBase}>🗺</button>
-
-          {/* 5. Editar — navega al módulo original */}
-          <button onClick={accionEditar} title="Editar en módulo original" style={btnBase}>✏️</button>
-
-          {/* Convertir (solo captaciones sin convertir) */}
-          {esConvertible && (
-            <button
-              onClick={() => navigate("/captaciones")}
-              title="Convertir en propiedad"
-              style={{ ...btnBase, color: "#fb923c", border: "1px solid #92400e" }}>⚡</button>
-          )}
-
-          {/* 3. Contactar colega/propietario */}
-          {tieneContacto && (
-            <button
-              onClick={accionContactar}
-              title={copiedContact ? "Mensaje copiado" : tieneWA ? "Abrir WhatsApp" : "Copiar mensaje"}
-              style={{
+          {esMDL ? (
+            // ── MDL: Añadir · Copiar · Web · Mapa ────────
+            <>
+              <button
+                onClick={() => onAnadir && onAnadir(item)}
+                style={{ ...btnBase, background: "#0d2a1a", color: "#4ade80", border: "1px solid #166534", fontWeight: 700 }}>
+                + Añadir
+              </button>
+              <button onClick={accionWA} style={{
                 ...btnBase,
-                color: copiedContact ? "#4ade80" : "#a78bfa",
-                border: `1px solid ${copiedContact ? "#166634" : "#5b21b655"}`,
-              }}>
-              {copiedContact ? "✓" : "📞"}
-            </button>
-          )}
+                background: copied ? "#0d2a1a" : B.surface,
+                color: copied ? "#4ade80" : B.muted,
+              }}>{copied ? "✓ Copiado" : "💬 Copiar"}</button>
+              {item.web_url && (
+                <button
+                  onClick={() => window.open(item.web_url, "_blank")}
+                  title="Ver en albapropiedades.com"
+                  style={{ ...btnBase, color: B.accentL, border: `1px solid ${B.accentL}44` }}>
+                  🌐 Web
+                </button>
+              )}
+              <button onClick={accionMapa} title="Ver en Google Maps" style={btnBase}>🗺</button>
+            </>
+          ) : (
+            // ── CRM: botones existentes (sin cambios) ─────
+            <>
+              {/* 1. WhatsApp / Copiar */}
+              <button onClick={accionWA} style={{
+                ...btnBase,
+                background: copied ? "#0d2a1a" : B.surface,
+                color: copied ? "#4ade80" : B.ok,
+                border: `1px solid ${copied ? "#166534" : B.ok + "55"}`,
+              }}>{labelWA}</button>
 
-          {/* Ver en web / portal */}
-          {(item.web_url || item.raw?.url) && (
-            <button
-              onClick={() => window.open(item.web_url || item.raw.url, "_blank")}
-              title={item.web_url ? "Ver en albapropiedades.com" : "Ver publicación en portal"}
-              style={{ ...btnBase, color: B.accentL, border: `1px solid ${B.accentL}44` }}>
-              {item.web_url ? "🌐 Web" : "🔗 Portal"}
-            </button>
+              {/* 2. Ver matches */}
+              <button
+                onClick={() => onVerMatches && onVerMatches(item)}
+                disabled={item.matches === 0}
+                style={{
+                  ...btnBase,
+                  color: item.matches > 0 ? B.accentL : B.dim,
+                  border: `1px solid ${item.matches > 0 ? B.accentL + "44" : B.border}`,
+                  cursor: item.matches > 0 ? "pointer" : "default",
+                  opacity: item.matches > 0 ? 1 : 0.45,
+                }}>🎯 {item.matches}</button>
+
+              {/* 4. Mapa */}
+              <button onClick={accionMapa} title="Ver en Google Maps" style={btnBase}>🗺</button>
+
+              {/* 5. Editar — navega al módulo original */}
+              <button onClick={accionEditar} title="Editar en módulo original" style={btnBase}>✏️</button>
+
+              {/* Convertir (solo captaciones sin convertir) */}
+              {esConvertible && (
+                <button
+                  onClick={() => navigate("/captaciones")}
+                  title="Convertir en propiedad"
+                  style={{ ...btnBase, color: "#fb923c", border: "1px solid #92400e" }}>⚡</button>
+              )}
+
+              {/* 3. Contactar colega/propietario */}
+              {tieneContacto && (
+                <button
+                  onClick={accionContactar}
+                  title={copiedContact ? "Mensaje copiado" : tieneWA ? "Abrir WhatsApp" : "Copiar mensaje"}
+                  style={{
+                    ...btnBase,
+                    color: copiedContact ? "#4ade80" : "#a78bfa",
+                    border: `1px solid ${copiedContact ? "#166634" : "#5b21b655"}`,
+                  }}>
+                  {copiedContact ? "✓" : "📞"}
+                </button>
+              )}
+
+              {/* Ver en web / portal */}
+              {(item.web_url || item.raw?.url) && (
+                <button
+                  onClick={() => window.open(item.web_url || item.raw.url, "_blank")}
+                  title={item.web_url ? "Ver en albapropiedades.com" : "Ver publicación en portal"}
+                  style={{ ...btnBase, color: B.accentL, border: `1px solid ${B.accentL}44` }}>
+                  {item.web_url ? "🌐 Web" : "🔗 Portal"}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

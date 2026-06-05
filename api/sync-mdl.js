@@ -187,6 +187,7 @@ export default async function handler(req, res) {
         dir:          mapped.dir,
         precio:       mapped.precio,
         tiene_foto:   !!mapped.fotos,
+        foto:         mapped.fotos || null,
         web_url:      mapped.web_url,
         titulo:       (p.titulo || "").trim().slice(0, 70),
       };

@@ -77,13 +77,67 @@ function EmptyState({ tab }) {
   );
 }
 
+// ── Bloque de inventario ──────────────────────────────────────
+const MAX_VISIBLE = 6;
+
+function InventarioBlock({ titulo, items = [], loading = false, onVerMatches, onAnadir, onVerTodas, mobile }) {
+  const [expandido, setExpandido] = useState(false);
+  const visible = expandido ? items : items.slice(0, MAX_VISIBLE);
+  const hayMas  = items.length > MAX_VISIBLE;
+
+  return (
+    <div style={{ marginBottom: 22 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+        <h2 style={{ margin:0, fontSize:13, fontWeight:700, color:B.text, fontFamily:"'DM Sans', sans-serif" }}>
+          {titulo}
+        </h2>
+        {!loading && (
+          <span style={{ background:`${B.accentL}22`, color:B.accentL, fontSize:9, fontWeight:700, padding:"1px 6px", borderRadius:4 }}>
+            {items.length}
+          </span>
+        )}
+        {onVerTodas && !loading && items.length > 0 && (
+          <button onClick={onVerTodas} style={{
+            marginLeft:"auto", padding:"3px 9px", borderRadius:5,
+            border:`1px solid ${B.border}`, background:"transparent",
+            color:B.dim, fontSize:10, cursor:"pointer", fontFamily:"'DM Sans', sans-serif",
+          }}>Ver todas →</button>
+        )}
+      </div>
+      {loading ? <LoadingState /> : items.length === 0 ? (
+        <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:"16px 20px", color:B.dim, fontSize:11, textAlign:"center" }}>
+          Sin disponibles
+        </div>
+      ) : (
+        <>
+          <div style={{ display:"grid", gridTemplateColumns: mobile ? "1fr" : "repeat(3, minmax(0,1fr))", gap:10 }}>
+            {visible.map(item => (
+              <OfertaCard key={item.id} item={item} onVerMatches={onVerMatches} onAnadir={onAnadir} />
+            ))}
+          </div>
+          {hayMas && !expandido && (
+            <button onClick={() => setExpandido(true)} style={{
+              marginTop:8, padding:"5px 12px", borderRadius:6,
+              border:`1px solid ${B.border}`, background:"transparent",
+              color:B.dim, fontSize:10, cursor:"pointer", fontFamily:"'DM Sans', sans-serif",
+            }}>Ver {items.length - MAX_VISIBLE} más</button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Módulo principal ──────────────────────────────────────────
 export default function OfertaModule({
-  items     = [],
-  kpis      = {},
-  tabCounts = {},
-  loading   = false,
-  leads     = [],
+  items        = [],
+  kpis         = {},
+  tabCounts    = {},
+  loading      = false,
+  leads        = [],
+  mdlItems     = [],
+  mdlLoading   = false,
+  onAddMdlItem = null,
 }) {
   const mobile = useIsMobile();
   const [tab, setTab]               = useState("todo");
@@ -96,6 +150,16 @@ export default function OfertaModule({
   }, [items, tab, filters]);
 
   const paraTrabajar = useMemo(() => getOfertaActionItems(items), [items]);
+
+  // Items para los 3 bloques (tab="todo")
+  const albaPropItems = useMemo(
+    () => items.filter(i => i.source === "property" && i.estado !== "Inactiva"),
+    [items]
+  );
+  const captacionItems = useMemo(
+    () => items.filter(i => i.source === "captacion" && i.estado !== "Convertida" && i.estado !== "Inactiva"),
+    [items]
+  );
 
   const showSidePanel = !mobile && tab !== "mapa" && tab !== "zonas";
   const isSpecialTab  = tab === "mapa" || tab === "zonas";
@@ -219,42 +283,73 @@ export default function OfertaModule({
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
             <div style={{ flex: 1, height: 1, background: B.border }} />
             <span style={{ fontSize: 10, color: B.dim, fontWeight: 600, whiteSpace: "nowrap" }}>
-              {loading ? "Cargando inventario..." : `Inventario · ${filtered.length} resultado${filtered.length !== 1 ? "s" : ""}`}
+              {loading ? "Cargando inventario..." : tab === "todo"
+                ? "Inventario disponible"
+                : `${filtered.length} resultado${filtered.length !== 1 ? "s" : ""}`}
             </span>
             <div style={{ flex: 1, height: 1, background: B.border }} />
           </div>
 
-          {/* ── CATALOG ────────────────────────────────────── */}
-          <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <OfertaFilters filters={filters} onChange={setFilters} mobile={mobile} />
+          {tab === "todo" ? (
+            // ── VISTA 3 BLOQUES ───────────────────────────
+            <>
+              <InventarioBlock
+                titulo="🏠 Propiedades Alba disponibles"
+                items={albaPropItems}
+                loading={loading}
+                onVerMatches={setPanelItem}
+                onVerTodas={() => setTab("propiedades")}
+                mobile={mobile}
+              />
+              <InventarioBlock
+                titulo="🔍 Captaciones activas"
+                items={captacionItems}
+                loading={loading}
+                onVerMatches={setPanelItem}
+                onVerTodas={() => setTab("captaciones")}
+                mobile={mobile}
+              />
+              <InventarioBlock
+                titulo="📡 Disponibles en MDL sin añadir"
+                items={mdlItems}
+                loading={mdlLoading}
+                onAnadir={onAddMdlItem}
+                mobile={mobile}
+              />
+            </>
+          ) : (
+            // ── VISTA FILTRADA (tabs específicos) ─────────
+            <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <OfertaFilters filters={filters} onChange={setFilters} mobile={mobile} />
 
-              {loading ? <LoadingState /> : filtered.length === 0 ? (
-                <EmptyState tab={tab} />
-              ) : (
-                <div style={{
-                  display: "grid",
-                  gridTemplateColumns: mobile ? "1fr" : cardCols,
-                  gap: 10,
-                }}>
-                  {filtered.map(item => (
-                <OfertaCard
-                  key={item.id}
-                  item={item}
-                  onVerMatches={setPanelItem}
-                />
-              ))}
+                {loading ? <LoadingState /> : filtered.length === 0 ? (
+                  <EmptyState tab={tab} />
+                ) : (
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: mobile ? "1fr" : cardCols,
+                    gap: 10,
+                  }}>
+                    {filtered.map(item => (
+                      <OfertaCard
+                        key={item.id}
+                        item={item}
+                        onVerMatches={setPanelItem}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {showSidePanel && (
+                <div style={{ width: 260, flexShrink: 0 }}>
+                  <OfertaMapPreview />
+                  <OfertaRecentList />
                 </div>
               )}
             </div>
-
-            {showSidePanel && (
-              <div style={{ width: 260, flexShrink: 0 }}>
-                <OfertaMapPreview />
-                <OfertaRecentList />
-              </div>
-            )}
-          </div>
+          )}
         </>
       )}
       {/* ── PANEL MATCHES ─────────────────────────────────── */}
