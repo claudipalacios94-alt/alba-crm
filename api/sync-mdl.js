@@ -118,17 +118,24 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST")    return res.status(405).json({ error: "Method Not Allowed" });
 
-  // ── Auth: Bearer token válido de Supabase ──────────────────
+  // ── Auth: validar Bearer token ────────────────────────────
   const token = (req.headers.authorization || "").replace("Bearer ", "").trim();
   if (!token) return res.status(401).json({ error: "No autorizado" });
 
-  const supabase = createClient(
+  // Admin client — solo para validar el token (service key no escribe properties)
+  const supabaseAdmin = createClient(
     process.env.VITE_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY,
   );
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
   if (authError || !user) return res.status(401).json({ error: "Token inválido" });
+
+  // User client — anon key + Bearer token → RLS lo trata como usuario autenticado
+  const supabase = createClient(
+    process.env.VITE_SUPABASE_URL,
+    process.env.VITE_SUPABASE_KEY,
+    { global: { headers: { Authorization: `Bearer ${token}` } } },
+  );
 
   // ── 1. Fetch Mar del Inmueble ──────────────────────────────
   let inmuebles;
