@@ -25,34 +25,44 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
   const [tab,      setTab]      = useState("venta");
   const [ft,       setFt]       = useState("Todos");
   const [q,        setQ]        = useState("");
-  const [syncing,  setSyncing]  = useState(false);
-  const [syncMsg,  setSyncMsg]  = useState(null);
+  const [syncing,   setSyncing]   = useState(false);
+  const [syncMsg,   setSyncMsg]   = useState(null);
+  const [dryResult, setDryResult] = useState(null); // preview pendiente de confirmar
 
-  const { supabase: sbClient }  = useAppContext();
-  const loadProperties          = usePropertyStore(s => s.loadProperties);
+  const { supabase: sbClient } = useAppContext();
+  const loadProperties         = usePropertyStore(s => s.loadProperties);
 
-  async function handleSync() {
+  async function callSync(dryRun) {
     setSyncing(true);
     setSyncMsg(null);
     try {
       const { data: { session } } = await sbClient.auth.getSession();
       if (!session) throw new Error("Sin sesión activa");
 
-      const base = import.meta.env.DEV ? "" : "";
-      const res  = await fetch(`${base}/api/sync-mdl`, {
+      const res  = await fetch("/api/sync-mdl", {
         method:  "POST",
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: {
+          Authorization:  `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ dry_run: dryRun }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Error del servidor");
 
-      await loadProperties();
-      setSyncMsg({ ok: true, text: json.message });
+      if (dryRun) {
+        setDryResult(json);
+      } else {
+        setDryResult(null);
+        await loadProperties();
+        setSyncMsg({ ok: json.ok, text: json.message });
+        setTimeout(() => setSyncMsg(null), 8000);
+      }
     } catch (err) {
       setSyncMsg({ ok: false, text: err.message });
+      setTimeout(() => setSyncMsg(null), 8000);
     } finally {
       setSyncing(false);
-      setTimeout(() => setSyncMsg(null), 6000);
     }
   }
 
@@ -93,25 +103,53 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
                 fontSize: mobile ? 13 : 12, outline:"none",
                 width: mobile ? "100%" : 180, flex: mobile ? 1 : "none", order: mobile ? 1 : 0 }} />
           )}
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            title="Importar propiedades publicadas desde albapropiedades.com"
-            style={{
-              padding: mobile ? "8px 12px" : "7px 11px", borderRadius:8, cursor: syncing ? "wait" : "pointer",
-              border:"1px solid "+(syncMsg?.ok === false ? B.hot+"60" : B.border),
-              background: syncing ? B.surface : B.card,
-              color: syncing ? B.dim : B.muted,
-              fontSize: mobile ? 12 : 11, fontWeight:600, whiteSpace:"nowrap", flexShrink:0,
-            }}>
-            {syncing ? "⏳ Sincronizando..." : "🔄 MDL"}
-          </button>
+          {/* Botón MDL — dry-run primero, confirmar para escribir */}
+          {!dryResult ? (
+            <button
+              onClick={() => callSync(true)}
+              disabled={syncing}
+              title="Vista previa: ver qué importaría Mar del Inmueble (sin escribir)"
+              style={{
+                padding: mobile ? "8px 12px" : "7px 11px", borderRadius:8,
+                cursor: syncing ? "wait" : "pointer",
+                border:"1px solid "+B.border, background: B.card,
+                color: syncing ? B.dim : B.muted,
+                fontSize: mobile ? 12 : 11, fontWeight:600, whiteSpace:"nowrap", flexShrink:0,
+              }}>
+              {syncing ? "⏳..." : "🔄 MDL"}
+            </button>
+          ) : (
+            <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+              <span style={{ fontSize:10, color: B.muted }}>
+                Vista previa: {dryResult.would_create} nuevas · {dryResult.would_update} a actualizar
+              </span>
+              <button
+                onClick={() => callSync(false)}
+                disabled={syncing}
+                style={{
+                  padding:"5px 10px", borderRadius:6, cursor:"pointer",
+                  border:"1px solid "+B.ok+"60", background: B.ok+"18",
+                  color: B.ok, fontSize:11, fontWeight:700,
+                }}>
+                {syncing ? "⏳..." : "✓ Confirmar"}
+              </button>
+              <button
+                onClick={() => setDryResult(null)}
+                disabled={syncing}
+                style={{
+                  padding:"5px 8px", borderRadius:6, cursor:"pointer",
+                  border:"1px solid "+B.border, background:"transparent",
+                  color: B.muted, fontSize:11,
+                }}>
+                ✕
+              </button>
+            </div>
+          )}
           {syncMsg && (
             <span style={{
               fontSize: mobile ? 12 : 11,
               color: syncMsg.ok ? B.ok : B.hot,
               whiteSpace: mobile ? "normal" : "nowrap",
-              maxWidth: mobile ? "100%" : 260,
             }}>{syncMsg.text}</span>
           )}
           <div style={{ display:"flex", background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:3, flexShrink:0 }}>

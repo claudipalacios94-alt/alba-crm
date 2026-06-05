@@ -13,7 +13,7 @@ const ALLOWED_ORIGINS = [
   "http://localhost:5174",
 ];
 
-const MDL_API  = "https://api.mardelinmueble.com/v3/inmuebles/?id_inmobiliaria=80";
+const MDL_API  = "https://api.mardelinmueble.com/v3/inmuebles/?id_inmobiliaria=9";
 const WEB_BASE = "https://albapropiedades.com/inmueble";
 const IMG_BASE = "https://api.mardelinmueble.com/uploads/inmuebles/thumbnails";
 
@@ -153,9 +153,13 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: "No se pudo conectar con Mar del Inmueble", detail: err.message });
   }
 
+  // ── dry_run: no escribe, solo muestra qué haría ───────────
+  const dryRun = req.body?.dry_run === true;
+
   // ── 2. Mapear y hacer upsert seguro ───────────────────────
   let created = 0, updated = 0, errors = 0;
   const errorLog = [];
+  const preview  = [];
 
   for (const p of inmuebles) {
     if (!p.publicado) continue;
@@ -172,6 +176,22 @@ export default async function handler(req, res) {
         .maybeSingle();
 
       if (findErr) throw findErr;
+
+      // Dry-run: registrar y seguir sin escribir
+      if (dryRun) {
+        preview.push({
+          op:          existing ? "update" : "insert",
+          external_id: mapped.external_id,
+          titulo:      (p.titulo || "").trim().slice(0, 60),
+          tipo:        mapped.tipo,
+          zona:        mapped.zona,
+          dir:         mapped.dir,
+          precio:      mapped.precio,
+          web_url:     mapped.web_url,
+        });
+        existing ? updated++ : created++;
+        continue;
+      }
 
       if (existing) {
         op = "update";
@@ -231,6 +251,18 @@ export default async function handler(req, res) {
         },
       });
     }
+  }
+
+  if (dryRun) {
+    return res.status(200).json({
+      ok:       true,
+      dry_run:  true,
+      total:    inmuebles.length,
+      would_create: created,
+      would_update: updated,
+      message:  `DRY RUN — ${created} para insertar, ${updated} para actualizar. Sin cambios en DB.`,
+      preview:  preview.slice(0, 20),
+    });
   }
 
   return res.status(200).json({
