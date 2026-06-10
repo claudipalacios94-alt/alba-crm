@@ -79,7 +79,7 @@ function makeCaptacionPin(tipo, tipoCaptacion) {
 
 function PanelLista({ propiedades, captaciones, filtroTipo, q, capas, withCoordsFn, sel, setSel, leafRef }) {
   const propsList = capas.propiedades
-    ? propiedades.map(withCoordsFn).filter(p => p.lat && p.lng)
+    ? propiedades.filter(p => p.activa !== false).map(withCoordsFn).filter(p => p.lat && p.lng)
         .filter(p => filtroTipo === "Todos" || p.tipo === filtroTipo)
         .filter(p => !q || ((p.dir || "") + (p.zona || "")).toLowerCase().includes(q.toLowerCase()))
     : [];
@@ -216,6 +216,7 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase,
     marksRef.current = [];
 
     const propsFiltered = properties
+      .filter(p => p.activa !== false)
       .filter(p => filtroTipo === "Todos" || p.tipo === filtroTipo)
       .filter(p => !q || ((p.dir || "") + (p.zona || "")).toLowerCase().includes(q.toLowerCase()))
       .map(withCoords)
@@ -264,7 +265,7 @@ export default function Mapa({ properties, leads = [], updateProperty, supabase,
   }, [loaded, properties, captaciones, coords, capas, filtroTipo, q]);
 
   const tipos = ["Todos", ...new Set(properties.map(p => p.tipo).filter(Boolean))];
-  const conCoords = properties.map(withCoords).filter(p => p.lat && p.lng).length;
+  const conCoords = properties.filter(p => p.activa !== false).map(withCoords).filter(p => p.lat && p.lng).length;
   const capConCoords = captaciones.filter(c => c.lat && c.lng).length;
 
   const chip = act => ({
