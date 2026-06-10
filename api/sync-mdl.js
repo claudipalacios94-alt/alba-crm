@@ -178,18 +178,20 @@ export default async function handler(req, res) {
     const items = publicadas.map(p => {
       const mapped = mapInmueble(p);
       return {
-        external_id:  mapped.external_id,
-        op:           enDb.has(mapped.external_id) ? "update" : "insert",
-        estado_aviso: p.estado_aviso || "Sin estado",
-        operacion:    (p.tipo_operacion || "").toLowerCase().includes("alquiler") ? "alquiler" : "venta",
-        tipo:         mapped.tipo,
-        zona:         mapped.zona,
-        dir:          mapped.dir,
-        precio:       mapped.precio,
-        tiene_foto:   !!mapped.fotos,
-        foto:         mapped.fotos || null,
-        web_url:      mapped.web_url,
-        titulo:       (p.titulo || "").trim().slice(0, 70),
+        external_id:      mapped.external_id,
+        op:               enDb.has(mapped.external_id) ? "update" : "insert",
+        estado_aviso:     p.estado_aviso || "Sin estado",
+        operacion:        (p.tipo_operacion || "").toLowerCase().includes("alquiler") ? "alquiler" : "venta",
+        tipo:             mapped.tipo,
+        zona:             mapped.zona,
+        dir:              mapped.dir,
+        precio:           mapped.precio,
+        tiene_foto:       !!mapped.fotos,
+        foto:             mapped.fotos || null,
+        web_url:          mapped.web_url,
+        titulo:           (p.titulo || "").trim().slice(0, 70),
+        ultima_actividad: p.last_update || p.fecha_creacion || null,
+        fecha_creacion:   p.fecha_creacion || null,
       };
     });
 

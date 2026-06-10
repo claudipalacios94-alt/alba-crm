@@ -28,7 +28,7 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
   const [syncing,   setSyncing]   = useState(false);
   const [syncMsg,   setSyncMsg]   = useState(null);
   const [dryItems,  setDryItems]  = useState(null);  // array de items del dry-run
-  const [mdlFilts,  setMdlFilts]  = useState({ op: "venta", tipo: "", precioMin: "", precioMax: "", zona: "", soloFoto: false, soloDisponible: true });
+  const [mdlFilts,  setMdlFilts]  = useState({ op: "venta", tipo: "", precioMin: "", precioMax: "", zona: "", soloFoto: false, soloDisponible: true, mesesMax: "12" });
   const [selected,  setSelected]  = useState(new Set());
   const [dryCoherencia, setDryCoherencia] = useState(null);
   const [dryStats,      setDryStats]      = useState(null);
@@ -58,7 +58,7 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
         disponibles_no_importadas: json.disponibles_no_importadas || 0,
       });
       setSelected(new Set());
-      setMdlFilts({ op: "venta", tipo: "", precioMin: "", precioMax: "", zona: "", soloFoto: false, soloDisponible: true });
+      setMdlFilts({ op: "venta", tipo: "", precioMin: "", precioMax: "", zona: "", soloFoto: false, soloDisponible: true, mesesMax: "12" });
     } catch (err) {
       setSyncMsg({ ok: false, text: err.message });
       setTimeout(() => setSyncMsg(null), 8000);
@@ -92,8 +92,15 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
   // ── Items filtrados ────────────────────────────────────────
   const mdlFiltrados = React.useMemo(() => {
     if (!dryItems) return [];
+    const cutoff = mdlFilts.mesesMax
+      ? Date.now() - Number(mdlFilts.mesesMax) * 30 * 24 * 3600 * 1000
+      : null;
     return dryItems.filter(p => {
       if (mdlFilts.soloDisponible && p.estado_aviso !== "Disponible") return false;
+      if (cutoff !== null) {
+        const act = p.ultima_actividad ? new Date(p.ultima_actividad).getTime() : 0;
+        if (act < cutoff) return false;
+      }
       if (mdlFilts.op     && p.operacion !== mdlFilts.op)   return false;
       if (mdlFilts.tipo   && p.tipo      !== mdlFilts.tipo)  return false;
       if (mdlFilts.soloFoto && !p.tiene_foto)                return false;
@@ -250,6 +257,17 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
               Solo disponibles
             </label>
 
+            <select value={mdlFilts.mesesMax} onChange={e => setMdlFilts(f=>({...f, mesesMax: e.target.value}))}
+              title="Antigüedad de la última actualización en Mar del Inmueble"
+              style={{ padding:"4px 8px", borderRadius:6,
+                border:"1px solid "+(mdlFilts.mesesMax ? B.accentL+"60" : B.border),
+                background: mdlFilts.mesesMax ? B.accentL+"12" : B.bg,
+                color: mdlFilts.mesesMax ? B.accentL : B.text, fontSize:11, fontWeight:600 }}>
+              <option value="12">Último año</option>
+              <option value="24">Últimos 2 años</option>
+              <option value="">Todas (histórico)</option>
+            </select>
+
             <select value={mdlFilts.op} onChange={e => setMdlFilts(f=>({...f, op: e.target.value}))}
               style={{ padding:"4px 8px", borderRadius:6, border:"1px solid "+B.border, background:B.bg, color:B.text, fontSize:11 }}>
               <option value="">Operación: Todas</option>
@@ -298,7 +316,7 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
                     <input type="checkbox" checked={allFilSelected} onChange={toggleAll}
                       title="Seleccionar/deseleccionar todas las filtradas" />
                   </th>
-                  {["Estado","Op","Tipo","Zona","Dirección","Precio","Foto","ID"].map(h => (
+                  {["Estado","Actualizada","Op","Tipo","Zona","Dirección","Precio","Foto","ID"].map(h => (
                     <th key={h} style={{ textAlign:"left", padding:"5px 8px", color:B.dim,
                       borderBottom:"1px solid "+B.border, fontWeight:600, whiteSpace:"nowrap" }}>{h}</th>
                   ))}
@@ -319,6 +337,17 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
                           const ESTADO_C = { Disponible:"#2E9E6A", Vendido:"#8AAECC", Reservado:"#E8A830", Alquilado:"#9B6DC8" };
                           const c = ESTADO_C[p.estado_aviso] || B.dim;
                           return <span style={{ color:c, fontWeight:600, fontSize:10 }}>{p.estado_aviso || "—"}</span>;
+                        })()}
+                      </td>
+                      <td style={{ padding:"4px 8px", whiteSpace:"nowrap" }}>
+                        {(() => {
+                          if (!p.ultima_actividad) return <span style={{ color:B.dim, fontSize:10 }}>—</span>;
+                          const d = new Date(p.ultima_actividad);
+                          const meses = (Date.now() - d.getTime()) / (30*24*3600*1000);
+                          const c = meses > 24 ? "#E05050" : meses > 12 ? "#E8A830" : B.muted;
+                          return <span style={{ color:c, fontSize:10, fontWeight: meses>12?700:400 }}>
+                            {d.toLocaleDateString("es-AR", { month:"short", year:"numeric" })}
+                          </span>;
                         })()}
                       </td>
                       <td style={{ padding:"4px 8px", color: p.operacion==="venta" ? "#3a8bc4" : "#9B6DC8", fontWeight:600, textTransform:"capitalize", whiteSpace:"nowrap" }}>{p.operacion}</td>
