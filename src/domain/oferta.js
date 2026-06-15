@@ -39,6 +39,8 @@ export function buildOfertaItems(properties = [], captaciones = [], leads = []) 
 
   // — Properties ------------------------------------------------
   for (const p of properties) {
+    // Solo propiedades válidas — vendidas/reservadas/alquiladas (activa=false) fuera de Oferta
+    if (p.activa === false) continue;
     const matches = safeMatchPropLeads(p, leads);
     const foto = p.fotos
       ? (p.fotos.split("\n").filter(Boolean)[0] || null)
@@ -55,7 +57,7 @@ export function buildOfertaItems(properties = [], captaciones = [], leads = []) 
       m2tot:      p.m2tot     ? Number(p.m2tot)   : null,
       m2cub:      p.m2cub     ? Number(p.m2cub)   : null,
       caracts:    parseCaracts(p.caracts),
-      estado:     p.activa === false ? "Inactiva" : "Activa",
+      estado:     "Activa", // inactivas ya filtradas arriba
       lat:        p.lat,
       lng:        p.lng,
       created_at: p.created_at,
