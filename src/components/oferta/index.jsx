@@ -154,28 +154,23 @@ export default function OfertaModule({
 
   const paraTrabajar = useMemo(() => getOfertaActionItems(items), [items]);
 
-  // Items para los 3 bloques (tab="todo")
-  const albaPropItems = useMemo(
-    () => items.filter(i => i.source === "property" && i.estado !== "Inactiva"),
+  // Bloques por origen (clasificación correcta: property por categoria, captación por tipo_captacion)
+  const propiaItems = useMemo(
+    () => items.filter(i => i.origen === "Propia" && i.estado !== "Convertida"),
     [items]
   );
-  const captacionItems = useMemo(
-    () => items.filter(i => i.source === "captacion" && i.estado !== "Convertida" && i.estado !== "Inactiva"),
+  const honorariosItems = useMemo(
+    () => items.filter(i => i.origen === "Honorarios" && i.estado !== "Convertida"),
     [items]
   );
-  // Colegas/Honorarios separados del resto de captaciones
   const colegaItems = useMemo(
-    () => captacionItems.filter(i => i.origen === "Colega" || i.origen === "Honorarios"),
-    [captacionItems]
+    () => items.filter(i => i.origen === "Colega" && i.estado !== "Convertida"),
+    [items]
   );
-  const captacionPropios = useMemo(
-    () => captacionItems.filter(i => i.origen !== "Colega" && i.origen !== "Honorarios"),
-    [captacionItems]
-  );
-  // Sin match: toda la oferta CRM activa sin matches
+  // Sin match: toda la oferta activa sin matches
   const sinMatchCount = useMemo(
-    () => [...albaPropItems, ...captacionItems].filter(i => i.matches === 0).length,
-    [albaPropItems, captacionItems]
+    () => items.filter(i => i.sinMatch).length,
+    [items]
   );
 
   const showSidePanel = !mobile && tab !== "mapa" && tab !== "zonas";
@@ -224,8 +219,8 @@ export default function OfertaModule({
       {/* ── KPIs ────────────────────────────────────────────── */}
       <OfertaKPIs
         mobile={mobile}
-        albaProp={albaPropItems.length}
-        captaciones={captacionPropios.length}
+        albaProp={propiaItems.length}
+        honorarios={honorariosItems.length}
         colegas={colegaItems.length}
         sinMatch={sinMatchCount}
       />
@@ -315,22 +310,22 @@ export default function OfertaModule({
             <>
               <InventarioBlock
                 titulo="🏠 Propiedades Alba disponibles"
-                items={albaPropItems}
+                items={propiaItems}
                 loading={loading}
                 onVerMatches={setPanelItem}
                 onVerTodas={() => setTab("propiedades")}
                 mobile={mobile}
               />
               <InventarioBlock
-                titulo="🔍 Captaciones activas"
-                items={captacionPropios}
+                titulo="💼 Honorarios"
+                items={honorariosItems}
                 loading={loading}
                 onVerMatches={setPanelItem}
-                onVerTodas={() => setTab("captaciones")}
+                onVerTodas={() => setTab("honorarios")}
                 mobile={mobile}
               />
               <InventarioBlock
-                titulo="🤝 Colegas / Honorarios disponibles"
+                titulo="🤝 Colegas"
                 items={colegaItems}
                 loading={loading}
                 onVerMatches={setPanelItem}

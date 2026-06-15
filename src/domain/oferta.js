@@ -33,6 +33,20 @@ function safeMatchPropLeads(propLike, leads) {
   catch { return 0; }
 }
 
+// Origen de una propiedad según su categoría (las captaciones usan tipo_captacion).
+function origenProperty(categoria) {
+  const c = (categoria || "").toLowerCase();
+  if (c === "colega")               return "Colega";
+  if (c === "hon3" || c === "hon6") return "Honorarios";
+  return "Propia"; // destacada / normal / null / MDL importada
+}
+
+// Detecta "apto crédito" en cualquier campo de texto disponible.
+function detectAptoCredito(...fields) {
+  const txt = fields.filter(Boolean).join(" ").toLowerCase();
+  return /apto\s*cr[eé]dito|apto\s*banco|cr[eé]dito\s*hipotecario/.test(txt);
+}
+
 // ── buildOfertaItems ───────────────────────────────────────────
 export function buildOfertaItems(properties = [], captaciones = [], leads = []) {
   const items = [];
@@ -45,10 +59,14 @@ export function buildOfertaItems(properties = [], captaciones = [], leads = []) 
     const foto = p.fotos
       ? (p.fotos.split("\n").filter(Boolean)[0] || null)
       : null;
+    const retasada    = !!(p.precio_original && p.precio && Number(p.precio_original) > Number(p.precio));
+    const retasadaPct = retasada
+      ? Math.round((1 - Number(p.precio) / Number(p.precio_original)) * 100)
+      : null;
     items.push({
       id:         `prop-${p.id}`,
       source:     "property",
-      origen:     "Propia",
+      origen:     origenProperty(p.categoria),
       tipo:       p.tipo      || "",
       zona:       p.zona      || "",
       direccion:  p.dir       || "",
@@ -62,7 +80,17 @@ export function buildOfertaItems(properties = [], captaciones = [], leads = []) 
       lng:        p.lng,
       created_at: p.created_at,
       matches,
+      // — Flags operativos —
+      matchesCount: matches,
+      tieneMatches: matches > 0,
+      sinMatch:     matches === 0,
       foto,
+      sinFoto:      !foto,
+      sinLink:      !(p.web_url || p.url),
+      sinFicha:     !p.precio || !p.tipo || !p.zona,
+      retasada,
+      retasadaPct,
+      aptoCredito:  detectAptoCredito(p.caracts, p.info, p.descripcion, p.sc),
       web_url:    p.web_url || null,
       contacto:   null,
       raw:        p,
@@ -97,6 +125,15 @@ export function buildOfertaItems(properties = [], captaciones = [], leads = []) 
       lng:        c.lng,
       created_at: c.created_at,
       matches,
+      // — Flags operativos —
+      matchesCount: matches,
+      tieneMatches: matches > 0,
+      sinMatch:     matches === 0 && estado !== "Convertida",
+      sinLink:      !c.url,
+      sinFicha:     !c.precio || !c.tipo || !c.zona,
+      retasada:     false,
+      retasadaPct:  null,
+      aptoCredito:  detectAptoCredito(c.caracts),
       contacto,
       raw:        c,
     });
@@ -272,96 +309,48 @@ export function getMatchingLeads(item, leads) {
  * Fallback: si hay menos de maxItems, completa con captaciones
  * recientes sin convertir para que la sección nunca quede vacía.
  */
-export function getOfertaActionItems(items = [], maxItems = 3) {
+export function getOfertaActionItems(items = [], maxItems = 6) {
   const scored = [];
-  const usados = new Set();
 
   for (const item of items) {
     if (item.estado === "Inactiva" || item.estado === "Convertida") continue;
 
-    let score = 0;
-    let motivo = "";
-    let accion = "💬 Mandar por WA";
-    let urgencia = "media";
+    const m = item.matchesCount ?? item.matches ?? 0;
+    let score = 0, motivo = "", accion = "", urgencia = "media";
 
-    // ── 1. Matches (primera prioridad absoluta) ──────────────
-    if (item.matches >= 5) {
-      score    = 150 + item.matches;
-      motivo   = `${item.matches} matches — mandá hoy por WA`;
-      urgencia = "alta";
-    } else if (item.matches >= 3) {
-      score    = 120 + item.matches;
-      motivo   = `${item.matches} matches activos — coordinar visita`;
-      accion   = "🎯 Ver matches";
-      urgencia = "alta";
-    } else if (item.matches >= 2) {
-      score    = 90 + item.matches;
-      motivo   = `${item.matches} matches — ver interesados`;
-      accion   = "🎯 Ver matches";
+    // Una sola razón por card: la de mayor prioridad que aplique.
+    if (m >= 5) {
+      score = 150 + m; urgencia = "alta";
+      motivo = `${m} matches activos`;        accion = "💬 Mandar por WhatsApp";
+    } else if (m >= 2) {
+      score = 110 + m; urgencia = "alta";
+      motivo = `${m} matches activos`;        accion = "💬 Mandar por WhatsApp";
+    } else if (item.retasada) {
+      score = 100; urgencia = "alta";
+      motivo = item.retasadaPct ? `Retasada -${item.retasadaPct}%` : "Retasada";
+      accion = "🔄 Reactivar leads compatibles";
+    } else if (item.aptoCredito) {
+      score = 90;
+      motivo = "Apto crédito";                accion = "🏦 Mandar a leads con crédito";
+    } else if (item.estado === "Vence pronto") {
+      score = 80; urgencia = "alta";
+      motivo = "Vence pronto";                accion = "📞 Contactar propietario";
+    } else if (item.sinFicha) {
+      score = 50;
+      motivo = "Completar ficha";             accion = "📝 Completar datos";
+    } else if (item.sinFoto) {
+      score = 40;
+      motivo = "Sin foto";                    accion = "📷 Cargar fotos";
+    } else if (item.sinLink) {
+      score = 30;
+      motivo = "Sin link";                    accion = "🔗 Agregar link web";
+    } else if (item.sinMatch) {
+      score = 20;
+      motivo = "Sin match";                   accion = "🔍 Revisar precio/zona o difusión";
     }
 
-    // ── 2. Vence pronto (puede sumarse a matches si hay ambos) ─
-    if (item.estado === "Vence pronto") {
-      if (score > 0) {
-        score += 15; // bonus urgencia + oportunidad
-        motivo += " · vence pronto";
-      } else {
-        score    = 80;
-        motivo   = "Vence pronto — llamar al propietario hoy";
-        accion   = "📞 Llamar ahora";
-        urgencia = "alta";
-      }
-    }
-
-    // ── 3. Colega / honorarios con match ──────────────────────
-    if (!score && item.matches === 1 && (item.origen === "Colega" || item.origen === "Honorarios")) {
-      score    = 55;
-      motivo   = `${item.origen} con 1 match — trabajar antes que otra inmobiliaria`;
-      accion   = "⚡ Trabajar";
-    }
-
-    // ── 4. Captación con contacto sin convertir ───────────────
-    if (!score && item.source === "captacion" && !item.raw?.convertida && item.contacto) {
-      score    = 35;
-      motivo   = "Captación con contacto — convertir antes de que venza";
-      accion   = "⚡ Convertir";
-    }
-
-    // ── 5. 1 match solo ───────────────────────────────────────
-    if (!score && item.matches === 1) {
-      score    = 30;
-      motivo   = "1 match — verificar interés";
-      accion   = "🎯 Ver match";
-    }
-
-    if (score > 0) {
-      scored.push({ ...item, _score: score, motivo, accion, urgencia });
-      usados.add(item.id);
-    }
+    if (score > 0) scored.push({ ...item, _score: score, motivo, accion, urgencia });
   }
 
-  const top = scored.sort((a, b) => b._score - a._score).slice(0, maxItems);
-
-  // ── Fallback: completar con captaciones recientes si faltan ──
-  if (top.length < maxItems) {
-    const fallbacks = items
-      .filter(i =>
-        !usados.has(i.id) &&
-        i.source === "captacion" &&
-        !i.raw?.convertida &&
-        i.estado !== "Inactiva"
-      )
-      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
-      .slice(0, maxItems - top.length)
-      .map(i => ({
-        ...i,
-        _score: 5,
-        motivo: "Captación reciente — revisar y convertir",
-        accion: "⚡ Convertir",
-        urgencia: "media",
-      }));
-    return [...top, ...fallbacks];
-  }
-
-  return top;
+  return scored.sort((a, b) => b._score - a._score).slice(0, maxItems);
 }

@@ -1,7 +1,7 @@
 import React from "react";
 import { B } from "../../data/constants.js";
 
-export default function OfertaKPIs({ mobile, albaProp = 0, captaciones = 0, colegas = 0, sinMatch = 0 }) {
+export default function OfertaKPIs({ mobile, albaProp = 0, honorarios = 0, colegas = 0, sinMatch = 0 }) {
   const KPI_DATA = [
     {
       label: "Propiedades Alba",
@@ -11,17 +11,17 @@ export default function OfertaKPIs({ mobile, albaProp = 0, captaciones = 0, cole
       sub:   "disponibles",
     },
     {
-      label: "Captaciones",
-      value: captaciones,
-      icon:  "🔍",
-      color: "#A78BFA",
+      label: "Honorarios",
+      value: honorarios,
+      icon:  "💼",
+      color: "#FBBF24",
       sub:   "activas",
     },
     {
       label: "Colegas",
       value: colegas,
       icon:  "🤝",
-      color: "#FBBF24",
+      color: "#A78BFA",
       sub:   "disponibles",
     },
     {
