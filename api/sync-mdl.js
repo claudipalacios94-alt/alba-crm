@@ -155,13 +155,70 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: "No se pudo conectar con Mar del Inmueble", detail: err.message });
   }
 
-  // ── Modo: dry_run o importación de selected_ids ───────────
-  const dryRun     = req.body?.dry_run     === true;
+  // ── Modo: dry_run, sync_estados o importación de selected_ids ──
+  const dryRun      = req.body?.dry_run      === true;
+  const syncEstados = req.body?.sync_estados === true;
   const selectedIds = Array.isArray(req.body?.selected_ids)
     ? req.body.selected_ids.map(String)
     : null;
 
   const publicadas = inmuebles.filter(p => p.publicado);
+
+  // ── SYNC ESTADOS: reconciliar activa de TODO lo ya importado ──
+  // No re-importa datos: solo actualiza activa según el estado actual en MDL.
+  //   Disponible en MDL        → activa = true
+  //   Vendido/Reservado/Alquil → activa = false
+  //   external_id ya no en MDL → activa = false (se despublicó/eliminó)
+  if (syncEstados) {
+    // Guard anti-outage: si MDL devuelve una respuesta sospechosamente chica,
+    // no tratamos "ausente en MDL" como vendido (evita desactivar todo por un fallo parcial).
+    const mdlSano = inmuebles.length >= 20;
+
+    const mdlDisponible = new Map();
+    for (const p of inmuebles) mdlDisponible.set(String(p.id), p.estado_aviso === "Disponible");
+
+    const { data: crmProps, error: selErr } = await supabase
+      .from("properties")
+      .select("id, external_id, activa")
+      .not("external_id", "is", null);
+    if (selErr) {
+      console.error("sync-mdl estados select error:", selErr);
+      return res.status(500).json({ error: "No se pudieron leer las propiedades del CRM", detail: selErr.message });
+    }
+
+    let activadas = 0, desactivadas = 0, sinCambio = 0, errores = 0, omitidas = 0;
+    const errorLog = [];
+    for (const cp of (crmProps || [])) {
+      const extId    = String(cp.external_id);
+      const enMdl    = mdlDisponible.has(extId);
+      // Si no está en MDL y la respuesta no es sana, no tocamos (protección anti-outage)
+      if (!enMdl && !mdlSano) { omitidas++; continue; }
+      const deseada = enMdl ? mdlDisponible.get(extId) : false;
+      const actual  = cp.activa !== false;
+      if (deseada === actual) { sinCambio++; continue; }
+      const { error: updErr } = await supabase
+        .from("properties").update({ activa: deseada }).eq("id", cp.id);
+      if (updErr) {
+        errores++;
+        errorLog.push({ external_id: extId, error_message: updErr.message || null });
+        continue;
+      }
+      deseada ? activadas++ : desactivadas++;
+    }
+
+    return res.status(200).json({
+      ok:           errores === 0,
+      sync_estados: true,
+      revisadas:    (crmProps || []).length,
+      activadas,
+      desactivadas,
+      sin_cambio:   sinCambio,
+      omitidas,
+      errores,
+      message:      `${activadas + desactivadas} actualizadas de ${(crmProps || []).length} (${desactivadas} ocultadas, ${activadas} reactivadas, ${sinCambio} sin cambio${omitidas ? `, ${omitidas} omitidas por seguridad` : ""}).`,
+      error_detail: errorLog.length > 0 ? errorLog : undefined,
+    });
+  }
 
   // ── DRY-RUN: revisar todas contra DB, devolver lista completa ──
   if (dryRun) {

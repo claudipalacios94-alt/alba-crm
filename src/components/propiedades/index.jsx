@@ -89,6 +89,30 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
     } finally { setSyncing(false); }
   }
 
+  // ── Sincronizar estados (reconciliar activa con MDL) ───────
+  async function handleSyncEstados() {
+    if (syncing) return;
+    if (!window.confirm("Actualizar el estado (activa/inactiva) de todas las propiedades importadas según Mar del Inmueble. No re-importa datos. ¿Continuar?")) return;
+    setSyncing(true); setSyncMsg(null);
+    try {
+      const { data: { session } } = await sbClient.auth.getSession();
+      if (!session) throw new Error("Sin sesión activa");
+      const res  = await fetch("/api/sync-mdl", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ sync_estados: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Error del servidor");
+      await loadProperties();
+      setSyncMsg({ ok: json.ok, text: json.message });
+      setTimeout(() => setSyncMsg(null), 9000);
+    } catch (err) {
+      setSyncMsg({ ok: false, text: err.message });
+      setTimeout(() => setSyncMsg(null), 8000);
+    } finally { setSyncing(false); }
+  }
+
   // ── Items filtrados ────────────────────────────────────────
   const mdlFiltrados = React.useMemo(() => {
     if (!dryItems) return [];
@@ -127,8 +151,10 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
     setSelected(next);
   }
 
-  const tipos    = getTiposUnicos(properties);
-  const filtered = filtrarPropiedades(properties, { tipo: ft, q });
+  // Solo propiedades activas — vendidas/reservadas/alquiladas (activa=false) no ensucian la lista
+  const activas  = (properties || []).filter(p => p.activa !== false);
+  const tipos    = getTiposUnicos(activas);
+  const filtered = filtrarPropiedades(activas, { tipo: ft, q });
   const { retasadas, destacadas, hon3, hon6, colegas, resto } = agruparPropiedadesPorCategoria(filtered);
 
   const ch = act => ({
@@ -151,7 +177,7 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
           </h1>
           <p style={{ fontSize: mobile ? 11 : 12, color:"#8AAECC", margin:"3px 0 0" }}>
             {tab === "venta"
-              ? `${filtered.length} de ${properties.length} propiedades`
+              ? `${filtered.length} de ${activas.length} propiedades`
               : `${rentals.length} propiedades en gestión`}
           </p>
         </div>
@@ -179,6 +205,20 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
             }}>
             {syncing ? "⏳..." : dryItems ? "✕ MDL" : "🔄 MDL"}
           </button>
+          {/* Sincronizar estados — reconcilia activa/inactiva con MDL sin re-importar */}
+          <button
+            onClick={handleSyncEstados}
+            disabled={syncing}
+            title="Actualizar vendidas/disponibles según Mar del Inmueble (no re-importa datos)"
+            style={{
+              padding: mobile ? "8px 12px" : "7px 11px", borderRadius:8,
+              cursor: syncing ? "wait" : "pointer",
+              border:"1px solid "+B.border, background:B.card,
+              color: syncing ? B.dim : B.muted,
+              fontSize: mobile ? 12 : 11, fontWeight:600, whiteSpace:"nowrap", flexShrink:0,
+            }}>
+            🔁 Estados
+          </button>
           {syncMsg && (
             <span style={{ fontSize: mobile ? 12 : 11, color: syncMsg.ok ? B.ok : B.hot }}>
               {syncMsg.text}
@@ -186,7 +226,7 @@ export default function Propiedades({ properties, rentals = [], leads = [], supa
           )}
           <div style={{ display:"flex", background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:3, flexShrink:0 }}>
             {[
-              { id:"venta",    label:"🏠 Venta",   count: properties.length },
+              { id:"venta",    label:"🏠 Venta",   count: activas.length },
               { id:"alquiler", label:"🔑 Alquiler", count: rentals.length },
             ].map(t => (
               <button key={t.id} onClick={() => setTab(t.id)}
