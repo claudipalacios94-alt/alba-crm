@@ -316,15 +316,22 @@ export function getOfertaActionItems(items = [], maxItems = 6) {
     if (item.estado === "Inactiva" || item.estado === "Convertida") continue;
 
     const m = item.matchesCount ?? item.matches ?? 0;
-    let score = 0, motivo = "", accion = "", urgencia = "media";
+    let score = 0, motivo = "", contexto = "", accion = "", urgencia = "media";
+
+    // Contexto extra para cards de match — solo datos reales (created_at / web_url).
+    const dias     = diasDesde(item.created_at);
+    const nueva    = dias !== null && dias <= 14;
+    const ctxMatch = nueva && item.web_url ? "Nueva · publicada en web"
+                   : nueva                 ? "Nueva"
+                   : item.web_url          ? "Publicada en web" : "";
 
     // Una sola razón por card: la de mayor prioridad que aplique.
     if (m >= 5) {
       score = 150 + m; urgencia = "alta";
-      motivo = `${m} matches activos`;        accion = "💬 Mandar por WhatsApp";
+      motivo = `${m} matches activos`; contexto = ctxMatch; accion = "💬 Mandar hoy por WhatsApp";
     } else if (m >= 2) {
       score = 110 + m; urgencia = "alta";
-      motivo = `${m} matches activos`;        accion = "💬 Mandar por WhatsApp";
+      motivo = `${m} matches activos`; contexto = ctxMatch; accion = "💬 Mandar hoy por WhatsApp";
     } else if (item.retasada) {
       score = 100; urgencia = "alta";
       motivo = item.retasadaPct ? `Retasada -${item.retasadaPct}%` : "Retasada";
@@ -349,7 +356,7 @@ export function getOfertaActionItems(items = [], maxItems = 6) {
       motivo = "Sin match";                   accion = "🔍 Revisar precio/zona o difusión";
     }
 
-    if (score > 0) scored.push({ ...item, _score: score, motivo, accion, urgencia });
+    if (score > 0) scored.push({ ...item, _score: score, motivo, contexto, accion, urgencia });
   }
 
   return scored.sort((a, b) => b._score - a._score).slice(0, maxItems);

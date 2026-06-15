@@ -4,11 +4,11 @@ import { B } from "../../data/constants.js";
 export default function OfertaKPIs({ mobile, albaProp = 0, honorarios = 0, colegas = 0, sinMatch = 0 }) {
   const KPI_DATA = [
     {
-      label: "Propiedades Alba",
+      label: "Alba",
       value: albaProp,
       icon:  "🏠",
       color: B.accentL,
-      sub:   "disponibles",
+      sub:   "propias disponibles",
     },
     {
       label: "Honorarios",

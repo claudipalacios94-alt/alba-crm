@@ -278,6 +278,11 @@ export default function OfertaModule({
                         <div style={{ fontSize: 10, color: B.muted, lineHeight: 1.3 }}>
                           {item.motivo}
                         </div>
+                        {item.contexto && (
+                          <div style={{ fontSize: 9, color: B.accentL, fontWeight: 600 }}>
+                            {item.contexto}
+                          </div>
+                        )}
                         <button style={{
                           marginTop: 2, padding: "5px 10px", borderRadius: 6,
                           background: `${uc.dot}18`, border: `1px solid ${uc.border}`,
