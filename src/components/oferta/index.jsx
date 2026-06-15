@@ -138,6 +138,9 @@ export default function OfertaModule({
   mdlItems     = [],
   mdlLoading   = false,
   onAddMdlItem = null,
+  onSyncEstados  = null,
+  syncingEstados = false,
+  syncMsg        = null,
 }) {
   const mobile = useIsMobile();
   const [tab, setTab]               = useState("todo");
@@ -198,6 +201,20 @@ export default function OfertaModule({
         </div>
 
         <div style={{ display: "flex", gap: 7, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+          {syncMsg && (
+            <span style={{ fontSize: 11, color: syncMsg.ok ? B.ok : B.hot, alignSelf: "center" }}>
+              {syncMsg.text}
+            </span>
+          )}
+          {onSyncEstados && (
+            <button
+              onClick={onSyncEstados}
+              disabled={syncingEstados}
+              title="Actualizar vendidas/disponibles según Mar del Inmueble (no re-importa datos)"
+              style={{ ...actionBtn(), cursor: syncingEstados ? "wait" : "pointer", opacity: syncingEstados ? 0.6 : 1 }}>
+              {syncingEstados ? "⏳..." : "🔁 Estados"}
+            </button>
+          )}
           <button style={actionBtn("primary")}>⚡ Captación rápida</button>
           <button style={actionBtn()}>🏠 Propiedad</button>
           {!mobile && <button style={actionBtn()}>🎨 Flyer</button>}

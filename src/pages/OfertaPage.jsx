@@ -25,6 +25,33 @@ export default function OfertaPage() {
   const [mdlItems,   setMdlItems]   = useState([]);
   const [mdlLoading, setMdlLoading] = useState(false);
 
+  // ── Sincronizar estados (reconciliar activa con MDL) ───────
+  const [syncingEstados, setSyncingEstados] = useState(false);
+  const [syncMsg,        setSyncMsg]        = useState(null);
+
+  async function handleSyncEstados() {
+    if (syncingEstados) return;
+    if (!window.confirm("Actualizar el estado (activa/inactiva) de todas las propiedades importadas según Mar del Inmueble. No re-importa datos. ¿Continuar?")) return;
+    setSyncingEstados(true); setSyncMsg(null);
+    try {
+      const { data: { session } } = await sbClient.auth.getSession();
+      if (!session) throw new Error("Sin sesión activa");
+      const res  = await fetch("/api/sync-mdl", {
+        method:  "POST",
+        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+        body:    JSON.stringify({ sync_estados: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Error del servidor");
+      await loadProperties();
+      setSyncMsg({ ok: json.ok, text: json.message });
+      setTimeout(() => setSyncMsg(null), 9000);
+    } catch (err) {
+      setSyncMsg({ ok: false, text: err.message });
+      setTimeout(() => setSyncMsg(null), 8000);
+    } finally { setSyncingEstados(false); }
+  }
+
   useEffect(() => {
     let cancelled = false;
     async function fetchMDL() {
@@ -112,6 +139,9 @@ export default function OfertaPage() {
       mdlItems={mdlItems}
       mdlLoading={mdlLoading}
       onAddMdlItem={handleAddMdlItem}
+      onSyncEstados={handleSyncEstados}
+      syncingEstados={syncingEstados}
+      syncMsg={syncMsg}
     />
   );
 }
