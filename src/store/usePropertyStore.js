@@ -47,10 +47,10 @@ export const usePropertyStore = create((set, get) => ({
         .select('*')
         .order('created_at', { ascending: false })
       if (error) throw error
-      set({ properties: data?.length ? data : PROPS_DEMO, loading: false })
+      set({ properties: data?.length ? data : (import.meta.env.DEV ? PROPS_DEMO : []), loading: false })
     } catch (err) {
       console.error('usePropertyStore error:', err)
-      set({ error: err.message, properties: PROPS_DEMO, loading: false })
+      set({ error: err.message, properties: import.meta.env.DEV ? PROPS_DEMO : [], loading: false })
     }
   },
 

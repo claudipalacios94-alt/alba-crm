@@ -246,7 +246,7 @@ export function generarMensajeOferta(item) {
     ...(item.caracts || []).slice(0, 3),
   ].filter(Boolean).join(" · ");
   if (detalles) lineas.push(detalles);
-  const url = item.raw?.url;
+  const url = item.web_url || item.raw?.web_url || item.raw?.url;
   if (url) lineas.push(url);
   return lineas.join("\n");
 }

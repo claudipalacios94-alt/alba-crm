@@ -38,10 +38,15 @@ export default function LlamaHoyCard({ lead, onContactado }) {
   async function handleContactado() {
     if (loading || yaContactado) return;
     setLoading(true);
-    await supabase.from("leads")
+    const { error } = await supabase.from("leads")
       .update({ last_contact_at: new Date().toISOString() })
       .eq("id", lead.id);
     setLoading(false);
+    if (error) {
+      console.error("handleContactado error:", error);
+      alert("No se pudo registrar el contacto. Revisá la conexión e intentá de nuevo.");
+      return;
+    }
     if (onContactado) onContactado(lead.id);
   }
 

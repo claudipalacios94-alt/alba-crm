@@ -40,13 +40,13 @@ export const useLeadStore = create((set, get) => ({
         .order('created_at', { ascending: false })
       if (error) throw error
       set({
-        leads:    data?.length ? data.map(normalizeLead) : LEADS_DEMO,
+        leads:    data?.length ? data.map(normalizeLead) : (import.meta.env.DEV ? LEADS_DEMO : []),
         lastSync: new Date(),
         loading:  false,
       })
     } catch (err) {
       console.error('useLeadStore error:', err)
-      set({ error: err.message, leads: LEADS_DEMO, loading: false })
+      set({ error: err.message, leads: import.meta.env.DEV ? LEADS_DEMO : [], loading: false })
     }
   },
 

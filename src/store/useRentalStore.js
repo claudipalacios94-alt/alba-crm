@@ -19,10 +19,10 @@ export const useRentalStore = create((set, get) => ({
         .select('*')
         .order('created_at', { ascending: false })
       if (error) throw error
-      set({ rentals: data?.length ? data : ALQUILERES_DEMO, loading: false })
+      set({ rentals: data?.length ? data : (import.meta.env.DEV ? ALQUILERES_DEMO : []), loading: false })
     } catch (err) {
       console.error('useRentalStore error:', err)
-      set({ error: err.message, rentals: ALQUILERES_DEMO, loading: false })
+      set({ error: err.message, rentals: import.meta.env.DEV ? ALQUILERES_DEMO : [], loading: false })
     }
   },
 
