@@ -213,7 +213,12 @@ export function sortOfertaItems(items = [], orden = "recientes") {
   if (orden === "matches")      return s.sort((a, b) => b.matches - a.matches);
   if (orden === "precio_asc")   return s.sort((a, b) => (a.precio || 0) - (b.precio || 0));
   if (orden === "precio_desc")  return s.sort((a, b) => (b.precio || 0) - (a.precio || 0));
-  return s.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  return s.sort((a, b) => {
+    const aMdl = a.raw?.external_id ? 1 : 0;
+    const bMdl = b.raw?.external_id ? 1 : 0;
+    if (aMdl !== bMdl) return bMdl - aMdl;
+    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+  });
 }
 
 // ── Acciones / mensajes ────────────────────────────────────────
