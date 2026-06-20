@@ -6,6 +6,7 @@ import {
   generarMensajeContacto,
   formatTelefonoWA,
 } from "../../domain/oferta.js";
+import { usePropertyStore } from "../../store/usePropertyStore.js";
 
 // Cache en módulo para no re-fetchear entre re-renders
 const ogCache = new Map();
@@ -103,8 +104,22 @@ const MAX_CARACTS = 3;
 
 export default function OfertaCard({ item, onVerMatches, onAnadir }) {
   const navigate = useNavigate();
+  const deleteProperty = usePropertyStore(s => s.deleteProperty);
   const [copied, setCopied]           = useState(false);
   const [copiedContact, setCopiedContact] = useState(false);
+  const [confirmDel, setConfirmDel]   = useState(false);
+
+  // Borrar — solo propiedades reales de la base (no captaciones ni MDL sin añadir)
+  const puedeBorrar = item.source === "property" && item.raw?.id != null;
+  async function accionBorrar() {
+    try {
+      await deleteProperty(item.raw.id);
+    } catch (err) {
+      console.error("borrar propiedad error:", err);
+      alert("No se pudo borrar. Revisá la conexión e intentá de nuevo.");
+    }
+    setConfirmDel(false);
+  }
 
   // OG image solo para captaciones con URL de portal
   const portalUrl = item.source === "captacion" ? (item.raw?.url || null) : null;
@@ -347,6 +362,21 @@ export default function OfertaCard({ item, onVerMatches, onAnadir }) {
 
               {/* 5. Editar — navega al módulo original */}
               <button onClick={accionEditar} title="Editar en módulo original" style={btnBase}>✏️</button>
+
+              {/* 6. Borrar propiedad — con confirmación inline */}
+              {puedeBorrar && (
+                confirmDel ? (
+                  <>
+                    <button onClick={accionBorrar} title="Confirmar borrado"
+                      style={{ ...btnBase, background: "#7f1d1d", color: "#fff", border: "1px solid #b91c1c", fontWeight: 700 }}>Sí, borrar</button>
+                    <button onClick={() => setConfirmDel(false)} title="Cancelar"
+                      style={btnBase}>No</button>
+                  </>
+                ) : (
+                  <button onClick={() => setConfirmDel(true)} title="Borrar propiedad"
+                    style={{ ...btnBase, color: "#f87171", border: "1px solid #f8717144" }}>🗑</button>
+                )
+              )}
 
               {/* Convertir (solo captaciones sin convertir) */}
               {esConvertible && (
